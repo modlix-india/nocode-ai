@@ -11,6 +11,7 @@
 | `Filler.` | App global vars | `Filler.companyName` | `Store.application.properties.fillerValues.x` |
 | `Parent.` | Parent context | `Parent.name`, `Parent.id` | Current item in ArrayRepeater |
 | `LocalStore.` | localStorage | `LocalStore.AuthToken` | Browser localStorage |
+| `Store.shortcuts.` | Live keyboard shortcuts, READ ONLY | `Store.shortcuts.myPage.searchBox.display` | `{spec, display, aria, label}`; `display` is OS-formatted (`⌘K` / `Ctrl+K`) |
 
 ## Filler Values
 

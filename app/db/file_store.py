@@ -80,6 +80,7 @@ class FileStore:
         agent_name: str | None = None,
         limit: int = 20,
         offset: int = 0,
+        app_code: str | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         """List sessions for a user, newest first."""
         all_sessions: list[dict[str, Any]] = []
@@ -93,6 +94,8 @@ class FileStore:
             if data.get("client_code") != client_code:
                 continue
             if agent_name and data.get("agent_name") != agent_name:
+                continue
+            if app_code and data.get("app_code") != app_code:
                 continue
             all_sessions.append(data)
 

@@ -51,7 +51,9 @@ Fetched via `GET /api/ui/page/{pageName}`. Key fields:
 ```typescript
 {
   _id: string,
-  name: string,          // Page name (used in URLs)
+  name: string,          // Page name (used in URLs). The IDENTITY - see below.
+  title?: string,        // Display name. What "the title of this page" means.
+  description?: string,
   appCode: string,
   clientCode: string,
   rootComponent: string, // Key into componentDefinition (STRING, not object)
@@ -75,7 +77,7 @@ Fetched via `GET /api/ui/page/{pageName}`. Key fields:
   },
 
   properties: {
-    title?: { name?: ComponentProperty, append?: ComponentProperty },
+    title?: { name?: ComponentProperty, append?: ComponentProperty },  // BROWSER TAB text, not the display name
     onLoadEvent?: string,         // Event key to run on load
     loadStrategy?: "default" | "always" | "once",
     wrapShell?: boolean,
@@ -87,6 +89,22 @@ Fetched via `GET /api/ui/page/{pageName}`. Key fields:
   translations?: { [lang: string]: { [key: string]: string } },
 }
 ```
+
+### name vs title vs properties.title
+
+Every overridable object (page, storage, theme, style, function, schema, uripath,
+template, notification, connection, event definition/action) carries `name` and
+`title`, and a page has a third field that sounds like a title:
+
+| field | what it is | when to write it |
+|---|---|---|
+| `name` | The IDENTITY. Everything referencing the object uses it, and for a page it is the URL slug. Effectively immutable once anything points at it. | Only on create, or a deliberate rename the user asked for knowing what breaks. |
+| `title` | The alternate name, display only. Nothing references it. The builder shows it on the tab, in the object tree, and in the Title box of the object's form. | Whenever the user says "the title of this page/storage/theme", or asks to rename something for humans. |
+| `properties.title` (pages only) | The text in the BROWSER TAB. Shape `{name: {value}, append: {value}}`; `append: false` replaces the app title rather than concatenating. | Only when the user is talking about the browser tab, the window, or SEO. |
+
+Writing `properties.title` when they meant `title` puts the change somewhere they
+are not looking, so a successful edit reads as a failed one. `update_page` keeps
+them apart: `title=` for the display name, `browser_title=` for the tab.
 
 ## ComponentProperty
 

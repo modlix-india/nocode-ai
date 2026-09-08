@@ -58,8 +58,13 @@ class Settings(BaseSettings):
     MYSQL_PASSWORD: str = ""
     AI_TRACKING_ENABLED: bool = False  # Auto-enabled when MYSQL_URL is configured
 
-    # Context limits for conversation tracking
-    CONTEXT_LIMIT_DEFAULT: int = 48000  # Default context limit (64K - 16K reserved for output)
+    # Context limits for conversation tracking (reporting/metadata only — the
+    # agent loop does NOT trim on this). 48000 dated from the 64K-context
+    # DeepSeek era; 112000 assumed a 128K floor. DeepSeek V4 (pro, flash and
+    # flash-vision-exp alike) documents a 1M window, so report against that.
+    # The output reservation the old value subtracted is noise at this scale
+    # (AGENT_MAX_TOKENS is ~1.6% of the window).
+    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek V4: 1M context window
     
     # LLM Provider Selection
     # Options: "anthropic", "openai", or "deepseek"
@@ -82,7 +87,13 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_MODEL_FAST: str = "deepseek-v4-flash"   # DeepSeek V4 Flash (cheap tier)
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-pro" # DeepSeek V4 Pro (higher correctness on Kirun DSL per bench 2026-06-10)
+    # DeepSeek V4 Flash Vision (experimental) — the only DeepSeek model that
+    # accepts image input, so the AppBuilder can read its own screenshots
+    # natively instead of paying for a Gemini text description of each one.
+    # See _DEEPSEEK_VISION_MODELS in app/services/llm_provider.py: swapping this
+    # back to a text-only model (deepseek-v4-pro / -flash) automatically turns
+    # the multimodal tool_result path back off.
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-flash-vision-exp"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
@@ -112,6 +123,92 @@ class Settings(BaseSettings):
     # export/import etc.). Must be set per env; if empty the admin routes
     # return 503 — safer than allowing unauthenticated access.
     ADMIN_TOKEN: str = ""
+
+    # ── Lore ───────────────────────────────────────────────────────────
+    # Curated, growing knowledge about each application (app/services/lore).
+    # Requires the AI tracking database; silently no-ops without it.
+    LORE_ENABLED: bool = True
+    # Record every agent turn as an observation. Turning this off leaves the
+    # explicit lore_note tool and the HTTP surface working, and only stops
+    # the passive accumulation.
+    LORE_OBSERVE_CHAT: bool = True
+    # Record every successful definition write as an observation. This is the
+    # path that carries real evidence: a build makes hundreds of edits and
+    # about five turns, and an edit names the object it happened to.
+    LORE_OBSERVE_EDITS: bool = True
+    # Pending observations that trigger a background curation pass. 0 disables
+    # auto-curation (the /curate endpoint and the admin sweep still work).
+    LORE_AUTOCURATE_AT: int = 25
+    # ...or this many pending about a SINGLE subject, whichever comes first.
+    # An app-wide count is the wrong unit on its own: thirty scattered edits
+    # across thirty objects say less than eight against one page, and the
+    # second is what produces a good entry. Lower than the app threshold on
+    # purpose.
+    LORE_AUTOCURATE_SUBJECT_AT: int = 8
+
+    # The tier curation runs on. This used to be hardcoded to "fast", which is
+    # what produced 267 observations and zero entries on the first instance:
+    # the cheap reasoning model spent its whole output budget thinking and
+    # emitted no content at all, so every pass parsed an empty string. Keep it
+    # separate from APPBUILDER_PROVIDER's tier — curation is rare (once per ~25
+    # observations) and is the hardest single inference in the system.
+    LORE_CURATOR_TIER: str = "balanced"
+    # Output budget for one curation pass. Must leave room for a reasoning
+    # model to think AND then emit the operations JSON: measured 20k chars of
+    # reasoning plus 2.7k of content for a two-observation batch, which needs
+    # ~5.3k completion tokens. 4000 was the old value and was never enough.
+    LORE_CURATOR_MAX_TOKENS: int = 16000
+    # Store the redacted model response on the run row. Off in production; on
+    # for a debugging window. Always passes through curator.redact first — a
+    # raw model response is exactly where a leaked token would land.
+    LORE_KEEP_RAW_RESPONSE: bool = False
+    # Give up on an observation the model has declined this many times. Without
+    # this a row the curator will never use re-enters every batch forever.
+    LORE_MAX_CURATION_ATTEMPTS: int = 3
+    # Hard ceiling on one curation model call. The provider clients carry no
+    # timeout of their own, and curation runs as a detached background task, so
+    # without this a hung connection blocks that app's curation forever and
+    # leaves the run row open (observed: a pass stuck 67 minutes on zero CPU).
+    LORE_CURATOR_TIMEOUT_SECONDS: int = 240
+
+    # Record the agent's own narration as an observation. Off by default: the
+    # first 192 chat observations produced zero entries, and the assistant half
+    # is self-description ("I'm an expert application builder...") that the
+    # curator's own rules can never turn into durable knowledge.
+    LORE_OBSERVE_AGENT_NARRATION: bool = False
+    # Record an app object inventory once per session.
+    LORE_OBSERVE_INVENTORY: bool = True
+    # Record failures of tools that EXECUTE rather than edit. Repeated
+    # identical failures collapse by fingerprint, which is the gotcha signal.
+    LORE_OBSERVE_RUNS: bool = True
+    # Put constraints/gotchas for a subject in front of the model in the SAME
+    # turn as the first write to it, rather than on the next turn.
+    LORE_ADVISE_BEFORE_EDITS: bool = True
+    # Fold an app briefing into the system prompt on every request.
+    #
+    # OFF. Measured on two seeded apps, a 3,800-character briefing rendered 5
+    # of 21 entries and 7 of 21: the ranking, not the task, decided what the
+    # model saw, and two thirds of the knowledge was invisible. The same
+    # entries as an index are under 1,600 characters, so the model can instead
+    # see that everything exists and fetch what its task needs — `lore_index`
+    # then `lore_get`. Nothing is pushed; the tool descriptions carry the
+    # instruction to ask.
+    #
+    # The cost of this choice is real and worth naming: an agent that never
+    # calls `lore_index` works with no lore at all. That is why `lore_index` is
+    # a hot tool and why its description says to start there.
+    LORE_PUSH_BRIEF: bool = False
+    # Budget for that briefing when it is switched back on.
+    LORE_BIG_PICTURE_BUDGET: int = 3800
+    # Push what is known about ONE object when the agent first touches it.
+    #
+    # ON, and deliberately not covered by the decision above. The app briefing
+    # was a blanket push: it arrived on every request whatever the task, and
+    # the ranking chose what the model saw. This one is triggered by the
+    # agent's own act of opening an object, carries at most 1,200 characters
+    # about that object, and fires once per subject per session. It is closer
+    # to an answer than to a broadcast, which is why it survives.
+    LORE_PUSH_SUBJECT: bool = True
 
     # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
     # nocode-kirun live for code-reading tools. Per-instance mounted volume
@@ -177,11 +274,60 @@ class Settings(BaseSettings):
     MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
     AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
 
+    # Which tools ship a FULL schema in the per-turn tools[] payload.
+    #   "full" — the curated HOT_TOOLS set (64 tools, ~19.6K tok/turn).
+    #   "off"  — none; every tool ships the stripped shape and reaches
+    #            execution through _gate_deferred_dispatch's argument
+    #            validation, which dispatches a well-formed guess immediately.
+    # HOT_TOOLS existed to dodge a first-call synthetic retry that the
+    # argument-validating gate made unnecessary; measured, the full set costs
+    # 15,031 tokens more than the same tools stripped (the docstring's "3-5K"
+    # is a 3-5x understatement) and occupies 13% of DeepSeek's 112K window.
+    # "off" is the A/B arm that prices what that buys. Bench both before
+    # changing the default.
+    CFA_HOT_TOOLS: str = "full"
+
+    # Conversation-history elision. There is NO context management on the
+    # OpenAI-compatible path: `context_management` is an Anthropic-only
+    # server-side beta, it is not configured for the AppBuilder, and the DeepSeek
+    # create call ignores the parameter. So history grows unbounded — the Chit
+    # Fund run reached context_percent 100 against a 112K window and hard-stopped
+    # with no closing summary, and per-turn latency rose from ~4.5s on short
+    # conversations to ~19s on the long ones purely from prefill growth.
+    #
+    # Old tool_result payloads are the bulk (4K each by default, 32K for
+    # decompiles, plus screenshot images). Once the history passes
+    # ELIDE_OVER_CHARS, results older than KEEP_RECENT_TURNS assistant turns are
+    # replaced by a short stub that keeps a head of the original text. Small
+    # results are left alone: they are cheap and often carry the ids the model
+    # still needs. Set ELIDE_OVER_CHARS to 0 to disable entirely.
+    AGENT_HISTORY_ELIDE_OVER_CHARS: int = 200_000   # ~50K tokens
+    AGENT_HISTORY_KEEP_RECENT_TURNS: int = 6
+    AGENT_HISTORY_ELIDE_MIN_RESULT_CHARS: int = 1500
+    # Screenshots are the real bulk and need a MUCH shorter window than text.
+    # Measured: a light-12 run reached 721,910 chars of history while the text
+    # pass reclaimed 5,405, because the weight was images sitting inside the
+    # 6-turn text window. One screenshot is 100-500KB of base64 and it is paid
+    # again on every turn it survives, while the model has already read it and
+    # written down what it saw. Kept small, but never zero: the visual critique
+    # loop (screenshot -> patch -> screenshot -> compare) needs the previous
+    # shot. The newest image is always kept regardless of this number.
+    AGENT_HISTORY_KEEP_IMAGES_TURNS: int = 3
+
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
-    ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); vision sub-agents stay gpt-4o-mini (DeepSeek is text-only), competitor research stays Claude (Anthropic-only web_search)
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
+    ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); competitor research stays Claude (Anthropic-only web_search); vision sub-agents on gpt-4o-mini until deepseek-v4-flash-vision-exp is benched for essence
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
+    LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
+    # balanced tier as AppBuilder, so the two agents share one model and one set of
+    # provider quirks to reason about rather than two.
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
+    # Where nocode-ui's generated catalog lives, for a dev box. Accepts the
+    # client dir, its dist/ dir, or the JSON file. Empty auto-resolves to a
+    # sibling nocode-ui checkout. A local catalog whose `generatedAt` is newer
+    # than the CDN one wins, so regenerating after a component change takes
+    # effect without editing this.
+    COMPONENT_CATALOG_LOCAL_PATH: str = ""
 
     # ── Competitor creative library (adlibrary.com integration) ──
     # adlibrary.com ad-intelligence API - fetches competitor ad creatives.

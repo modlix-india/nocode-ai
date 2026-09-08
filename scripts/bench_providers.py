@@ -66,6 +66,30 @@ log = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
+# Provider keys live in .env (app/config.py reads it via pydantic's env_file).
+# The key precheck below reads os.environ, so without this the bench refuses to
+# run on a machine where the app itself starts fine. Existing env vars win, so
+# an explicit `export DEEPSEEK_API_KEY=...` still overrides the file.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(_REPO_ROOT / ".env", override=False)
+except ImportError:  # python-dotenv is in requirements; degrade instead of dying
+    pass
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    """One dispatched tool call, with the arguments the model actually sent.
+
+    The observer used to keep only (name, ok), which is why the oracle could
+    only ever assert which tool ran. Keeping `args` is what lets it assert what
+    the run achieved.
+    """
+    name: str
+    args: dict
+    ok: bool
+
 
 @dataclass
 class Conversation:
@@ -81,6 +105,16 @@ class Conversation:
     # doesn't penalize a valid alternative path. Goes alongside
     # `must_call_tools` — both must be satisfied if both are set.
     must_call_any_of_groups: list[list[str]] = field(default_factory=list)
+    # Outcome assertions, evaluated over (tool, ARGUMENTS) rather than tool
+    # names. Prefer these: `must_call_tools` asserts the route, not the result,
+    # and it has been wrong in both directions. It demanded
+    # `bulk_patch_component_props` for "change every Button's backgroundColor",
+    # which is a STYLE, so an agent reaching correctly for
+    # `bulk_patch_component_styles` failed. And it demanded
+    # `patch_component_styles` on a page being built, though `add_components`
+    # now carries `style_properties` inline, so the better route also failed.
+    # An effect is satisfied by ANY tool that actually achieves it. See _EFFECTS.
+    must_achieve: list[dict] = field(default_factory=list)
     must_succeed_on_kirun: bool = False
     must_succeed_on_kb_write: bool = False
     # Optional setup actions run BEFORE the user-message loop. Each entry is
@@ -97,7 +131,10 @@ class BenchMetrics:
     """Per-(provider, conversation) result row."""
     provider: str
     conversation: str
-    turns: int = 0
+    turns: int = 0              # LLM round trips (assistant messages) — the real cost driver
+    user_messages: int = 0      # conversation length: how many user turns were fed
+    max_tools_per_turn: int = 0  # largest parallel tool_use batch the model emitted
+    single_tool_turns: int = 0   # tool-using turns that carried exactly ONE call
     tool_calls_total: int = 0
     tool_calls_succeeded: int = 0
     schema_fetches: int = 0
@@ -205,6 +242,10 @@ def _load_corpus(path: Path) -> list[Conversation]:
                 list(group) for group in (entry.get("must_call_any_of_groups") or [])
                 if group
             ],
+            must_achieve=[
+                dict(effect) for effect in (entry.get("must_achieve") or [])
+                if isinstance(effect, dict) and effect.get("effect")
+            ],
             must_succeed_on_kirun=bool(entry.get("must_succeed_on_kirun")),
             must_succeed_on_kb_write=bool(entry.get("must_succeed_on_kb_write")),
             setup_actions=[
@@ -288,12 +329,28 @@ def _make_observer():
         def __init__(self) -> None:
             super().__init__()
             self.tool_calls: list[tuple[str, bool]] = []  # (name, success)
+            self.calls: list[ToolCall] = []               # + the arguments sent
+            self._pending: dict[str, tuple[str, dict]] = {}
             self.errors: list[str] = []
             self.cancelled = False
+
+        async def emit_tool_start(self, tool_name, tool_input, tool_use_id="", display_name=""):
+            # Arguments arrive on start and the outcome on result, so they are
+            # paired by tool_use_id. Without the arguments the oracle can only
+            # assert which tool ran, never what the run achieved.
+            await super().emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
+            self._pending[tool_use_id] = (
+                tool_name, tool_input if isinstance(tool_input, dict) else {},
+            )
 
         async def emit_tool_result(self, tool_name, success, summary, tool_use_id=""):
             await super().emit_tool_result(tool_name, success, summary, tool_use_id)
             self.tool_calls.append((tool_name, bool(success)))
+            # Fall back to an empty arg map rather than dropping the call: a
+            # parallel batch can interleave, and a call with unknown arguments
+            # must still count toward tool-name assertions and the metrics.
+            _name, args = self._pending.pop(tool_use_id, (tool_name, {}))
+            self.calls.append(ToolCall(tool_name, args, bool(success)))
 
         async def emit_error(self, message):
             # The agent loop catches top-level exceptions and emits them as
@@ -323,6 +380,43 @@ def _make_observer():
     return BenchObserver
 
 
+# ─── Turn accounting ────────────────────────────────────────────────────────
+
+
+def _assistant_turns(messages: list) -> int:
+    """LLM round trips in a conversation history.
+
+    One assistant message per LLM response, so this is the count of times the
+    model was actually called — the number that multiplies by the per-turn
+    prefix and that the turn limit is spent on.
+    """
+    return sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "assistant")
+
+
+def _turn_batch_sizes(messages: list) -> list[int]:
+    """Tool-use blocks per assistant turn, for turns that used tools.
+
+    The length of this list is the number of tool-using turns; each value is how
+    many calls the model packed into that one message. All ones means the model
+    is not batching at all, and every independent call is costing a full round
+    trip through the whole prefix.
+    """
+    sizes: list[int] = []
+    for m in messages:
+        if not isinstance(m, dict) or m.get("role") != "assistant":
+            continue
+        content = m.get("content")
+        if not isinstance(content, list):
+            continue
+        n = sum(
+            1 for b in content
+            if isinstance(b, dict) and b.get("type") == "tool_use"
+        )
+        if n:
+            sizes.append(n)
+    return sizes
+
+
 # ─── Convergence oracle ─────────────────────────────────────────────────────
 
 
@@ -341,7 +435,185 @@ def _check_any_of_groups(
     return f"none-of-group called: {unsatisfied}"
 
 
+# ─── Outcome effects ────────────────────────────────────────────────────────
+#
+# An effect asks "did the run achieve X", not "did it call tool Y". The tool
+# surface has several routes to most outcomes, and the route-based oracle was
+# wrong in both directions on real runs:
+#
+#   * `bulk-style-update` ("change every Button's backgroundColor") demanded
+#     `bulk_patch_component_props`. backgroundColor is a STYLE, so an agent
+#     correctly reaching for `bulk_patch_component_styles` was marked failed.
+#   * `end-to-end-new-page` demanded `patch_component_styles`, but
+#     `add_components` now carries `style_properties` inline, so building the
+#     page the better way in one call also failed.
+#
+# Where a tool carries the thing an effect looks for. Styles live under
+# `css_props` on the patch tools and `style_properties` on set/add.
+_STYLE_ARG_KEYS = ("css_props", "style_properties")
+_PROP_ARG_KEYS = ("properties",)
+
+_FUNCTION_AUTHORING_TOOLS = frozenset({
+    "create_page_event_function", "save_page_event_function_from_text",
+    "add_event_step", "update_event_step",
+    "create_function", "save_function_from_text", "create_server_function",
+    "save_server_function_from_text", "add_step", "update_step",
+    "compile_kirun_text",
+})
+_SCREENSHOT_TOOLS = frozenset({"screenshot_page", "screenshot_external_url"})
+_PAGE_CREATE_TOOLS = frozenset({"create_page", "create_pages"})
+_COMPONENT_ADD_TOOLS = frozenset({"add_component", "add_components"})
+
+
+def _iter_component_specs(args: dict) -> list[dict]:
+    """Every component spec a call carries, whether singular or batched.
+
+    `add_component` is one spec at the top level; `add_components` nests a list
+    under `components`. Flattening here means an effect never has to care which
+    of the two the agent used — which was half the original oracle's problem.
+    """
+    specs = []
+    if isinstance(args.get("components"), list):
+        specs.extend(c for c in args["components"] if isinstance(c, dict))
+    if any(k in args for k in ("component_type", "properties", "style_properties")):
+        specs.append(args)
+    return specs
+
+
+def _dicts_under(args: dict, keys: tuple[str, ...]) -> list[dict]:
+    """Collect the {name: value} maps a call carries under any of `keys`.
+
+    Looks at the call's own arguments AND at each nested component spec, so a
+    style set inline on `add_components` counts the same as one applied later
+    by `patch_component_styles`.
+    """
+    out = []
+    for src in [args] + _iter_component_specs(args):
+        for k in keys:
+            v = src.get(k)
+            if isinstance(v, dict):
+                out.append(v)
+    return out
+
+
+def _target_type(args: dict, spec: dict) -> Optional[str]:
+    """The component type a call targets, when the arguments reveal it.
+
+    Returns None when the call addresses a component by key or by an opaque
+    filter — the type is then genuinely unknowable from the arguments, and the
+    effect check treats that as "cannot disprove" rather than a failure. That
+    bias is deliberate: this oracle's failures have been false negatives, and a
+    false pass is visible in the transcript while a false fail silently
+    discredits a good run.
+    """
+    t = spec.get("component_type") or spec.get("type")
+    if isinstance(t, str):
+        return t
+    f = args.get("filter")
+    if isinstance(f, dict):
+        ft = f.get("type") or f.get("component_type")
+        if isinstance(ft, str):
+            return ft
+    if isinstance(f, str):
+        return f
+    return None
+
+
+def _src_sets(src: dict, args: dict, keys: tuple[str, ...],
+              wanted: Optional[str], on_type: Optional[str]) -> bool:
+    """Does one argument source set `wanted` under any of `keys`, on `on_type`?"""
+    for k in keys:
+        m = src.get(k)
+        if not isinstance(m, dict):
+            continue
+        if wanted and wanted not in m:
+            continue
+        if not wanted and not m:
+            continue
+        found = _target_type(args, src) if on_type else None
+        if on_type and found is not None and found != on_type:
+            continue
+        return True
+    return False
+
+
+def _effect_sets_named(call: "ToolCall", spec: dict, keys: tuple[str, ...]) -> bool:
+    """Shared body for sets_style / sets_property."""
+    wanted = spec.get("property")
+    on_type = spec.get("on_type")
+    return any(
+        _src_sets(src, call.args, keys, wanted, on_type)
+        for src in [call.args] + _iter_component_specs(call.args)
+    )
+
+
+def _effect_creates_page(call: "ToolCall", spec: dict) -> bool:
+    if call.name not in _PAGE_CREATE_TOOLS:
+        return False
+    wanted = spec.get("name")
+    if not wanted:
+        return True
+    names = [call.args.get("name")]
+    if isinstance(call.args.get("pages"), list):
+        names += [p.get("name") for p in call.args["pages"] if isinstance(p, dict)]
+    return any(isinstance(n, str) and n.lower() == wanted.lower() for n in names)
+
+
+def _effect_adds_components(call: "ToolCall", spec: dict) -> bool:
+    if call.name not in _COMPONENT_ADD_TOOLS:
+        return False
+    wanted = spec.get("type")
+    if not wanted:
+        return True
+    return any(s.get("component_type") == wanted for s in _iter_component_specs(call.args))
+
+
+# effect name → predicate over a single successful call
+_EFFECTS = {
+    "sets_style": lambda c, s: _effect_sets_named(c, s, _STYLE_ARG_KEYS),
+    "sets_property": lambda c, s: _effect_sets_named(c, s, _PROP_ARG_KEYS),
+    "creates_page": _effect_creates_page,
+    "adds_components": _effect_adds_components,
+    "authors_function": lambda c, s: c.name in _FUNCTION_AUTHORING_TOOLS,
+    "screenshots": lambda c, s: c.name in _SCREENSHOT_TOOLS,
+    "called": lambda c, s: c.name == s.get("tool"),
+}
+
+# Absence assertions, checked separately because `_check_effects` looks for at
+# least one call that satisfies each effect, and "nobody called this" cannot be
+# expressed that way.
+_ABSENCE_EFFECTS = {"not_called"}
+
+
+def _check_effects(effects: list[dict], calls: list["ToolCall"]) -> Optional[str]:
+    """Every declared effect must be achieved by at least one SUCCESSFUL call.
+
+    Failed calls do not count: an agent that tried the right thing and got an
+    error has not achieved the outcome, which is exactly the distinction the
+    tool-name oracle could not make.
+    """
+    unmet = []
+    for spec in effects:
+        name = spec.get("effect")
+        if name in _ABSENCE_EFFECTS:
+            # Absence counts ANY call, failed ones included: a tool that was
+            # reached for and errored was still redundant work.
+            if any(c.name == spec.get("tool") for c in calls):
+                unmet.append(f"{spec} (but it WAS called)")
+            continue
+        fn = _EFFECTS.get(name)
+        if fn is None:
+            unmet.append(f"{spec} (unknown effect '{name}')")
+            continue
+        if not any(fn(c, spec) for c in calls if c.ok):
+            unmet.append(spec)
+    if unmet:
+        return f"effects not achieved: {unmet}"
+    return None
+
+
 def _convergence(conv: Conversation, metrics: BenchMetrics, tool_calls: list[tuple[str, bool]],
+                 calls: Optional[list["ToolCall"]] = None,
                  ) -> tuple[bool, Optional[str]]:
     """Decide whether a run satisfies the conversation's contract.
 
@@ -357,6 +629,13 @@ def _convergence(conv: Conversation, metrics: BenchMetrics, tool_calls: list[tup
     group_failure = _check_any_of_groups(conv.must_call_any_of_groups, called_names)
     if group_failure:
         return False, group_failure
+
+    # Outcome assertions. Checked last so a conversation carrying both kinds
+    # reports the cruder route failure first, which is easier to act on.
+    if conv.must_achieve:
+        effect_failure = _check_effects(conv.must_achieve, calls or [])
+        if effect_failure:
+            return False, effect_failure
 
     if conv.must_succeed_on_kirun:
         succeeded = any(
@@ -571,10 +850,37 @@ async def _run_one(
         log.info("  turn %d/%d: %s", i + 1, len(conv.messages), msg[:80])
         try:
             await agent.run(user_message=msg, session=session, event_stream=observer)
-            metrics.turns += 1
+            metrics.user_messages += 1
         except Exception as e:  # noqa: BLE001
             metrics.failure_reason = f"turn {i + 1} raised {type(e).__name__}: {e}"
             break
+
+    # Close any Playwright session the conversation left open. The idle reaper
+    # only runs inside a tool call, so across 17 conversations x N runs the
+    # orphans accumulate: three sequential runs left enough Chromium processes
+    # alive to poison the third (shopkeep 5 turns instead of ~50, clone-linear
+    # 0 turns) and to hold the parent's stdout pipe open so the loop never
+    # advanced. Cheap and best-effort — a bench must not fail on cleanup.
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals_browser import (
+            close_all_browser_sessions,
+        )
+        closed = await close_all_browser_sessions()
+        if closed:
+            log.info("  closed %d browser session(s) after %s", closed, conv.name)
+    except Exception as e:  # noqa: BLE001
+        log.warning("  browser cleanup after %s failed: %s", conv.name, e)
+
+    # Real turn accounting. `metrics.turns` used to be incremented once per USER
+    # message, which reported 61 turns for a run that made 175 LLM round trips and
+    # hid the fact that every single batch was one call wide. The agent appends
+    # exactly one assistant message per LLM response, and the tool_use blocks in
+    # it ARE the parallel batch, so both numbers come straight from the history
+    # with no agent-side instrumentation.
+    _batches = _turn_batch_sizes(session.get_messages())
+    metrics.turns = _assistant_turns(session.get_messages())
+    metrics.max_tools_per_turn = max(_batches) if _batches else 0
+    metrics.single_tool_turns = sum(1 for b in _batches if b == 1)
 
     # Capture token usage
     usage = session.total_usage or {}
@@ -586,7 +892,9 @@ async def _run_one(
     for k, v in classified.items():
         setattr(metrics, k, v)
 
-    converged, oracle_reason = _convergence(conv, metrics, observer.tool_calls)
+    converged, oracle_reason = _convergence(
+        conv, metrics, observer.tool_calls, getattr(observer, "calls", None),
+    )
     metrics.converged = converged
     if not converged:
         metrics.failure_reason = _resolve_failure_reason(
@@ -594,6 +902,18 @@ async def _run_one(
         )
 
     return metrics
+
+
+# Oracle verdicts — the bench's own judgement that a run did not do the work.
+# These are measurements, never cascades, so they must not trip the breaker.
+# Matched as prefixes of the classified head so a reworded verdict keeps working.
+_ORACLE_VERDICT_PREFIXES: tuple = (
+    "missing required tools",
+    "none-of-group called",
+    "effects not achieved",
+    "must_succeed_on_kirun",
+    "must_succeed_on_kb_write",
+)
 
 
 def _failure_class(reason: Optional[str]) -> Optional[str]:
@@ -610,12 +930,22 @@ def _failure_class(reason: Optional[str]) -> Optional[str]:
     a cascade — likely a single upstream cause hitting every conversation
     (auth wall, gateway down, quota exceeded). Aborting the rest of the
     provider's runs saves time + noise.
+
+    An ORACLE verdict is not a cascade and returns None. "missing required
+    tools" means the agent ran and did not do the work, which is a result, not
+    an infrastructure fault — and it is exactly the result a bench exists to
+    record. Counting it tripped the breaker after two ordinary non-convergences
+    and skipped the last four conversations (shopkeep + the three clone runs) on
+    every run ever recorded, which are the heaviest in the corpus and the
+    closest in shape to the one-shot app build the whole exercise is about.
     """
     if not reason:
         return None
     # Strip the "Agent error: " prefix the agent loop prepends on top-level errors.
     body = reason.removeprefix("Agent error: ")
     head = body.split(":", 1)[0].strip()
+    if head.startswith(_ORACLE_VERDICT_PREFIXES):
+        return None
     return head or None
 
 
@@ -676,8 +1006,10 @@ async def _run_provider(
         m = await _execute_one(provider_name, conv, args)
         rows.append(m)
         log.info(
-            "  %s × %s: converged=%s, %d tool calls, %d turns, %.1fs",
-            provider_name, conv.name, m.converged, m.tool_calls_total, m.turns, m.wall_seconds,
+            "  %s × %s: converged=%s, %d tool calls in %d turns "
+            "(max %d/turn, %d single-call), %.1fs",
+            provider_name, conv.name, m.converged, m.tool_calls_total, m.turns,
+            m.max_tools_per_turn, m.single_tool_turns, m.wall_seconds,
         )
 
         consecutive, cascade_class, should_abort = _update_circuit_breaker(
@@ -835,9 +1167,19 @@ def _render_provider_block(name: str, rows: list[BenchMetrics]) -> list[str]:
     kirun_ok = sum(r.kirun_compiles_succeeded for r in rows)
     kb_t = sum(r.kb_writes_total for r in rows)
     kb_ok = sum(r.kb_writes_succeeded for r in rows)
+    total_turns = sum(r.turns for r in rows)
+    total_calls = sum(r.tool_calls_total for r in rows)
+    single = sum(r.single_tool_turns for r in rows)
+    widest = max((r.max_tools_per_turn for r in rows), default=0)
+    # `single` vs total turns is the headline: when every tool-using turn carries
+    # exactly one call, the model is not batching at all and each independent
+    # call pays a full round trip through the entire prefix.
     lines = [
         f"## {name}",
         f"- converged: {converged}/{len(rows)}",
+        f"- LLM turns: {total_turns} for {total_calls} tool calls "
+        f"({total_calls / total_turns:.2f} calls/turn)" if total_turns else "- LLM turns: 0",
+        f"- parallel batching: {single} single-call turns, widest batch {widest}",
         f"- total wall: {total_secs:.1f}s",
         f"- tokens: {total_in:,} in + {total_out:,} out",
         f"- Kirun compile pass-rate: {kirun_ok}/{kirun_t}" if kirun_t else "- Kirun: no compile attempts",

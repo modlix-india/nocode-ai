@@ -53,6 +53,11 @@ async def lifespan(app: FastAPI):
         redis_client = await get_redis_client()
         if redis_client:
             logger.info("Redis connection established")
+            # Lets POST /stop and /confirm reach an agent run held by a sibling
+            # worker. Without it those only work when the request happens to
+            # land on the right one of the four.
+            from app.core.stream_registry import start_subscriber
+            await start_subscriber()
         else:
             logger.warning("Redis connection failed - rate limiting and caching disabled")
 
@@ -86,7 +91,9 @@ async def lifespan(app: FastAPI):
         logger.info("Appbuilder context loaded")
 
         logger.info("Loading component catalog (URL=%s) ...", settings.COMPONENT_CATALOG_URL or "(fallback)")
-        catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
+        catalog = ComponentCatalog(
+            settings.COMPONENT_CATALOG_URL, settings.COMPONENT_CATALOG_LOCAL_PATH,
+        )
         await catalog.load()
         set_catalog(catalog)  # register module-level singleton for tool helpers
         logger.info("Component catalog loaded: %d types", len(catalog.get_all_types()))
@@ -113,26 +120,6 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
 
-    # ── AppBuilder v4 — code-first agent (1 tool, minimal persona) ─────
-    try:
-        from app.agents.appbuilderv4.agent import AppBuilderV4Agent
-        from app.agents.appbuilderv4.context import build_v4_context
-        from app.agents.appbuilderv4.tools import TOOLS as V4_TOOLS
-        from app.agents.appbuilderv4.router import set_appbuilderv4_agent
-
-        v4_context = build_v4_context()
-        await v4_context.load()
-        v4_agent = AppBuilderV4Agent(
-            context_builder=v4_context,
-            tools=V4_TOOLS,
-            provider=settings.APPBUILDER_PROVIDER,
-        )
-        set_appbuilderv4_agent(v4_agent)
-        logger.info(f"AppBuilderV4 Agent initialized with {len(V4_TOOLS)} tool(s)")
-    except Exception:
-        logger.exception("Failed to initialize AppBuilderV4 Agent")
-        logger.warning("AppBuilderV4 Agent will be unavailable")
-
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
     logger.info("=" * 60)
@@ -142,6 +129,16 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down...")
 
+    # Agent runs deliberately outlive the request that started them, so they
+    # have to be torn down here, since nothing else is holding them. Their sessions
+    # are left PROCESSING with a stale heartbeat, which is how a client tells a
+    # run that died from one still working.
+    try:
+        from app.core.run_manager import shutdown as shutdown_runs
+        await shutdown_runs()
+    except Exception as e:
+        logger.error(f"Error stopping agent runs: {e}")
+
     # Close SaasClient (HTTP connection pool)
     try:
         from app.agents.appbuilder.tools._shared import close_saas_client
@@ -149,6 +146,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing SaasClient: {e}")
 
+    try:
+        from app.agents.leadzump.tools._client import close_leadzump_client
+        await close_leadzump_client()
+    except Exception as e:
+        logger.error(f"Error closing LeadZump SaasClient: {e}")
+
+    # Close persistent Playwright sessions. The idle reaper only runs inside a
+    # tool call, so a worker that stops taking calls (redeploy, restart, OOM)
+    # would otherwise orphan its Chromium children indefinitely.
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals_browser import (
+            close_all_browser_sessions,
+        )
+        closed = await close_all_browser_sessions()
+        if closed:
+            logger.info(f"Closed {closed} browser session(s)")
+    except Exception as e:
+        logger.error(f"Error closing browser sessions: {e}")
+
+
+    from app.core.stream_registry import stop_subscriber
+    await stop_subscriber()
 
     await close_redis()
 
@@ -212,10 +231,6 @@ app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
-# AppBuilder v4 (code-first) router — coexists with v3 until v4 proves out.
-from app.agents.appbuilderv4.router import router as appbuilderv4_router
-app.include_router(appbuilderv4_router, prefix=f"{API_PREFIX}/appbuilderv4", tags=["AppBuilderV4"])
-
 # Adzump agent router (chat + common routes + location geo-search typeahead)
 from app.agents.adzump.router import router as adzump_router
 app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"])
@@ -224,9 +239,17 @@ app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"]
 from app.agents.adzump2.router import router as adzump2_router
 app.include_router(adzump2_router, prefix=f"{API_PREFIX}/adzump2", tags=["Adzump2"])
 
+# LeadZump CRM assistant router (leads, deals, pipeline)
+from app.agents.leadzump.router import router as leadzump_router
+app.include_router(leadzump_router, prefix=f"{API_PREFIX}/leadzump", tags=["LeadZump"])
+
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
 app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
+
+# Lore: curated, growing knowledge about each application we build.
+from app.services.lore.router import router as lore_router
+app.include_router(lore_router, prefix=f"{API_PREFIX}/lore", tags=["Lore"])
 
 # Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
 # Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.

@@ -53,7 +53,7 @@ turns:
        on that task with body "Assigned to <assigneeId>". Return the updated Task.
     2. completeTaskAndArchive(taskId): set the Task's status to "DONE", write a Comment "Task completed at <now>".
        Return the updated Task.
-    Use the kirun DSL flow (create_server_function → add_step OR save_server_function_from_text — your choice).
+    Use the kirun DSL flow (create_server_function → add_step OR save_function_from_text with is_server=true — your choice).
     Validate each with execute_function on a fake input to make sure the compile + step wiring is good.
   - |-
     Build the LOGIN page on taskmate. Compose per the persona's login recipe:

@@ -68,6 +68,35 @@ async def _resolve_app_user_id(
     return user_id
 
 
+# Session-context keys for app scope.
+#
+# `app_code` is the app the chat request opened with and never changes.
+# FOCUS_APP_KEY is the app a write most recently landed in, and it wins: a
+# session opened on appbuilder that goes on to build `crm` is working in `crm`,
+# and everything scoped per-app (tool targets, pre-flight grounding, the KB,
+# lore) has to agree about that. An agent that never sets it is unaffected.
+FOCUS_APP_KEY = "focus_app_code"
+SEEN_APPS_KEY = "written_app_codes"
+# The page a write most recently landed on, for the same reason the app is
+# tracked: a client reopening this conversation needs to know what it was about,
+# and the only durable record of that is the session. Without it the browser was
+# the only thing that remembered, so resuming the same session anywhere else --
+# another browser, another machine -- came back with no context at all.
+# Cleared whenever the focus app moves: a page name means nothing on its own.
+FOCUS_PAGE_KEY = "focus_page_name"
+
+
+def session_app_code(session: "BaseSession") -> str:
+    """The app a session is working in: focus app, else the request app."""
+    context = getattr(session, "context", None) or {}
+    focus = context.get(FOCUS_APP_KEY) if isinstance(context, dict) else ""
+    if isinstance(focus, str) and focus.strip():
+        return focus.strip()
+    request_app = context.get("app_code") if isinstance(context, dict) else ""
+    auth = getattr(session, "auth", None)
+    return request_app or (getattr(auth, "app_code", "") if auth else "") or ""
+
+
 @dataclass
 class AuthContext:
     """Authentication context passed from the HTTP request.
@@ -85,6 +114,15 @@ class AuthContext:
     user_id: int
     app_code: str
     access_app_code: str = "appbuilder"
+    # The caller's own client level relative to the app: CLIENT (the owner org),
+    # CUSTOMER (a business partner), CONSUMER, OWNER. Read straight off the
+    # security context — LeadZump ships two products in one app split on exactly
+    # this, so an agent that serves only the owner side needs it at the router.
+    client_level_type: str = ""
+    # The caller's display name. LeadZump's `…AndSN` server functions take a
+    # notification payload naming who acted, and the security context is the
+    # only place it is available without a second lookup.
+    user_name: str = ""
     forwarded_host: str = "localhost"
     forwarded_port: str = "80"
     path_prefix: str = ""  # Standalone mode: URL prefix e.g. /appbuilder/SYSTEM/page
@@ -132,6 +170,10 @@ class BaseSession:
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
         }
+        # What the model saw on the MOST RECENT call. Distinct from
+        # total_usage["input_tokens"], which is the sum over every call in the
+        # session — see get_usage_summary.
+        self._last_context_tokens: int = 0
         self._turn_count: int = 0
         self._db_session_created: bool = False
         # App-user identity — separate from self.auth. Used only by tools that
@@ -141,6 +183,11 @@ class BaseSession:
         # get_app_user_token() into a cached bearer token for the conversation.
         self._app_user_input: Optional[dict[str, Any]] = None
         self._app_user_token: Optional[str] = None
+        # Objects the caller has open and unsaved, as sent with this message. A
+        # plain attribute rather than a context key on purpose: context is
+        # persisted to CONTEXT_JSON and a page definition reaches 1.4MB. These are
+        # per-message anyway, so there is nothing to carry forward.
+        self.open_drafts: list[dict[str, Any]] = []
 
     def set_app_user(self, app_user: Optional[dict[str, Any]]) -> None:
         """Stash the app-user credentials from the ChatRequest.
@@ -317,10 +364,197 @@ class BaseSession:
             "content": tool_results,
         })
 
+    _ELIDED_FLAG = "_elided"
+
+    @staticmethod
+    def _content_chars(content: Any) -> int:
+        """Rough char weight of one message's content, images included.
+
+        Images are counted by their base64 length because that is what actually
+        travels; a screenshot dwarfs any text block in the same result.
+        """
+        if isinstance(content, str):
+            return len(content)
+        if not isinstance(content, list):
+            return 0
+        total = 0
+        for block in content:
+            if isinstance(block, str):
+                total += len(block)
+            elif isinstance(block, dict):
+                total += len(block.get("text") or "")
+                inner = block.get("content")
+                if inner is not None and inner is not block:
+                    total += BaseSession._content_chars(inner)
+                src = block.get("source")
+                if isinstance(src, dict):
+                    total += len(src.get("data") or "")
+        return total
+
+    def history_chars(self) -> int:
+        """Total char weight of the conversation. Cheap stand-in for tokens."""
+        return sum(self._content_chars(m.get("content")) for m in self.messages
+                   if isinstance(m, dict))
+
+    @staticmethod
+    def _is_image(block: Any) -> bool:
+        return isinstance(block, dict) and block.get("type") in ("image", "image_url")
+
+    def _drop_old_images(self, keep_turns: int) -> int:
+        """Replace screenshots outside the recent window with a text note.
+
+        Images dominate history weight — a single screenshot is 100-500KB of
+        base64, re-sent on every subsequent turn — and they need a far shorter
+        window than text: the model looked at the shot when it arrived and wrote
+        down what it saw, so the pixels stop earning their place almost at once.
+
+        The newest image is always kept even when `keep_turns` would drop it, so
+        the screenshot -> patch -> screenshot -> compare loop always has the shot
+        it just took.
+        """
+        positions = [i for i, m in enumerate(self.messages)
+                     if isinstance(m, dict) and m.get("role") == "assistant"]
+        if len(positions) <= keep_turns:
+            return 0
+        cutoff = positions[-keep_turns]
+
+        # Find the newest image anywhere, so it can be spared.
+        newest: tuple[int, int, int] | None = None
+        for mi, msg in enumerate(self.messages):
+            content = msg.get("content") if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for bi, block in enumerate(content):
+                if self._is_image(block):
+                    newest = (mi, bi, -1)
+                elif isinstance(block, dict) and isinstance(block.get("content"), list):
+                    for ii, inner in enumerate(block["content"]):
+                        if self._is_image(inner):
+                            newest = (mi, bi, ii)
+
+        freed = 0
+
+        def _swap(container: list, idx: int, at: tuple) -> int:
+            if newest is not None and at == newest:
+                return 0
+            weight = self._content_chars([container[idx]])
+            container[idx] = {"type": "text",
+                              "text": "[screenshot dropped from history — "
+                                      "take a fresh one if you need to look again]"}
+            return weight
+
+        for mi, msg in enumerate(self.messages[:cutoff]):
+            content = msg.get("content") if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for bi, block in enumerate(list(content)):
+                if self._is_image(block):
+                    freed += _swap(content, bi, (mi, bi, -1))
+                elif isinstance(block, dict) and isinstance(block.get("content"), list):
+                    inner_list = block["content"]
+                    for ii, inner in enumerate(list(inner_list)):
+                        if self._is_image(inner):
+                            freed += _swap(inner_list, ii, (mi, bi, ii))
+        return freed
+
+    def elide_old_tool_results(
+        self,
+        keep_recent_turns: int = 6,
+        over_chars: int = 200_000,
+        min_result_chars: int = 1500,
+        keep_images_turns: int = 3,
+    ) -> int:
+        """Shrink old tool_result payloads once history gets big. Returns chars freed.
+
+        Nothing happens below `over_chars`, so short conversations are untouched.
+        Above it, `tool_result` blocks older than the last `keep_recent_turns`
+        assistant turns have their content replaced by a stub that keeps a
+        200-char head of the original, and any image they carried is dropped.
+
+        Deliberately narrow:
+        - The block is REPLACED, never removed, because every `tool_use` needs a
+          matching `tool_result` or the next request is rejected.
+        - User messages and assistant text/reasoning are never touched: they are
+          small and they carry the plan.
+        - Results under `min_result_chars` are left alone. They are cheap and
+          usually the ones holding ids and keys the model still needs.
+        - Already-elided blocks are flagged so repeat passes are free.
+
+        The cost of getting this wrong is a re-fetch (one turn), not a wrong
+        answer, which is why the recent window is kept whole.
+        """
+        if over_chars <= 0 or self.history_chars() <= over_chars:
+            return 0
+
+        assistant_positions = [i for i, m in enumerate(self.messages)
+                               if isinstance(m, dict) and m.get("role") == "assistant"]
+        freed = 0
+        if len(assistant_positions) <= keep_recent_turns:
+            # Too few turns for the TEXT window to have anything behind it. The
+            # image pass still runs: its window is much shorter, and a short
+            # conversation carrying several screenshots is exactly the case that
+            # blew up before (721,910 chars of history, 5,405 reclaimed).
+            freed += self._drop_old_images(keep_images_turns)
+            if freed:
+                logger.info("Elided %d chars of history (now %d)", freed, self.history_chars())
+            return freed
+        # Everything at or after this index belongs to the recent window.
+        cutoff = assistant_positions[-keep_recent_turns]
+
+        for msg in self.messages[:cutoff]:
+            if not isinstance(msg, dict) or msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if (not isinstance(block, dict)
+                        or block.get("type") != "tool_result"
+                        or block.get(self._ELIDED_FLAG)):
+                    continue
+                before = self._content_chars(block.get("content"))
+                if before < min_result_chars:
+                    continue
+                head = self._result_head(block.get("content"))
+                block["content"] = (
+                    f"{head}\n[… {before} chars elided from this earlier result to "
+                    f"keep the conversation inside the context window. Re-run the "
+                    f"tool if you need the rest.]"
+                )
+                block[self._ELIDED_FLAG] = True
+                freed += before - self._content_chars(block["content"])
+        freed += self._drop_old_images(keep_images_turns)
+        if freed:
+            logger.info("Elided %d chars of history (now %d)", freed, self.history_chars())
+        return freed
+
+    @staticmethod
+    def _result_head(content: Any, limit: int = 200) -> str:
+        """First `limit` chars of a result's text, for the stub. Images yield ''."""
+        if isinstance(content, str):
+            return content[:limit]
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    return (block.get("text") or "")[:limit]
+                if isinstance(block, str):
+                    return block[:limit]
+        return ""
+
     def accumulate_usage(self, usage: dict[str, Any]) -> None:
         """Add token usage from one LLM call to running totals."""
         for key in self.total_usage:
             self.total_usage[key] += usage.get(key, 0)
+        # Overwrite, never add: this call's input IS the conversation size.
+        #
+        # The cache_read term is required, not optional: every provider reports
+        # input_tokens EXCLUDING cached reads (Anthropic natively; DeepSeek via
+        # _openai_compatible_usage, which splits prompt_tokens into
+        # miss -> input and hit -> cache_read). Cached tokens are still tokens
+        # the model read, so they count toward context occupancy.
+        self._last_context_tokens = (
+            usage.get("input_tokens", 0) + usage.get("cache_read_input_tokens", 0)
+        )
 
     def get_usage_summary(self) -> dict[str, Any]:
         """Return a compact usage summary for the client.
@@ -330,10 +564,19 @@ class BaseSession:
         """
         input_t = self.total_usage["input_tokens"]
         output_t = self.total_usage["output_tokens"]
-        cache_read = self.total_usage["cache_read_input_tokens"]
+        cache_read_t = self.total_usage["cache_read_input_tokens"]
 
-        # Context used = input + cache_read (what the model "sees")
-        context_used = input_t + cache_read
+        # Context used is the size of the CURRENT conversation — the input of
+        # the most recent LLM call — not the sum of every call's input.
+        #
+        # The agent loop makes one LLM call per tool round-trip (up to
+        # max_turns), and each call re-sends the whole conversation. Summing
+        # their inputs therefore measures cumulative spend, not occupancy: a
+        # 26-iteration run showed 1.46M cumulative against a real context of
+        # 64K, so the bar pinned at 100% while the window was 6% full. Raising
+        # CONTEXT_LIMIT_DEFAULT (48K -> 112K, and now 1M) only delayed the
+        # pin, because the cumulative number grows without bound.
+        context_used = self._last_context_tokens
         from app.config import settings
         context_limit = settings.CONTEXT_LIMIT_DEFAULT
         context_percent = round(context_used / context_limit * 100, 1) if context_limit > 0 else 0
@@ -341,7 +584,13 @@ class BaseSession:
         return {
             "input_tokens": input_t,
             "output_tokens": output_t,
-            "total_tokens": input_t + output_t,
+            # Cached reads are billable tokens the model processed, so they
+            # belong in the total. Including them also keeps this number stable
+            # now that DeepSeek splits prompt_tokens into input + cache_read —
+            # without it, switching cache reporting on would have made the
+            # displayed total collapse overnight for no real reason.
+            "total_tokens": input_t + cache_read_t + output_t,
+            "cache_read_tokens": cache_read_t,
             "context_used": context_used,
             "context_limit": context_limit,
             "context_percent": min(context_percent, 100.0),
@@ -596,6 +845,33 @@ class BaseSession:
             logger.warning(f"Failed to create DB session: {e}")
             self.session_id = f"{self.auth.client_code}_{uuid.uuid4().hex[:8]}"
 
+    def _clear_focus_on_app_switch(self, prior_request_app: str | None) -> None:
+        """Drop a persisted focus app when the user has navigated to another app.
+
+        The focus (see FOCUS_APP_KEY) outranks the request's `app_code`, which is
+        what makes a session follow the app it is building. That must not outlive
+        the user opening a different app in the workspace: their explicit
+        selection beats an inference drawn from earlier writes.
+
+        The test is a CHANGE in the request app between turns, not a difference
+        between the request app and the focus. Asking a follow-up from the same
+        place sends the same `app_code` as before and means nothing new, so the
+        focus survives — otherwise turn two of "build me a CRM" would snap
+        straight back to `appbuilder` and undo the fix.
+        """
+        incoming = self.context.get("app_code")
+        if not incoming or not prior_request_app or incoming == prior_request_app:
+            return
+        dropped = self.context.pop(FOCUS_APP_KEY, None)
+        # The grounding block names an app, so it goes with the focus.
+        self.context.pop("_preflight_grounding", None)
+        self.context.pop("_preflight_grounding_app", None)
+        if dropped:
+            logger.info(
+                "session %s: request app %s -> %s, dropping focus '%s'",
+                self.session_id, prior_request_app, incoming, dropped,
+            )
+
     async def _load_existing_session(self) -> None:
         """Load conversation history from an existing session."""
         try:
@@ -611,7 +887,9 @@ class BaseSession:
                 if session.context_json:
                     try:
                         db_context = json.loads(session.context_json)
+                        prior_request_app = db_context.get("app_code")
                         self.context = {**db_context, **self.context}
+                        self._clear_focus_on_app_switch(prior_request_app)
                     except (json.JSONDecodeError, TypeError):
                         logger.warning(f"Invalid context_json for session {self.session_id}")
 

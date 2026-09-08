@@ -7,7 +7,7 @@ Only the /chat endpoint with appbuilder-specific logic lives here.
 from __future__ import annotations
 
 import logging
-from typing import Optional, List
+from typing import Any, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -68,6 +68,30 @@ class AppUserAuth(BaseModel):
     password: Optional[str] = None
 
 
+class OpenDraft(BaseModel):
+    """One object the caller has open, unsaved.
+
+    A page arrives as `overlay`: the components that differ from the saved
+    version, because a real page reaches 1.4MB and shipping it whole on every
+    message would put megabytes on the wire to say "nothing has changed". A clean
+    page sends an empty overlay. Everything else is a form's worth of fields, so
+    it arrives whole in `doc`.
+    """
+
+    kind: str = ""
+    # The collection this object saves to, e.g. "/api/core/storages". An
+    # alternative to naming the kind, and the usual one: the workspace keeps the
+    # API on each tab but no kind name, and resolving one from the other on this
+    # side means the mapping lives only in the intercept's table.
+    api: str = ""
+    id: str
+    name: str = ""
+    app_code: str = ""
+    dirty: bool = False
+    doc: Optional[dict] = None
+    overlay: Optional[dict] = None
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
@@ -83,6 +107,23 @@ class ChatRequest(BaseModel):
     # with the customer's live app (screenshot_page / drive_page /
     # call_as_app_user) is invoked. Other tools ignore it.
     app_user: Optional[AppUserAuth] = None
+    # What the caller's UI has open, for chats embedded in an editor (the
+    # appbuilder sidekick). Free-form, but the keys the agent renders are
+    # active_object, open_tabs and open_tab_ids. Lets the agent answer about
+    # the thing in front of the user without a discovery round-trip first.
+    editor_context: Optional[dict] = None
+    # Objects the caller has open and unsaved. For exactly these, the agent reads
+    # the caller's copy and holds its writes there instead of saving, so the user
+    # can look at the change before committing it. Everything else is written
+    # normally. A caller that sends nothing (the plain chat page) gets exactly the
+    # behaviour it always had.
+    open_drafts: Optional[List[OpenDraft]] = None
+    # Send definition writes to the app's draft surface instead of live, so the
+    # user gets a reviewable copy and the agent can screenshot its own work.
+    # Off by default: turning it on silently would change where every existing
+    # caller's edits land, and the agent degrades to live writes anyway on a
+    # deployment that has no draft surface.
+    draft_mode: bool = False
 
 
 class TemplateAiRequest(BaseModel):
@@ -125,6 +166,88 @@ async def author_template(
     )
 
 
+class WhatsappMessageAiRequest(BaseModel):
+    """Request for the WhatsApp message library's AI panel."""
+
+    prompt: str
+    # How many interchangeable phrasings to write. Several rather than one is the point of the
+    # feature, not a setting: a rule sends one body to every matching lead, and identical text at
+    # volume is what gets a linked number banned.
+    variantCount: Optional[int] = 4
+    currentVariants: Optional[List[str]] = None
+    language: Optional[str] = "en"
+    tone: Optional[str] = ""
+
+
+@router.post("/whatsapp/message")
+async def author_whatsapp_message(
+    body: WhatsappMessageAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Write several interchangeable versions of a WhatsApp message.
+
+    Backs the message library editor. Stateless — the current variants are sent so an unsaved draft
+    can be revised, matching how the template AI tab already works.
+
+    Returns ``{variants, variables, message, warnings}``. The warnings are advisory: an unknown merge
+    field or two near-identical versions are things somebody should see before saving, but refusing
+    to return the draft would just lose their work.
+    """
+    from app.services.whatsapp_message_ai import generate_message_variants
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    return await generate_message_variants(
+        prompt=body.prompt,
+        variant_count=body.variantCount or 4,
+        current_variants=body.currentVariants,
+        language=body.language or "en",
+        tone=body.tone or "",
+    )
+
+
+class VersionDiffRequest(BaseModel):
+    """Request for the workspace version-history compare step.
+
+    Both snapshots are sent by the caller. The service has no way to read an editor's
+    current state on its own, and the two documents together are what the comparison
+    needs, so the page posts them rather than the service fetching one of them back.
+    """
+
+    objectType: Optional[str] = ""
+    name: Optional[str] = ""
+    currentVersion: Optional[Any] = None
+    versionNumber: Optional[Any] = None
+    versionMessage: Optional[str] = ""
+    current: Optional[dict] = None
+    older: Optional[dict] = None
+
+
+@router.post("/version-diff")
+async def version_diff(
+    body: VersionDiffRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Say what separates a saved version from what is live, before anyone loads it over their work.
+
+    Stateless. The difference is computed exactly in Python and only that list goes to the
+    model, so the answer is grounded and the cost does not scale with document size.
+    """
+    from app.services.version_diff import summarise_version_diff
+
+    if body.older is None:
+        raise HTTPException(status_code=400, detail="older is required")
+
+    return await summarise_version_diff(
+        object_type=body.objectType or "",
+        name=body.name or "",
+        current_version=body.currentVersion,
+        version_number=body.versionNumber,
+        version_message=body.versionMessage or "",
+        current=body.current or {},
+        older=body.older,
+    )
+
+
 @router.post("/chat")
 async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_context)):
     """Stream an appbuilder agent response as SSE."""
@@ -137,6 +260,15 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
     session = BaseSession(agent_name="appbuilder")
     if body.app_code:
         session.context["app_code"] = body.app_code
+    if body.editor_context:
+        session.context["editor_context"] = body.editor_context
+    session.context["draft_mode"] = body.draft_mode
+    if body.open_drafts:
+        # Kept as plain dicts on the session so the agent can build the registry
+        # when it has the event stream in hand. The documents themselves never go
+        # near session.context's persisted half: a page reaches 1.4MB and that
+        # column is not the place for it.
+        session.open_drafts = [d.model_dump() for d in body.open_drafts]
     # Pre-approve mutating tools for headless/harness callers (see agent loop).
     session.context["auto_confirm"] = body.auto_confirm
 
@@ -156,4 +288,4 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
             )
 
     image_blocks = build_image_blocks(body.attachments, _agent._provider_name) if body.attachments else None
-    return stream_agent_response(_agent, body.message, session, image_blocks, model_override=body.model)
+    return await stream_agent_response(_agent, body.message, session, image_blocks, model_override=body.model)

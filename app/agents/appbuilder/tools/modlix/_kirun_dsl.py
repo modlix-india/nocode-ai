@@ -26,18 +26,50 @@ from kirun_py.dsl.dsl_compiler import DSLCompiler
 _TYPE_KEYS = ("type",)  # the field we round-trip
 
 
-def _to_list_types(obj: Any) -> Any:
-    """Recursive: replace every scalar `type: "X"` with `type: ["X"]`."""
+def _to_list_types(obj: Any, in_schema: bool = False) -> Any:
+    """Recursive: `type: "X"` -> `type: ["X"]`, but ONLY inside Kirun schemas.
+
+    A FunctionDefinition carries several distinct `type` fields and the platform
+    expects DIFFERENT shapes for them (verified against real stored functions):
+
+        parameters.<n>.schema.type          ["OBJECT"]   schema  -> array
+        parameters.<n>.schema.properties.*  ["STRING"]   schema  -> array
+        events.<e>.parameters.<p>.type      ["OBJECT"]   schema  -> array
+        parameters.<n>.type                 "REGULAR"    enum    -> scalar
+        steps.*.parameterMap.*.*.type       "VALUE"      enum    -> scalar
+
+    This used to convert every `type` it found. Core's gson reads the enums as
+    scalars, so the arrays made every server function unloadable:
+    `JsonSyntaxException: Expected STRING but was BEGIN_ARRAY` at
+    `$.steps..parameterMap...type` and then at `$.parameters..type`. The UI
+    runtime tolerates the array, which is why page event functions kept working
+    and this stayed hidden until a server function was first attempted.
+    """
     if isinstance(obj, dict):
-        for k in _TYPE_KEYS:
-            v = obj.get(k)
-            if isinstance(v, str):
-                obj[k] = [v]
-        for v in obj.values():
-            _to_list_types(v)
+        if in_schema:
+            for k in _TYPE_KEYS:
+                v = obj.get(k)
+                if isinstance(v, str):
+                    obj[k] = [v]
+        for key, val in obj.items():
+            # Everything below a `schema` key is schema. Under a `parameters`
+            # map, a function Parameter is a wrapper (it carries parameterName)
+            # while an event parameter IS the schema itself.
+            if key == "schema":
+                _to_list_types(val, True)
+            elif key == "parameters" and isinstance(val, dict):
+                for entry in val.values():
+                    _to_list_types(
+                        entry,
+                        in_schema or not (
+                            isinstance(entry, dict) and "parameterName" in entry
+                        ),
+                    )
+            else:
+                _to_list_types(val, in_schema)
     elif isinstance(obj, list):
         for v in obj:
-            _to_list_types(v)
+            _to_list_types(v, in_schema)
     return obj
 
 
