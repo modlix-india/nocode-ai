@@ -171,6 +171,46 @@ async def _verify_competitor_url(name: str, url: str) -> tuple[str, str]:
     )
 
 
+def _same_project(name_a: str, name_b: str) -> bool:
+    """'Nambiar Villas' and 'Nambiar Bannerghatta Villas' are ONE project
+    (compact containment, or same brand token + one name's tokens a subset of
+    the other's); 'Purva Sparkling Springs' and 'Purva Sound of Water' are
+    TWO (same brand, disjoint project tokens - sibling projects always keep
+    separate entries)."""
+    from app.agents.adzump.competitor_urls import normalize_business_name
+
+    a = normalize_business_name(name_a)
+    b = normalize_business_name(name_b)
+    if not a or not b:
+        return False
+    a_compact, b_compact = a.replace(" ", ""), b.replace(" ", "")
+    if a_compact in b_compact or b_compact in a_compact:
+        return True
+    a_tokens, b_tokens = a.split(), b.split()
+    return a_tokens[0] == b_tokens[0] and (
+        set(a_tokens) <= set(b_tokens) or set(b_tokens) <= set(a_tokens)
+    )
+
+
+def _refresh_entry(existing: dict, fresh: dict) -> None:
+    """Fold a re-looked-up competitor into its existing entry: fill empty
+    fields, adopt a newly resolved URL (never over a user pin), and reset the
+    creative triad only when the identity host actually changed (the library
+    keys on it)."""
+    for field in ("business_type", "location", "pricing", "key_usps",
+                  "weakness", "why_competitor"):
+        if fresh.get(field) and not existing.get(field):
+            existing[field] = fresh[field]
+    if existing.get("url_source") == "user":
+        return
+    fresh_url = fresh.get("url")
+    if fresh_url and fresh_url != existing.get("url"):
+        if host_of(fresh_url) != host_of(existing.get("url") or ""):
+            for stale in ("creatives", "totalCreatives", "activeCreatives"):
+                existing.pop(stale, None)
+        existing["url"] = fresh_url
+
+
 def _find_competitor(competitive: dict, name: str) -> dict | None:
     """Fuzzy entry lookup for user-referenced names (containment either way -
     'Purva' finds 'Purva Sparkling Springs')."""
@@ -628,6 +668,7 @@ async def _lookup_single_competitor(
 
     # ── Additions via ProductAgent ──
     new_competitors: list[dict] = []
+    refreshed_names: list[str] = []
     if query:
         from app.agents.adzump.agents.product.agent import get_product_agent
 
@@ -698,6 +739,28 @@ async def _lookup_single_competitor(
         skipped = (output.competitive or {}).get("skipped") or []
 
         await _resolve_final_entry_urls(new_competitors, session_ctx)
+
+        # A looked-up name that matches an existing entry is a REFRESH, never
+        # a duplicate (live 2026-09-08: "check Nambiar's official website"
+        # appended a second Nambiar card). The existing entry updates in
+        # place; sibling projects (disjoint project tokens) stay separate.
+        truly_new: list[dict] = []
+        for fresh in new_competitors:
+            existing = next(
+                (c for c in competitors_list if isinstance(c, dict)
+                 and _same_project(c.get("name") or "", fresh.get("name") or "")),
+                None,
+            )
+            if existing is None:
+                truly_new.append(fresh)
+                continue
+            _refresh_entry(existing, fresh)
+            refreshed_names.append(
+                f"{existing.get('name') or '?'}"
+                + (f" ({existing.get('url')})" if existing.get("url")
+                   else " (no official website found)")
+            )
+        new_competitors = truly_new
         competitors_list.extend(new_competitors)
         # F26 - competitors were ADDED by name → a prior decline is void. (Not on
         # a pure removal: zeroing the list isn't a reversal of the decline.)
@@ -711,7 +774,8 @@ async def _lookup_single_competitor(
         url_acks, url_rejections = await _apply_url_updates(set_url, competitive)
 
     # ── Nothing happened ──
-    if not removed_names and not new_competitors and not skipped and not url_acks:
+    if not removed_names and not new_competitors and not skipped \
+            and not url_acks and not refreshed_names:
         if url_rejections:
             return ToolResult(
                 success=False,
@@ -728,9 +792,10 @@ async def _lookup_single_competitor(
     business = session_ctx.get("product_data") or {}
     craft_id = session_ctx.get("craft_id", "")
     if stream and craft_id:
-        if removed_names or url_acks:
+        if removed_names or url_acks or refreshed_names:
             # Full rebuild - append=False replaces the panel entirely (a URL
-            # pin changes an existing card's link, appending can't fix that).
+            # pin or an in-place refresh changes an existing card's link;
+            # appending can't fix that).
             await _emit_final_craft(
                 stream,
                 craft_id,
@@ -749,6 +814,8 @@ async def _lookup_single_competitor(
     if new_competitors:
         names = [c.get("name") or "?" for c in new_competitors]
         parts.append(f"Added: {', '.join(names)}")
+    if refreshed_names:
+        parts.append(f"Refreshed (already in the list): {'; '.join(refreshed_names)}")
     if url_acks:
         parts.append(f"Updated: {'; '.join(url_acks)}")
     if url_rejections:
@@ -776,7 +843,9 @@ analyze_competitors = ToolDefinition(
     description=(
         "Competitive analysis via the Product Analyst agent. Four modes: "
         "(1) No params: full competitor discovery (7 web searches + candidate judging). "
-        "(2) query=names: look up specific competitors by name. "
+        "(2) query=names: look up specific competitors by name - also the way "
+        "to re-check an existing competitor's website (a matching name "
+        "refreshes that entry in place, never duplicates it). "
         "(3) remove=names: drop competitors the user rejected. "
         "(4) set_url: when the USER provides or corrects a competitor's "
         "website, verify and pin it (never edit a URL any other way - there "

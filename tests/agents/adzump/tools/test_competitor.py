@@ -158,6 +158,72 @@ class ApplyUrlUpdatesTests(unittest.TestCase):
         self.assertIsNone(_find_competitor(competitive, "Lodha"))
 
 
+class SameProjectTests(unittest.TestCase):
+    """Live 2026-09-08: 'check Nambiar's official website' appended a second
+    Nambiar card. A looked-up name matching an existing entry must refresh it;
+    sibling projects (same brand, different project) must stay separate."""
+
+    def test_rows(self):
+        from app.agents.adzump.tools.competitor import _same_project
+        rows = [
+            ("word inserted", "Nambiar Villas",
+             "Nambiar Bannerghatta Villas", True),
+            ("exact", "Sobha Magnus", "Sobha Magnus", True),
+            ("spacing/case", "Purva Sparkling Springs",
+             "PURVA SparklingSprings", True),
+            ("parenthetical gloss", "Nambiar Villas",
+             "Nambiar Villas (Nambiar Bannerghatta Villas)", True),
+            ("sibling projects stay separate", "Purva Sparkling Springs",
+             "Purva Sound of Water", False),
+            ("different brands", "Sobha Magnus", "Lodha Azur", False),
+            ("empty", "", "Sobha Magnus", False),
+        ]
+        for label, a, b, expected in rows:
+            with self.subTest(label):
+                from app.agents.adzump.tools.competitor import _same_project
+                self.assertIs(_same_project(a, b), expected)
+                self.assertIs(_same_project(b, a), expected)
+
+
+class RefreshEntryTests(unittest.TestCase):
+    def test_rows(self):
+        from app.agents.adzump.tools.competitor import _refresh_entry
+        rows = [
+            ("fills gaps, keeps set fields",
+             {"name": "Nambiar Villas", "location": "Bannerghatta"},
+             {"name": "Nambiar Bannerghatta Villas", "location": "elsewhere",
+              "pricing": "₹3-5 Cr"},
+             {"location": "Bannerghatta", "pricing": "₹3-5 Cr"}),
+            ("user pin never overwritten",
+             {"name": "Nambiar Villas", "url": "https://pinned.example",
+              "url_source": "user"},
+             {"name": "Nambiar Villas", "url": "https://other.example"},
+             {"url": "https://pinned.example"}),
+            ("new host adopts url",
+             {"name": "Nambiar Villas", "url": None},
+             {"name": "Nambiar Villas", "url": "https://nambiarprojects.com/x"},
+             {"url": "https://nambiarprojects.com/x"}),
+        ]
+        for label, existing, fresh, expected in rows:
+            with self.subTest(label):
+                _refresh_entry(existing, fresh)
+                for key, value in expected.items():
+                    self.assertEqual(existing.get(key), value)
+
+    def test_host_change_resets_creatives_same_host_keeps(self):
+        from app.agents.adzump.tools.competitor import _refresh_entry
+        changed = {"name": "N", "url": "https://old.example/",
+                   "creatives": [{"creativeId": "a"}], "totalCreatives": 1,
+                   "activeCreatives": 1}
+        _refresh_entry(changed, {"name": "N", "url": "https://new.example/"})
+        self.assertNotIn("creatives", changed)
+        same_host = {"name": "N", "url": "https://site.example/",
+                     "creatives": [{"creativeId": "a"}]}
+        _refresh_entry(same_host, {"name": "N", "url": "https://site.example/page"})
+        self.assertIn("creatives", same_host)
+        self.assertEqual(same_host["url"], "https://site.example/page")
+
+
 class FinalEntryUrlModeTests(unittest.TestCase):
     """User pins are never judged or laddered; shadow keeps ladder decisions
     (judge only observes); active applies the judge's verdicts wholesale."""
