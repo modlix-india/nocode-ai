@@ -179,7 +179,7 @@ class Settings(BaseSettings):
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — locked to DeepSeek V4 Pro per 2026-06-10 bench: best cost/quality on Modlix tool-use. Gemini reserved for vision (`describe_image`).
-    ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
+    ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); vision sub-agents stay gpt-4o-mini (DeepSeek is text-only), competitor research stays Claude (Anthropic-only web_search)
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
 
