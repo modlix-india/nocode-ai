@@ -119,13 +119,14 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
 
 
 _UNVERIFIED_BOUNCE_MSG = (
-    "REJECTED - your competitor list is NOT verified. Every competitor must "
-    "cite fetch_candidates evidence. Do it now: (1) call extract_candidates(), "
-    "(2) judge every row with a one-line PICK/SKIP verdict, (3) call "
-    "fetch_candidates with your picks, (4) re-emit the FULL final JSON citing "
-    "each entry's ID in competitor_id with url null. If nothing verifies, "
-    "emit competitors: [] with a note explaining why. Do not skip the tools "
-    "again - unverified entries will be stripped."
+    "REJECTED - some competitor entries are NOT verified (named above). Your "
+    "EXISTING fetch_candidates evidence is still valid - do NOT re-run "
+    "extract_candidates or fetch_candidates for entries you already verified. "
+    "Fix only the flagged entries: cite a verified ID in competitor_id with "
+    "url null, or drop the entry (verify NEW candidates via fetch_candidates "
+    "only if you have unfetched IDs worth including). Then re-emit the FULL "
+    "final JSON. If nothing verifies, emit competitors: [] with a note. "
+    "Unverified entries in your next answer will be stripped."
 )
 
 
