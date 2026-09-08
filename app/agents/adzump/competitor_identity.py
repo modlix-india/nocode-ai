@@ -36,15 +36,26 @@ from app.agents.adzump.competitor_urls import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "cp5v2-2"  # v2: sibling-project rule (live wrong-at-high 2026-09-08)
+PROMPT_VERSION = "cp5v2-3"  # v3: page_summary evidence; v2: sibling-project rule
 _GBP_EVIDENCE_LIMIT = 3
+_PAGE_SUMMARY_LIMIT = 3      # alive candidates content-read per entry
+_PAGE_SUMMARY_TIMEOUT_SECONDS = 25.0
 _JUDGE_MAX_TOKENS = 3000
+
+_PAGE_SUMMARY_QUESTION = (
+    "ONE line only: whose page is this and what is it - the official website "
+    "of which specific project/brand, or a broker/lead-gen page, a portal "
+    "listing, a news article, or something else? Name the project it is about."
+)
 
 
 def judge_mode() -> str:
-    """shadow (default) | active | off. Env-read at call time so live flips
-    need no restart; not in config.py (that file is skip-worktree pinned)."""
-    return (os.getenv("COMPETITOR_URL_JUDGE_MODE") or "shadow").strip().lower()
+    """active (default) | shadow | off. Env-read at call time so live flips
+    need no restart; not in config.py (that file is skip-worktree pinned).
+    Active by default since 2026-09-08 (Kailash): the host-token heuristics
+    cannot tell rainbowmayfair.com from the rainbowmayfairE.com clone - only
+    reading the pages can, and that is the judge's job."""
+    return (os.getenv("COMPETITOR_URL_JUDGE_MODE") or "active").strip().lower()
 
 
 class EvidenceUrl(BaseModel):
@@ -54,6 +65,11 @@ class EvidenceUrl(BaseModel):
     provenance: list[str]  # search_result | gbp_listing | page_extraction
     alive: bool = False
     gbp_listing_name: str = ""  # present when provenance has gbp_listing
+    # What the page actually says (fetched live, one line) - the evidence that
+    # beats URL spelling: a lookalike domain reads as a broker page, the real
+    # site reads as the project's own (Kailash 2026-09-08: fetch 3-4 candidates
+    # even when one looks obvious; the first is often not the official site).
+    page_summary: str = ""
 
 
 class EntryEvidence(BaseModel):
@@ -76,7 +92,9 @@ class UrlJudgement(BaseModel):
 
 _JUDGE_SYSTEM_PROMPT = """You judge the official web identity of competitor entries for an ad-intelligence system.
 
-Each entry has a business/project name and evidence URLs, each with an id (E1, E2...), host, provenance (how it was found), alive (whether the URL responds), and the Google Business listing name when it came from one.
+Each entry has a business/project name and evidence URLs, each with an id (E1, E2...), host, provenance (how it was found), alive (whether the URL responds), the Google Business listing name when it came from one, and page_summary - a LIVE one-line read of what the page actually says.
+
+page_summary outranks the URL's spelling: broker clones register lookalike domains (rainbowmayfairE.com vs the real rainbowmayfair.com) that only reading the page can tell apart. A page that reads as a lead-gen/broker/portal page is never the official site no matter how project-like its domain looks; an empty page_summary means the read failed - judge that candidate on its other facts.
 
 Per entry, pick the evidence id of the entry's OFFICIAL PROJECT PAGE, or null.
 
@@ -227,7 +245,34 @@ async def _gather_entry_evidence(
     liveness = await asyncio.gather(*(is_alive(u.url) for u in urls))
     for evidence_url, alive in zip(urls, liveness):
         evidence_url.alive = alive
+
+    # Content beats spelling: read up to N alive candidates so the judge
+    # compares what the pages actually SAY, not just their hostnames - the
+    # only way to tell a lookalike clone from the real site.
+    readable = [u for u in urls if u.alive][:_PAGE_SUMMARY_LIMIT]
+    summaries = await asyncio.gather(*(_page_summary(u.url) for u in readable))
+    for evidence_url, summary in zip(readable, summaries):
+        evidence_url.page_summary = summary
     return EntryEvidence(entry_id=entry_id, name=name, urls=urls, notes=notes)
+
+
+async def _page_summary(url: str) -> str:
+    """One-line live read of a candidate page; empty on any failure (the
+    judge then weighs the URL facts alone for that candidate)."""
+    from app.agents.adzump.agents.product.adapters.web_fetch_adapter import (
+        fetch_and_answer,
+    )
+
+    try:
+        result = await asyncio.wait_for(
+            fetch_and_answer(url, _PAGE_SUMMARY_QUESTION),
+            timeout=_PAGE_SUMMARY_TIMEOUT_SECONDS,
+        )
+    except Exception:
+        return ""
+    if not isinstance(result, dict) or result.get("status") != "ok":
+        return ""
+    return str(result.get("answer") or "").strip()[:400]
 
 
 # ─── The judge call + enforcement ────────────────────────────────────────────

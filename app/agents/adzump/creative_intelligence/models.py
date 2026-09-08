@@ -14,9 +14,9 @@ sync.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 MediaType = Literal["image", "video", "carousel", "collection"]
 FetchStatus = Literal["ok", "empty", "error"]
@@ -52,6 +52,24 @@ MediaFormat = Literal[
 VisualStyle = Literal[
     "minimalist", "lifestyle", "studio", "ugc_authentic", "text_heavy", "animated", "meme", "other",
 ]
+
+# Vision-filled enum fields (snake and camel spellings) -> allowed values.
+# Consumed by Essence's before-validator: an off-list model value is dropped so
+# the field's safe default applies instead of failing the whole batch.
+_LENIENT_ESSENCE_ENUMS: dict[str, tuple[str, ...]] = {
+    key: get_args(literal)
+    for literal, keys in (
+        (HookType, ("hook_type", "hookType")),
+        (AwarenessStage, ("awareness_stage", "awarenessStage")),
+        (CopyFramework, ("copy_framework", "copyFramework")),
+        (EmotionalAngle, ("emotional_angle", "emotionalAngle")),
+        (Offer, ("offer",)),
+        (Proof, ("proof",)),
+        (MediaFormat, ("media_format", "mediaFormat")),
+        (VisualStyle, ("visual_style", "visualStyle")),
+    )
+    for key in keys
+}
 # Deterministic run-time proxy for "how proven is this creative" (NOT a metric,
 # NOT a vision field) - computed on Creative from longevity + activity.
 WinnerSignal = Literal["testing", "promising", "winner", "evergreen"]
@@ -66,6 +84,26 @@ class Essence(BaseModel):
     is NOT here - it's a deterministic computed_field on ``Creative``."""
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_off_list_enums(cls, data: Any) -> Any:
+        """Vision output is lenient on the enum fields: every one has a safe
+        default, and one off-list word from the model (live 2026-09-08: 6
+        invalid values failed a whole 12-image batch and forced 12 sequential
+        single-image calls) degrades to the default, never rejects the batch."""
+        if not isinstance(data, dict):
+            return data
+        coerced: list[str] = []
+        data = dict(data)
+        for key, allowed in _LENIENT_ESSENCE_ENUMS.items():
+            if key in data and data[key] not in allowed:
+                coerced.append(f"{key}={data.pop(key)!r}")
+        if coerced:
+            import logging
+            logging.getLogger(__name__).info(
+                "essence_enum_coerced_to_default: %s", ", ".join(coerced))
+        return data
 
     # ── Strategy: the reasoning a copy/creative generator reproduces ──
     angle: str = ""                                              # core promise, product-agnostic (free str)

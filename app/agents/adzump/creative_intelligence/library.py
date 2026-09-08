@@ -62,8 +62,8 @@ ESSENCE_RECENCY_DAYS = 30
 # minutes). Enrich covers the essence LLM calls (a full per-creative fallback
 # round is ~1 min per 12 creatives); process is the backstop over one
 # competitor's whole unmetered half.
-_ENRICH_TIMEOUT_SECONDS = 240
-_PROCESS_TIMEOUT_SECONDS = 480
+_ENRICH_TIMEOUT_SECONDS = 400
+_PROCESS_TIMEOUT_SECONDS = 600
 
 _SOURCES = {"scrapecreators": ScrapeCreatorsSource, "adlibrary": AdLibrarySource}
 _default_source_instance: object | None = None

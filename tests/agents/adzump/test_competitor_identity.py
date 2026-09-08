@@ -44,7 +44,8 @@ class GatherEvidenceTests(unittest.TestCase):
     """Hard invariants live in gathering: vetted candidates only, exclusions
     surfaced as negative evidence, one Places call, provenance merged."""
 
-    def _gather(self, entry, listings, extracted=None, alive=True):
+    def _gather(self, entry, listings, extracted=None, alive=True,
+                summary="Official site of Purva Sparkling Springs"):
         with mock.patch.object(
             competitor_identity, "cached_business_listings",
             new=mock.AsyncMock(return_value=listings),
@@ -54,6 +55,9 @@ class GatherEvidenceTests(unittest.TestCase):
         ), mock.patch.object(
             competitor_identity, "is_alive",
             new=mock.AsyncMock(return_value=alive),
+        ), mock.patch.object(
+            competitor_identity, "_page_summary",
+            new=mock.AsyncMock(return_value=summary),
         ):
             return asyncio.run(_gather_entry_evidence(0, entry, _session()))
 
@@ -79,6 +83,20 @@ class GatherEvidenceTests(unittest.TestCase):
                          ["search_result", "gbp_listing", "page_extraction"])
         self.assertEqual(evidence.urls[0].gbp_listing_name, "Purva Sparkling Springs")
         self.assertTrue(evidence.urls[0].alive)
+
+    def test_alive_candidates_get_page_summaries_dead_do_not(self):
+        # Content beats spelling (Kailash 2026-09-08): every alive candidate
+        # is content-read so the judge compares what the pages SAY - the only
+        # way to tell rainbowmayfair.com from the rainbowmayfairE.com clone.
+        alive_evidence = self._gather(
+            {"name": "Rainbow Mayfair", "url": "https://rainbowmayfaire.com/"},
+            listings=[{"name": "Rainbow Mayfair",
+                       "website": "https://rainbowmayfair.com/"}])
+        self.assertTrue(all(u.page_summary for u in alive_evidence.urls))
+        dead_evidence = self._gather(
+            {"name": "Rainbow Mayfair", "url": "https://rainbowmayfaire.com/"},
+            listings=[], alive=False)
+        self.assertTrue(all(not u.page_summary for u in dead_evidence.urls))
 
     def test_no_name_guard_word_order_reaches_the_judge(self):
         # The Nambiar failure class: the ladder's name guard dropped word-order

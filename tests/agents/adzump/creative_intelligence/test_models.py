@@ -45,8 +45,11 @@ class ModelShapeTests(unittest.TestCase):
             for camel in ("hookType", "awarenessStage", "ocrText"):
                 self.assertIn(camel, d)
             self.assertEqual(Essence.model_validate(d).awareness_stage, "problem_aware")
-            with self.assertRaises(pydantic.ValidationError):
-                Essence(hook_type="not_a_real_hook")
+            # Off-list vision values coerce to the safe default instead of
+            # failing the batch (2026-09-08); free-str fields still carry
+            # nuance, and a garbage enum was garbage information anyway.
+            self.assertEqual(Essence(hook_type="not_a_real_hook").hook_type,
+                             "other")
             e0 = Essence()
             self.assertEqual((e0.hook_type, e0.awareness_stage, e0.offer, e0.media_format),
                              ("other", "unknown", "none", "other"))

@@ -44,21 +44,26 @@ def _ci(content_hash: str, media_type: str = "image", **creative_fields) -> Crea
 
 class DeterministicSeamTests(unittest.TestCase):
     def test_build_parse_collect_shrink(self):
-        for name, text, want in [
-            ("fenced", f"```json\n{_VERDICT_JSON}\n```", 1),
-            ("bare object", _VERDICT_JSON, 1),
-            ("prose around bare object", f"Here you go: {_VERDICT_JSON} done.", 1),
+        for name, text, want_hook in [
+            ("fenced", f"```json\n{_VERDICT_JSON}\n```", "aspiration"),
+            ("bare object", _VERDICT_JSON, "aspiration"),
+            ("prose around bare object", f"Here you go: {_VERDICT_JSON} done.",
+             "aspiration"),
             ("empty text", "", None),
             ("garbage", "not json at all", None),
-            ("wrong enum", '{"verdicts": [{"idx": 0, "hook_type": "clickbait"}]}', None),
+            # Off-list enum values coerce to the field default (live
+            # 2026-09-08: one invented word failed a whole 12-image batch and
+            # forced 12 sequential single-image calls) - the batch PARSES.
+            ("wrong enum coerces",
+             '{"verdicts": [{"idx": 0, "hook_type": "clickbait"}]}', "other"),
         ]:
             with self.subTest(parse=name):
                 batch = _parse_batch(text)
-                if want is None:
+                if want_hook is None:
                     self.assertIsNone(batch)
                 else:
-                    self.assertEqual(len(batch.verdicts), want)
-                    self.assertEqual(batch.verdicts[0].hook_type, "aspiration")
+                    self.assertEqual(len(batch.verdicts), 1)
+                    self.assertEqual(batch.verdicts[0].hook_type, want_hook)
         with self.subTest("collect maps idx -> content_hash, drops out-of-range, None is a noop"):
             chunk = [_ci("aaa"), _ci("bbb")]
             essences: dict = {}

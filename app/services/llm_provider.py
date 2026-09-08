@@ -898,7 +898,17 @@ class OpenAIProvider(LLMProvider):
         from openai import OpenAI
         from app.config import settings
 
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        import httpx as _httpx
+        # Explicit timeouts: the SDK default (600s/attempt x retries) let one
+        # stalled vision call wedge a whole creatives batch for 12+ minutes
+        # (live 2026-09-08). read=180s applies BETWEEN stream chunks too, so a
+        # stalled stream breaks instead of hanging; the SDK's own retries then
+        # re-attempt the call.
+        self.client = OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=_httpx.Timeout(180.0, connect=10.0, pool=30.0),
+            max_retries=2,
+        )
         self.settings = settings
         self._models = {
             "fast": settings.OPENAI_MODEL_FAST,
