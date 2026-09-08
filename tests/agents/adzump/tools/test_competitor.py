@@ -84,10 +84,14 @@ class VerifyCompetitorUrlTests(unittest.TestCase):
              dict(answer="MATCH: YES\nOfficial project page.",
                   final_url="https://nambiarprojects.com/nambiar-bannerghatta-road/"),
              "https://nambiarprojects.com/nambiar-bannerghatta-road/", None),
-            ("mismatch rejected with what the page is",
+            # The USER is the authority: a live non-portal pin is accepted even
+            # when the page read disagrees, with the doubt as a caution (live
+            # 2026-09-08: the reader vetoed the user's CORRECT Nambiar pin
+            # because the official page mentions a channel partner).
+            ("content mismatch accepted with caution",
              "https://sobha.com/other",
              dict(answer="MATCH: NO\nA different Sobha project page."),
-             "", "different Sobha project"),
+             "https://sobha.com/other", "different Sobha project"),
             ("dead site rejected", "https://deadclone.co.in/",
              dict(), "", "didn't respond"),
             ("portal rejected without a fetch", "https://99acres.com/x",

@@ -107,7 +107,10 @@ async def get_competitor(key: str, ctx: dict) -> Competitor | None:
 async def _read(key: str, ctx: dict) -> tuple[Competitor | None, str | None]:
     """Read the record and its storage id (the id is needed only for upsert).
     Returns (Competitor, record_id) or (None, None) on miss."""
-    key = competitor_key(key)
+    # name:<slug> keys (link-less competitors, library.competitor_identity)
+    # pass through verbatim - host normalization would mangle them to "name".
+    if not key.startswith("name:"):
+        key = competitor_key(key)
     if not key:
         return None, None
     payload = {

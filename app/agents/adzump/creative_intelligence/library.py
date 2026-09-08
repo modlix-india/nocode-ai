@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
@@ -91,8 +92,18 @@ def _campaign_country(ctx: dict) -> str:
 
 def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
     """Pull (key, name) from a competitor profile. ``key`` is the normalized
-    domain; empty when the profile has no usable URL."""
-    return store.competitor_key(comp.url or ""), comp.name.strip()
+    domain when the profile has a URL, else a name-scoped key.
+
+    The ad search is NAME-driven, so a link-less competitor (an honest no-URL
+    entry - pre-launch projects often have no site) must still fetch and cache
+    under ``name:<slug>`` (live 2026-09-08: link-less Nambiar was silently
+    dropped from every fetch while the user asked for its ads 23 times). Once
+    a URL settles, the domain key takes over and the entry refetches fresh."""
+    name = comp.name.strip()
+    key = store.competitor_key(comp.url or "")
+    if not key and name:
+        key = "name:" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return key, name
 
 
 async def creatives_for(
@@ -135,8 +146,11 @@ async def _fetch_stage(
 
     why = "forced" if force else ("stale" if record else "miss")
     logger.info("creative_intelligence: fetching key=%s reason=%s", key, why)
+    # A name-scoped key is not a host - advertiser attribution then runs on
+    # name match alone (domain-link matching needs a real domain).
+    search_domain = "" if key.startswith("name:") else key
     try:
-        fetched = await src.fetch(domain=key, name=name,
+        fetched = await src.fetch(domain=search_domain, name=name,
                                   country=_campaign_country(ctx))
     except Exception as e:
         # AdLibraryError, transport errors, bad JSON - ANY source failure serves
@@ -165,7 +179,7 @@ async def _process_stage(
     competitor = Competitor(
         competitor_key=key,
         name=fetched.resolved_name or name,
-        domain=key,
+        domain="" if key.startswith("name:") else key,
         logo_url=fetched.logo_url,
         platform_ids=fetched.platform_ids,
         creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],

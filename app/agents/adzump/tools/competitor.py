@@ -163,11 +163,16 @@ async def _verify_competitor_url(name: str, url: str) -> tuple[str, str]:
     answer = (result.get("answer") or "").strip()
     if answer.upper().startswith("MATCH: YES"):
         return final_url, ""
+    # The USER is the authority on their own market: a live, non-portal page
+    # they explicitly pinned is ACCEPTED even when the page read disagrees
+    # (live 2026-09-08: Nambiar's real project page mentions a channel partner
+    # and the reader vetoed the user's correct pin - then the entry stayed
+    # link-less and its ads unfetchable). The doubt ships as a caution in the
+    # ack; only invalid/dead/portal URLs still reject.
     page_is = answer.split("\n", 1)[1].strip() if "\n" in answer else ""
-    return "", (
-        f"{url} doesn't look like {name}'s official page"
-        + (f" - {page_is}" if page_is else "")
-        + ". Share the correct URL and I'll update it."
+    return final_url, (
+        f"note: the page reads as {page_is} - kept your URL anyway; say the "
+        "word if it's wrong" if page_is else ""
     )
 
 
@@ -251,16 +256,18 @@ async def _apply_url_updates(
             )
             continue
         entry_name = entry.get("name") or name
-        verified_url, reason = await _verify_competitor_url(entry_name, url)
+        verified_url, note = await _verify_competitor_url(entry_name, url)
         if not verified_url:
-            rejections.append(reason)
+            rejections.append(note)
             continue
         entry["url"] = verified_url
         entry["url_source"] = "user"
         for stale in ("creatives", "totalCreatives", "activeCreatives"):
             entry.pop(stale, None)
-        logger.info("competitor_url_user_set: %r -> %s", entry_name, verified_url)
-        acks.append(f"{entry_name}: website verified and updated to {verified_url}")
+        logger.info("competitor_url_user_set: %r -> %s%s", entry_name,
+                    verified_url, f" ({note})" if note else "")
+        acks.append(f"{entry_name}: website updated to {verified_url}"
+                    + (f" ({note})" if note else ""))
     return acks, rejections
 
 

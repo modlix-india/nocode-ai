@@ -296,6 +296,33 @@ class LibraryTests(unittest.TestCase):
             # (swallowed by _enrich_essence) - both succeeding proves overlap.
             self.assertEqual(len(gated.calls), 2)
 
+    def test_linkless_competitor_fetches_by_name_key(self):
+        # Live 2026-09-08: link-less Nambiar (honest no-URL, pre-launch) was
+        # silently dropped from every fetch. It must fetch under a name key,
+        # with NO domain sent to the source (attribution runs on name alone).
+        self.assertEqual(
+            library.competitor_identity(
+                CompetitorProfile(name="Nambiar Villas", url=None)),
+            ("name:nambiar-villas", "Nambiar Villas"))
+
+        captured: dict = {}
+
+        class DomainCapturingSource(FakeSource):
+            async def fetch(self, *, domain, name, country=""):
+                captured.update(domain=domain, name=name)
+                return await super().fetch(domain=domain, name=name,
+                                           country=country)
+
+        with mock.patch.object(library.store, "get_competitor",
+                               new=mock.AsyncMock(return_value=None)):
+            results = asyncio.run(library.creatives_for_all(
+                [CompetitorProfile(name="Nambiar Villas", url=None)], {},
+                source=DomainCapturingSource(creatives=[_ad("a1")])))
+        self.assertIn("name:nambiar-villas", results)
+        self.assertEqual(captured, {"domain": "", "name": "Nambiar Villas"})
+        record = results["name:nambiar-villas"]
+        self.assertEqual(record.domain, "")  # a name key is not a host
+
     def test_hung_enrich_times_out_and_ships_without_essence(self):
         # Live 2026-09-08: one vision call never returned and the whole batch
         # gather - tool, turn, spinner - sat open 12+ minutes. A hang must
