@@ -367,49 +367,50 @@ class ClearAffirmativeReplyTableTests(unittest.TestCase):
                     expected)
 
 
-class CreativesOfferResolvedTests(unittest.TestCase):
-    """The ONE predicate behind the creatives step's offer gate and the review gate."""
+class CreativesOfferResolutionTests(unittest.TestCase):
+    """The ONE typed verdict behind the creatives step's offer gate, the review
+    gate, and the turn record - resolution WITH its reason (slice 4)."""
 
     def test_table(self):
+        from app.agents.adzump.models import OfferResolution as R
         from app.agents.adzump.tools.campaign_data import (
-            competitor_creatives_offer_resolved,
+            creatives_offer_resolution,
         )
         rival = {"name": "R", "url": "https://r.com"}
         cases = [
-            ("declined", {"competitor_creatives_declined": "true"}, {}, True),
-            ("declined (enum)", {"competitor_creatives": "declined"}, {}, True),
+            ("declined", {"competitor_creatives_declined": "true"}, {}, R.DECLINED),
+            ("declined (enum)", {"competitor_creatives": "declined"}, {}, R.DECLINED),
             ("analysis itself declined",
-             {"competitive_analysis_declined": "true"}, {}, True),
+             {"competitive_analysis_declined": "true"}, {}, R.DECLINED),
             ("analysis itself declined (enum)",
-             {"competitive_analysis": "declined"}, {}, True),
+             {"competitive_analysis": "declined"}, {}, R.DECLINED),
             ("accepted alone is NOT resolved (fetch still owed)",
              {"competitor_creatives": "accepted"},
              {"competitor_analysis": {"competitors": [
-                 {"name": "R", "url": "https://r.com"}]}}, False),
+                 {"name": "R", "url": "https://r.com"}]}}, R.OPEN),
             ("fetch completed, zero ads", {},
              {"_competitor_creatives_fetched": True,
-              "competitor_analysis": {"competitors": [dict(rival)]}}, True),
+              "competitor_analysis": {"competitors": [dict(rival)]}}, R.FULFILLED),
             ("creatives attached (pre-marker session)", {},
              {"competitor_analysis": {"competitors": [
-                 {**rival, "creatives": [{"creativeId": "1"}]}]}}, True),
+                 {**rival, "creatives": [{"creativeId": "1"}]}]}}, R.FULFILLED),
             ("moot: analysis ran, no named rivals", {},
              {"competitor_analysis": {"competitors": [{"url": "https://x.com"}]}},
-             True),
+             R.MOOT),
             ("unresolved: rivals found, no consent yet", {},
-             {"competitor_analysis": {"competitors": [dict(rival)]}}, False),
+             {"competitor_analysis": {"competitors": [dict(rival)]}}, R.OPEN),
             ("exhausted: asked twice, never answered", {},
              {"_field_asks": {"competitor_creatives": 2},
-              "competitor_analysis": {"competitors": [dict(rival)]}}, True),
+              "competitor_analysis": {"competitors": [dict(rival)]}}, R.EXHAUSTED),
             ("asked once is NOT exhausted", {},
              {"_field_asks": {"competitor_creatives": 1},
-              "competitor_analysis": {"competitors": [dict(rival)]}}, False),
-            ("unresolved: no analysis yet", {}, {}, False),
+              "competitor_analysis": {"competitors": [dict(rival)]}}, R.OPEN),
+            ("unresolved: no analysis yet", {}, {}, R.OPEN),
         ]
         for name, spec, session_ctx, expected in cases:
             with self.subTest(case=name):
-                self.assertEqual(
-                    competitor_creatives_offer_resolved(spec, session_ctx),
-                    expected)
+                self.assertIs(
+                    creatives_offer_resolution(spec, session_ctx), expected)
 
 
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────

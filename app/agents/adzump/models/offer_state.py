@@ -29,3 +29,18 @@ class OfferState(str, Enum):
             if str(declined_marker).strip().lower() == "true"
             else cls.UNSET
         )
+
+
+class OfferResolution(str, Enum):
+    """WHY an offer no longer needs asking (slice 4). OfferState records the
+    user's answer; resolution is the derived verdict the journey step, the
+    review gate, and the turn record all read - typed, with the reason kept,
+    so a wrongly-settled offer is visible in one grep (live 2026-09-08: a
+    failed analysis stored an empty list, the offer silently went moot, and
+    the boolean predicate hid which of five signals had fired)."""
+
+    OPEN = "open"            # still owed: ask it (or fulfil an accepted one)
+    DECLINED = "declined"    # user said no (to it, or to its prerequisite)
+    FULFILLED = "fulfilled"  # the offered work actually happened
+    MOOT = "moot"            # nothing to offer (e.g. analysis found no rivals)
+    EXHAUSTED = "exhausted"  # asked twice, no answer - never nag further

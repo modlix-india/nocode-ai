@@ -39,6 +39,8 @@ from app.agents.adzump.tools.campaign_data import (
     _current_turn,
     _last_user_text,
     _normalize_id,
+    analysis_offer_resolution,
+    instagram_offer_resolution,
     is_clear_decline_reply,
 )
 from app.agents.adzump._shared import primary_screenshot_url
@@ -456,6 +458,12 @@ class AdzumpAgent(BaseAgent):
             prior_capture=prior_capture,
             open_rail_field=open_rail_field,
             open_rail_untagged=open_rail_untagged,
+            offers={
+                "competitive_analysis": analysis_offer_resolution(
+                    cctx.spec, cctx.competitor_analysis_attempted).value,
+                "competitor_creatives": cctx.competitor_creatives_resolution.value,
+                "instagram": instagram_offer_resolution(cctx.spec).value,
+            },
         )
 
         reminder = "\n".join(

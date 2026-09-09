@@ -28,6 +28,7 @@ from app.agents.adzump.models import (
     LEGACY_DECLINED_KEYS,
     LEGACY_MARKER_TO_FIELD,
     OFFER_FIELDS,
+    OfferResolution,
     OfferState,
     competitor_profiles,
     offer_state,
@@ -257,7 +258,7 @@ def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
     spec = session_ctx.get("campaign_spec") or {}
     if Platform.from_value(spec.get("platform")) is not Platform.META:
         return ""
-    if competitor_creatives_offer_resolved(spec, session_ctx):
+    if creatives_offer_resolution(spec, session_ctx) is not OfferResolution.OPEN:
         return ""
     if offer_state(
         spec, "competitor_creatives"
@@ -643,33 +644,55 @@ def clear_competitor_decline(session_ctx: dict) -> bool:
     return popped
 
 
-def competitor_creatives_offer_resolved(spec: dict, session_ctx: dict) -> bool:
-    """The Meta creative-inspiration offer is settled: don't re-ask, don't block
-    review on it. The ONE predicate shared by the creatives step's offer gate and
-    `_review_hint_if_complete`, so the prescription and the completeness gate can
-    never disagree. Resolved when:
-      declined - the user said no to creatives, or to competitive analysis
-                 itself (never re-open a consent already refused);
-      fetched  - a consented fetch ran to completion (the session marker set by
-                 fetch_competitor_creatives), even when it found zero ads - an
-                 empty result must not re-ask forever;
-      moot     - analysis ran and found no named rivals to fetch for;
-      exhausted - asked twice (the offer + one resurface) with no answer -
-                 a digression resurfaces an offer at most ONCE (slice 1d),
-                 and review is never held hostage by an ignored offer."""
+def creatives_offer_resolution(spec: dict, session_ctx: dict) -> OfferResolution:
+    """WHY the Meta creative-inspiration offer is settled - or OPEN, meaning
+    ask it / fulfil an accepted one. The ONE verdict shared by the creatives
+    journey step, `campaign_spec_complete`, the fetch steer, and the turn
+    record, so the prescription, the gate, and the log can never disagree (and
+    the log finally says WHICH signal settled it - slice 4).
+      DECLINED  - the user said no to creatives, or to competitive analysis
+                  itself (never re-open a consent already refused);
+      FULFILLED - a consented fetch ran to completion (the session marker set
+                  by fetch_competitor_creatives), even with zero ads found -
+                  an empty result must not re-ask forever; also creatives
+                  already attached to profiles (pre-marker sessions);
+      EXHAUSTED - asked twice (the offer + one resurface) with no answer -
+                  review is never held hostage by an ignored offer;
+      MOOT      - analysis ran and found no named rivals to fetch for."""
     if offer_state(spec, "competitor_creatives") is OfferState.DECLINED:
-        return True
+        return OfferResolution.DECLINED
     if offer_state(spec, "competitive_analysis") is OfferState.DECLINED:
-        return True
+        return OfferResolution.DECLINED
     if session_ctx.get("_competitor_creatives_fetched"):
-        return True
+        return OfferResolution.FULFILLED
     if (session_ctx.get("_field_asks") or {}).get("competitor_creatives", 0) >= 2:
-        return True
+        return OfferResolution.EXHAUSTED
     profiles = competitor_profiles(session_ctx)
     if any(p.creatives for p in profiles):
-        return True  # pre-marker sessions where creatives are already attached
+        return OfferResolution.FULFILLED
     named = [p for p in profiles if p.name.strip()]
-    return session_ctx.get("competitor_analysis") is not None and not named
+    if session_ctx.get("competitor_analysis") is not None and not named:
+        return OfferResolution.MOOT
+    return OfferResolution.OPEN
+
+
+def analysis_offer_resolution(spec: dict, analysis_attempted: bool) -> OfferResolution:
+    """The competitive-analysis offer's verdict (Google flow)."""
+    if offer_state(spec, "competitive_analysis") is OfferState.DECLINED:
+        return OfferResolution.DECLINED
+    if analysis_attempted:
+        return OfferResolution.FULFILLED
+    return OfferResolution.OPEN
+
+
+def instagram_offer_resolution(spec: dict) -> OfferResolution:
+    """The Instagram-link offer's verdict (Meta flow): a picked ig_page
+    fulfils it, a Facebook-only decline settles it."""
+    if spec.get("ig_page"):
+        return OfferResolution.FULFILLED
+    if offer_state(spec, "instagram") is OfferState.DECLINED:
+        return OfferResolution.DECLINED
+    return OfferResolution.OPEN
 
 
 def _apply_field(
@@ -787,7 +810,7 @@ def campaign_spec_complete(spec: dict, session_ctx: dict) -> bool:
     # Meta: the competitor-creatives offer must be resolved once - fetched,
     # declined, or moot. The SAME predicate the creatives step's offer gate uses, so
     # "complete" here never disagrees with an offer the prescription still asks.
-    if is_meta and not competitor_creatives_offer_resolved(spec, session_ctx):
+    if is_meta and creatives_offer_resolution(spec, session_ctx) is OfferResolution.OPEN:
         return False
     return True
 

@@ -16,7 +16,7 @@ from app.agents.adzump.models.competitor_profile import (
     CompetitorProfile,
     competitor_profiles,
 )
-from app.agents.adzump.models.offer_state import OfferState
+from app.agents.adzump.models.offer_state import OfferResolution, OfferState
 from app.agents.adzump.models.place import Place
 
 __all__ = [

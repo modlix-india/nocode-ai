@@ -18,6 +18,7 @@ import types
 from typing import Any
 
 from app.agents.adzump.agent import CampaignContext
+from app.agents.adzump.models import OfferResolution
 
 # Canonical product_data shapes. Override fields per test:
 #   make_session(product={**RE, "product_name": "Foo"})
@@ -105,7 +106,9 @@ def make_cctx(
         ig_accounts_fetched=ig_fetched,
         pending_ask_field=pending_ask,
         field_asks=dict(field_asks or {}),
-        competitor_creatives_offer_resolved=creatives_resolved,
+        competitor_creatives_resolution=(
+            OfferResolution.FULFILLED if creatives_resolved
+            else OfferResolution.OPEN),
     )
 
 

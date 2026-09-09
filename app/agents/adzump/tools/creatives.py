@@ -191,7 +191,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
     # The consented fetch ran to completion - the offer is resolved even when it
     # found nothing (zero ads, no usable domains). An explicit marker, not the
     # creative lists: an empty result must not re-open the consent every turn
-    # (see campaign_data.competitor_creatives_offer_resolved).
+    # (see campaign_data.creatives_offer_resolution).
     # NOTE: on the rare failure path above (cancellation / loop bug), earlier
     # _on_resolved side effects survive while this stays unset - acceptable:
     # the refetch is cache-served for the competitors already resolved.

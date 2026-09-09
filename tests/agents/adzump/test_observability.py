@@ -73,6 +73,16 @@ class TurnDecisionRecordTests(unittest.TestCase):
         self.assertEqual(record["prior_capture"]["field"], "platform")
         self.assertEqual(record["turn"], 7)
 
+    def test_record_carries_offer_resolutions(self):
+        # Slice 4: the record says WHY each offer is settled - the signal that
+        # was invisible when a failed analysis silently mooted the creatives
+        # offer and the user's Yes evaporated (live 2026-09-08).
+        record = _emit(offers={"competitive_analysis": "fulfilled",
+                               "competitor_creatives": "moot",
+                               "instagram": "open"})
+        self.assertEqual(record["offers"]["competitor_creatives"], "moot")
+        self.assertEqual(_emit()["offers"], {})  # omitted -> empty, never crash
+
 
 class ReminderIntegrationTests(unittest.TestCase):
     """The record actually fires from build_turn_reminder with real capture
@@ -96,6 +106,10 @@ class ReminderIntegrationTests(unittest.TestCase):
             {"layer": 1, "field": "duration", "value": "30 days",
              "verdict": "stored"}])
         self.assertIn("capture_ack", record["steers"])
+        # The real wiring computes all three offer verdicts each turn.
+        self.assertEqual(record["offers"]["competitive_analysis"], "declined")
+        self.assertEqual(record["offers"]["competitor_creatives"], "declined")
+        self.assertEqual(record["offers"]["instagram"], "open")
         self.assertFalse(record["repeat_ask"])          # duration landed → budget next
         self.assertEqual(record["prescription"], "budget")
         self.assertEqual(s.context["_prior_capture"],

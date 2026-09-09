@@ -14,6 +14,7 @@ import unittest
 
 from app.agents.adzump.workflow import NEW_CAMPAIGN, CampaignContext, missing_list
 from app.agents.adzump.tools.launch import _launch_campaign
+from app.agents.adzump.models import OfferResolution
 from tests.agents.adzump._fixtures import SAAS, make_cctx, make_session
 
 
@@ -130,7 +131,8 @@ class NextActionInvariants(unittest.TestCase):
             competitor_analysis={"competitors": [{"name": "Lodha"}]},
         )
         cctx = CampaignContext.from_session(session)
-        self.assertTrue(cctx.competitor_creatives_offer_resolved)
+        self.assertIs(cctx.competitor_creatives_resolution,
+                      OfferResolution.DECLINED)
         missing = missing_list(NEW_CAMPAIGN, cctx)
         self.assertEqual(len(missing), 1)
         self.assertTrue(missing[0].startswith("review & publish"))

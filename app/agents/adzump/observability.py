@@ -40,6 +40,7 @@ def log_turn_decision(
     prior_capture: dict | None,
     open_rail_field: str | None,
     open_rail_untagged: bool,
+    offers: dict[str, str] | None = None,
 ) -> None:
     """Emit the §8 record. ``open_rail_*`` describe the elicitation that was
     open when the message arrived (snapshotted before the resume section pops
@@ -59,5 +60,8 @@ def log_turn_decision(
         "prior_capture": prior_capture,
         "repeat_ask": prescription is not None and prescription == open_rail_field,
         "repeat_ask_unmatched": prescription is not None and open_rail_untagged,
+        # Slice 4 · WHY each offer is (or isn't) settled - the signal that was
+        # invisible when a failed analysis silently mooted the creatives offer.
+        "offers": offers or {},
     }
     logger.info("turn_decision %s", json.dumps(record, ensure_ascii=False, default=str))

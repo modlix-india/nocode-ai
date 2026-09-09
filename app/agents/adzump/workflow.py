@@ -16,6 +16,7 @@ from typing import Callable
 from app.core.session import BaseSession
 from app.agents.adzump.models import (
     LEGACY_DECLINED_KEYS,
+    OfferResolution,
     OfferState,
     competitor_profiles,
     offer_state,
@@ -27,7 +28,9 @@ from app.agents.adzump.platform import (
 )
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
-    competitor_creatives_offer_resolved,
+    analysis_offer_resolution,
+    creatives_offer_resolution,
+    instagram_offer_resolution,
     is_ig_skip,
     is_real_estate,
 )
@@ -69,11 +72,11 @@ class CampaignContext:
     # Times each field-tagged ask has been shown (present_options counter).
     # Drives offer exhaustion and the refused-required-slot escape (R12).
     field_asks: dict[str, int] = dc_field(default_factory=dict)
-    # True once the Meta creative-inspiration offer is settled (fetched,
-    # declined, or moot) - computed by the shared predicate in campaign_data so
-    # this gate and the review gate can never disagree. Stops the offer from
-    # re-firing. Defaulted for direct test construction.
-    competitor_creatives_offer_resolved: bool = False
+    # WHY the Meta creative-inspiration offer is settled (or OPEN = still
+    # owed) - the shared verdict from campaign_data, so this gate, the review
+    # gate, and the turn record can never disagree. Defaulted for direct test
+    # construction.
+    competitor_creatives_resolution: OfferResolution = OfferResolution.OPEN
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -107,7 +110,7 @@ class CampaignContext:
             ig_accounts_fetched=ctx.get("ig_accounts") is not None,
             pending_ask_field=pending_ask_field,
             field_asks=dict(ctx.get("_field_asks") or {}),
-            competitor_creatives_offer_resolved=competitor_creatives_offer_resolved(
+            competitor_creatives_resolution=creatives_offer_resolution(
                 ctx.get("campaign_spec") or {}, ctx
             ),
         )
@@ -445,12 +448,14 @@ NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", steps=(
          prescribe=_prescribe_target_areas),
     Step("competitive_analysis", requires=("product",),
          applies=lambda cctx: cctx.is_google,
-         done=lambda cctx: cctx.competitor_analysis_attempted
-         or offer_state(cctx.spec, "competitive_analysis") is OfferState.DECLINED,
+         done=lambda cctx: analysis_offer_resolution(
+             cctx.spec, cctx.competitor_analysis_attempted)
+         is not OfferResolution.OPEN,
          prescribe=_prescribe_competitive_analysis),
     Step("competitor_creatives", requires=("product",),
          applies=lambda cctx: cctx.is_meta,
-         done=lambda cctx: cctx.competitor_creatives_offer_resolved,
+         done=lambda cctx: cctx.competitor_creatives_resolution
+         is not OfferResolution.OPEN,
          # An open rail waits on the reply - EXCEPT once the Yes landed as
          # ACCEPTED (a capture can store it before the answered rail is
          # reaped): the fetch is owed NOW, exactly as the retired chain
@@ -478,7 +483,7 @@ NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", steps=(
          prescribe=_prescribe_fb_page),
     Step("instagram", requires=("product", "fb_page"),
          applies=lambda cctx: cctx.is_meta,
-         done=lambda cctx: bool(cctx.spec.get("ig_page"))
-         or offer_state(cctx.spec, "instagram") is OfferState.DECLINED,
+         done=lambda cctx: instagram_offer_resolution(cctx.spec)
+         is not OfferResolution.OPEN,
          prescribe=_prescribe_instagram),
 ))
