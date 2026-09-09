@@ -117,6 +117,17 @@ async def _extract_candidates(params: dict, context: dict) -> ToolResult:
     for i, cand in enumerate(candidates, start=1):
         cand["cid"] = f"C{i}"
     research_state["candidate_pool"] = {c["cid"]: c for c in candidates}
+    # Run boundary: cids are positional per pool build, and _research_state is
+    # shared across analyst runs (discovery, add-by-name). Keep prior verified
+    # evidence only where the id still names the SAME candidate - otherwise a
+    # later run's C2 would inherit an earlier run's C2 evidence and the join
+    # would ship the wrong business's URL under a new name.
+    pool = research_state["candidate_pool"]
+    research_state["verified_competitors"] = [
+        v for v in research_state.get("verified_competitors") or []
+        if isinstance(v, dict)
+        and (pool.get(v.get("cid")) or {}).get("name") == v.get("name")
+    ]
 
     n_queries = len(search_results)
     lines = [
@@ -192,7 +203,7 @@ async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
 
     fetched: list[dict[str, Any]] = []
     if picked:
-        # Places URL resolution (D-5/CP-4 scope): missing/aggregator URLs get one
+        # Places URL resolution (D-5): missing/aggregator URLs get one
         # GBP lookup; a guard-passing listing wins. A resolved URL is NOT trusted -
         # it joins fetch-verify like any search-derived URL. Nothing is guessed.
         await _resolve_urls(picked, session_ctx)
@@ -266,7 +277,7 @@ async def _attach_url_options(candidate: dict[str, Any], session_ctx: dict) -> N
     options: list[dict[str, Any]] = []
     notes: list[str] = []
 
-    def add(url: str | None, source: str, listing_name: str = "") -> dict | None:
+    def add_option(url: str | None, source: str, listing_name: str = "") -> dict | None:
         url = (url or "").strip()
         host = host_of(url)
         if not url or not host:
@@ -287,8 +298,8 @@ async def _attach_url_options(candidate: dict[str, Any], session_ctx: dict) -> N
         options.append(option)
         return option
 
-    read_page = add(candidate.get("fetch_url") or candidate.get("url"),
-                    "the page read above")
+    read_page = add_option(candidate.get("fetch_url") or candidate.get("url"),
+                           "the page read above")
     if read_page is not None:
         read_page["alive"] = True
         read_page["read"] = "see the Answer above"
@@ -296,8 +307,8 @@ async def _attach_url_options(candidate: dict[str, Any], session_ctx: dict) -> N
     listings = await cached_business_listings(candidate["name"], session_ctx)
     for listing in listings[:3]:
         if listing.get("website"):
-            add(listing["website"], "business listing",
-                listing.get("name") or "")
+            add_option(listing["website"], "business listing",
+                       listing.get("name") or "")
 
     # Rung-3 heritage: ask the first listed site for its own project page
     # (memoized; same-host guarded inside) - catches sobha.com carrying
@@ -308,7 +319,7 @@ async def _attach_url_options(candidate: dict[str, Any], session_ctx: dict) -> N
         extracted = await project_page_from_site(
             candidate["name"], first_listing["url"], session_ctx)
         if extracted:
-            add(extracted, "extracted from the listed site")
+            add_option(extracted, "extracted from the listed site")
 
     unknown_alive = [o for o in options if o["alive"] is None]
     liveness = await asyncio.gather(*(is_alive(o["url"]) for o in unknown_alive))
@@ -392,7 +403,7 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
         if answer:
             lines.append("")
             lines.append(f"Answer: {answer}")
-        if c.get("url_options"):
+        if c.get("url_options") or c.get("url_option_notes"):
             lines.append("")
             lines.append("Official-URL options - cite EXACTLY ONE id in "
                          "official_url_id, or null when none is this "
@@ -400,6 +411,9 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
             lines.extend(f"  {option}" for option in c.get("url_option_lines") or [])
             for note in c.get("url_option_notes") or []:
                 lines.append(f"  excluded: {note}")
+            if not c.get("url_options"):
+                lines.append("  (every candidate URL was excluded - cite null; "
+                             "an official page likely does not exist yet)")
         lines.append("")
 
     footer: list[str] = []
@@ -525,7 +539,7 @@ def _is_specific_geography(geo_text: str | None) -> bool:
 # ─── URL resolution + fetch-verify (stage-2 helpers) ────────────────────────
 
 async def _resolve_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> None:
-    """Candidate-stage URL fill (D-5, scoped back by CP-4): only candidates
+    """Candidate-stage URL fill (D-5, scoped, D-5): only candidates
     with a MISSING or aggregator URL get the locality-biased Google Business
     Profile lookup - candidate names here are often junk SEO page titles that
     can't pass the name guard, so a good search URL is left alone; the

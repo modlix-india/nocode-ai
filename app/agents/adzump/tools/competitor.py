@@ -52,6 +52,24 @@ def _normalize_name(s: str) -> str:
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
 
 
+def _vetted_fallback(entry: dict) -> str | None:
+    """The join's fallback URL (the fetched page) re-checked against the same
+    vetting the options passed - a hallucinated pick or old-shape output must
+    never ship a host the options gathering refused (broker-style TLD,
+    aggregator). Link-less beats a refused host."""
+    from app.agents.adzump.competitor_urls import (
+        is_aggregator_or_google_host,
+        is_broker_style_tld,
+    )
+
+    url = entry.get("fetch_url") or entry.get("url")
+    host = host_of(url or "")
+    if not url or not host or is_aggregator_or_google_host(host) \
+            or is_broker_style_tld(host):
+        return None
+    return url
+
+
 def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
     """B2: the analyst cites fetch_candidates evidence by competitor_id and
     picks the entry's official URL by official_url_id (an id from that
@@ -80,7 +98,7 @@ def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
         options = entry.get("url_options") or {}
         if not judged:
             # Old-shape output (no pick emitted): the fetched page, as before.
-            comp["url"] = entry.get("fetch_url") or entry.get("url")
+            comp["url"] = _vetted_fallback(entry)
         elif uid is None:
             # The analyst judged: no option is this project's own page.
             comp["url"] = None
@@ -90,7 +108,7 @@ def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
             logger.warning("official_url_id_unknown: %r for %r (valid: %s) - "
                            "falling back to the fetched page",
                            uid, comp.get("name"), sorted(options) or "none")
-            comp["url"] = entry.get("fetch_url") or entry.get("url")
+            comp["url"] = _vetted_fallback(entry)
 
 
 _URL_VERIFY_QUESTION = (
@@ -206,7 +224,7 @@ async def _apply_url_updates(
 ) -> tuple[list[str], list[str]]:
     """Pin user-provided URLs onto entries: 'Name | URL' (';'-separated for
     several). A verified URL becomes the entry's identity (url_source=user -
-    the ladder never overrides it) and the entry's creatives reset so the next
+    nothing runs after a pin) and the entry's creatives reset so the next
     fetch runs under the corrected identity. Returns (acks, rejections), both
     user-facing."""
     acks: list[str] = []
@@ -784,7 +802,10 @@ async def _lookup_single_competitor(
             _join_verified_urls(output.competitive, session_ctx)
             raw_new = output.competitive["competitors"]
         elif output.product:
-            # Business-shaped dict (product_name, not name); from_stored folds it.
+            # Business-shaped dict (product_name, not name); from_stored folds
+            # it. Its url is model-typed with no verified evidence - ship the
+            # entry link-less (custody: a model string never becomes a URL).
+            output.product.pop("url", None)
             raw_new = [output.product]
         else:
             raw_new = []

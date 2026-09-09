@@ -30,6 +30,9 @@ class JoinVerifiedUrlsTests(unittest.TestCase):
          "url_options": {"C1.U1": "https://www.sobha.com/sobha-magnus/",
                          "C1.U2": "https://www.sobha.com/"}},
         {"cid": "C2", "name": "Lodha Azur", "url": "https://lodhagroup.com/azur"},
+        {"cid": "C3", "name": "Clone Co",
+         "fetch_url": "https://cloneco.co.in/",  # vetting refused this host
+         "url_options": {}},
     ]}}
 
     def test_join_rows(self):
@@ -60,6 +63,16 @@ class JoinVerifiedUrlsTests(unittest.TestCase):
             ("no id keeps entry untouched (add-by-name shape)",
              {"name": "Manual Add", "url": "https://manual.example"},
              "https://manual.example"),
+            # The fallback is VETTED: a broker-style fetch host the options
+            # gathering refused must never ship via the old-shape/unknown-pick
+            # back door - link-less beats a refused host.
+            ("old-shape fallback never ships a refused host",
+             {"name": "Clone Co", "competitor_id": "C3", "url": None},
+             None),
+            ("unknown pick on refused host stays link-less",
+             {"name": "Clone Co", "competitor_id": "C3",
+              "official_url_id": "C3.U9", "url": None},
+             None),
         ]
         for label, comp, expected_url in rows:
             with self.subTest(label):

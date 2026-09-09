@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+
 import httpx
 
 from app.agents.adzump._shared import host_of, is_aggregator_host
@@ -131,7 +132,7 @@ def parse_official_url(answer: str) -> str | None:
     return url
 
 
-# ─── Rung helpers ───────────────────────────────────────────────────────────
+# ─── Liveness + extraction ──────────────────────────────────────────────────
 
 async def is_alive(url: str) -> bool:
     """Liveness only - content is GBP-trusted. HEAD, with one GET retry for
@@ -151,11 +152,11 @@ async def is_alive(url: str) -> bool:
 async def project_page_from_site(
     name: str, listing_url: str, session_ctx: dict | None = None,
 ) -> str | None:
-    """Ask a site for its own {name} project page (ladder rung 3; also judge
-    evidence). Same-host guarded - a cross-host answer is a hallucination or
-    an outbound link, either way not this site's project page. Session-
-    memoized by (host, name), misses included: in shadow mode the ladder and
-    the judge both ask, and the answer depends only on the fetched page."""
+    """Ask a site for its own {name} project page - feeds the researcher's
+    Official-URL options. Same-host guarded (a cross-host answer is a
+    hallucination or an outbound link, either way not this site's project
+    page) and session-memoized by (host, name), misses included - the answer
+    depends only on the fetched page."""
     from app.agents.adzump.agents.product.adapters.web_fetch_adapter import (
         fetch_and_answer,
     )

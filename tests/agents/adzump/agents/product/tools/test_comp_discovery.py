@@ -135,6 +135,24 @@ class ExtractCandidatesTests(unittest.TestCase):
         self.assertFalse(result.success)
         self.assertIn("web_search first", result.error)
 
+    def test_pool_rebuild_drops_mismatched_verified_evidence(self):
+        # Run boundary: cids are positional per pool build. A later run's C1
+        # must never inherit an earlier run's C1 evidence (wrong URL under a
+        # wrong name); same-name same-cid evidence survives (bounce re-runs).
+        context = _context(_searches())
+        asyncio.run(_extract_candidates({}, context))
+        research_state = context["session_context"]["_research_state"]
+        research_state["verified_competitors"] = [
+            {"cid": "C1", "name": "Purva Sparkling Springs",
+             "fetch_url": "https://purvasparklingspring.com/"},  # still C1
+            {"cid": "C2", "name": "Some Other Business",
+             "fetch_url": "https://other.example/"},             # stale
+        ]
+        asyncio.run(_extract_candidates({}, context))
+        kept = research_state["verified_competitors"]
+        self.assertEqual([v["name"] for v in kept],
+                         ["Purva Sparkling Springs"])
+
 
 class FetchCandidatesTests(unittest.TestCase):
     """ID enforcement: unknown IDs and over-budget picks are evidence-bearing
