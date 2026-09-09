@@ -895,30 +895,34 @@ async def _lookup_single_competitor(
         elif new_competitors:
             await _append_competitor_craft(stream, craft_id, business, new_competitors)
 
-    parts: list[str] = []
+    # The summary is USER-FACING chat markdown (audience=both): structured
+    # bullets, never a period-joined paragraph (live 2026-09-09 complaint).
+    sections: list[str] = []
     if removed_names:
-        parts.append(f"Removed: {', '.join(removed_names)}")
+        sections.append("**Removed:** " + ", ".join(removed_names))
     if new_competitors:
         names = [c.get("name") or "?" for c in new_competitors]
-        parts.append(f"Added: {', '.join(names)}")
+        sections.append("**Added:**\n" + "\n".join(f"- {n}" for n in names))
     if refreshed_names:
-        parts.append(f"Refreshed (already in the list): {'; '.join(refreshed_names)}")
+        sections.append("**Refreshed (already in the list):**\n"
+                        + "\n".join(f"- {r}" for r in refreshed_names))
     if url_acks:
-        parts.append(f"Updated: {'; '.join(url_acks)}")
+        sections.append("**Updated:**\n" + "\n".join(f"- {a}" for a in url_acks))
     if url_rejections:
-        parts.append(f"Not updated: {' '.join(url_rejections)}")
+        sections.append("**Not updated:**\n"
+                        + "\n".join(f"- {r}" for r in url_rejections))
     if skipped:
         skip_lines = [
-            f"{s.get('name', '?')} ({s.get('reason', 'not a direct competitor')})"
+            f"- {s.get('name', '?')} - {s.get('reason', 'not a direct competitor')}"
             for s in skipped
             if isinstance(s, dict)
         ]
         if skip_lines:
-            parts.append(f"Skipped: {'; '.join(skip_lines)}")
+            sections.append("**Skipped:**\n" + "\n".join(skip_lines))
     return ToolResult(
         success=True,
         data={"competitors": competitive["competitors"], "skipped": skipped},
-        summary=". ".join(parts),
+        summary="\n\n".join(sections),
         audience="both",
     )
 

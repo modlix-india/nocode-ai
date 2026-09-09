@@ -83,10 +83,13 @@ def _provenance(field_name: str, set_at: dict, current_turn: int) -> str:
 def _user_said_section(last_user: str) -> str:
     if not last_user:
         return "\n## User just said\n(no user message yet)"
-    preview = last_user.replace("\n", " ")
+    # Keep the user's line structure - flattening "1. X\n2. Y\n3. Z" into one
+    # line turned a typed competitor LIST into a paragraph the model half-read
+    # (live 2026-09-09). Fenced so the model sees it verbatim.
+    preview = last_user.strip()
     if len(preview) > 500:
         preview = preview[:500] + "…"
-    return f'\n## User just said\n"{preview}"'
+    return f"\n## User just said\n'''\n{preview}\n'''"
 
 def _missing_section(missing: list[str]) -> str:
     if not missing:
@@ -141,6 +144,9 @@ def _how_to_respond_section() -> str:
         "(`confirm_location`, `present_options`) in the same turn - ask one, "
         "wait for the reply, then ask the next. (The runtime also enforces "
         "this, but don't rely on it.)\n"
+        "\n**Structure your chat text.** Whenever you list items "
+        "(competitors, options recap, what changed), write markdown bullets "
+        "with a blank line before the list - never a comma-run paragraph.\n"
         "\n**Tool syntax is INTERNAL - never print it.** The `tool(question=…, "
         "options=[…], field=…)` forms in '## What's still missing' are "
         "instructions for YOU to CALL - never text to show the user. CALL the "
