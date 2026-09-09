@@ -25,6 +25,7 @@ __all__ = [
     "LEGACY_DECLINED_KEYS",
     "LEGACY_MARKER_TO_FIELD",
     "OFFER_FIELDS",
+    "OfferResolution",
     "OfferState",
     "Place",
     "competitor_profiles",

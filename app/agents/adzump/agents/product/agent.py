@@ -69,12 +69,8 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
         if hits:
             search_snippets.append(f"[{search.get('query', '')}]\n" + "\n".join(hits))
 
-    from urllib.parse import urlparse as _urlparse
-    host = ""
-    try:
-        host = _urlparse(primary_url).netloc.removeprefix("www.")
-    except Exception:
-        pass
+    from app.agents.adzump._shared import host_of
+    host = host_of(primary_url)
 
     result: dict = {
         "business": {

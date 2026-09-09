@@ -37,9 +37,7 @@ from app.agents.adzump.agents.vision.context import (
 )
 from app.agents.adzump.agents.vision.models import (
     AssetSelection,
-    ImageVerdict,
     ReviewResult,
-    LogoChoice,
 )
 
 # DRAFT-NOTE: the public types still live in the product agent's models.py.
@@ -48,7 +46,6 @@ from app.agents.adzump.agents.product.models import (
     CreativeCompleteness,
     CreativeRole,
     LogoPick,
-    PageContent,
     ProductAssets,
     SiteImage,
 )

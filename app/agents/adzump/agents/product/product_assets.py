@@ -233,18 +233,7 @@ async def select_product_assets(
 
     await stage_emit(context, ScrapeStage.SELECT, tool_use_id=select_tuid)
 
-    # Build the vision message: prompt text + summary + per-candidate thumbs.
-    # SVG candidates have no thumbnail (vector - see _fetch_one); they appear
-    # as text-only entries and the LLM reviews by metadata signals.
-    n_svg = sum(1 for c in available if fetched[c.src].get("is_svg"))
     meta_json = _render_candidate_meta(available)
-    intro = (
-        "Business summary:\n"
-        f"{(summary or '(no summary available)').strip()[:2000]}\n\n"
-        f"Candidates ({len(available)} total, {n_svg} SVG with no thumbnail, "
-        f"in index order):\n"
-        f"{meta_json}"
-    )
     # Diagnostic: capture the exact metadata the LLM sees. Truncated for log
     # noise control. When picks are unexpectedly empty, this is the first
     # thing to check - the prompt rules are only useful if the data backs them.

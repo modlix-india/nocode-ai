@@ -452,9 +452,8 @@ def _merge_candidate_facts(
     (``Valmark CityVille`` ≈ ``Valmark City Ville``), AND the client's brand
     token in the candidate host - the developer's own domain (valmark.in for a
     Valmark CityVille campaign) must never enter the competitor list, even
-    under an SEO title the name match can't catch. Leading token only, same
-    convention as the D-6 brand exclusion: "Godrej Bannerghatta" contributes
-    "godrej", never the locality.
+    under an SEO title the name match can't catch. Leading token only:
+    "Godrej Bannerghatta" contributes "godrej", never the locality.
     """
     primary_name_norm = normalize_business_name(primary_name)
     primary_brand = (primary_name_norm.split() or [""])[0]

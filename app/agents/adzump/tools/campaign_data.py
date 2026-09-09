@@ -912,7 +912,7 @@ set_campaign_spec = ToolDefinition(
         ToolParameter(
             name="competitive_analysis_declined",
             type="string",
-            description="Set \"true\" when the user declines the competitive analysis step so next_action stops offering it.",
+            description="Set \"true\" when the user declines the competitive analysis step so the journey stops offering it.",
             required=False,
             enum=["true"],
         ),

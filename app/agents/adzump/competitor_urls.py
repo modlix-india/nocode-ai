@@ -4,9 +4,9 @@ The GBP lookup (session-memoized), the acceptance guards (name matching,
 aggregator/broker-host vetting), liveness, and project-page extraction - the
 mechanical facts behind competitor URLs. The JUDGMENT lives with the
 researcher: comp_discovery gathers these into per-candidate Official-URL
-options and the analyst cites one by id (or null) in its final JSON. The old
-CP-4 rule-ladder and the standalone identity judge are retired (Kailash: the
-researcher with the full context judges, never a post-hoc model).
+options and the analyst cites one by id (or null) in its final JSON. Nothing
+here picks a URL; a post-hoc model must never judge what the full-context
+researcher already judged.
 """
 
 from __future__ import annotations
@@ -77,11 +77,11 @@ async def cached_business_listing(name: str, session_ctx: dict) -> dict | None:
 def normalize_business_name(name: str) -> str:
     """Canonicalise a business name for matching/dedup. Lowercase, strip
     parenthetical glosses, punctuation, and common business-type suffixes.
-    Parentheticals go FIRST (CP-5 v2 step 13): analysts emit "Purva Sparkling
-    Springs (Puravankara)" - the gloss is a developer credit, not identity,
-    and its tokens defeat the D-6 brand exclusion (live 2026-09-04: a
-    duplicated brand token inside "(...)" short-circuited the ladder onto a
-    dead clone domain)."""
+    Parentheticals go FIRST: analysts emit "Purva Sparkling Springs
+    (Puravankara)" - the gloss is a developer credit, not identity, and its
+    tokens pollute brand matching if they survive into the normalized name
+    (live 2026-09-04: a duplicated brand token inside "(...)" matched a dead
+    clone domain)."""
     s = (name or "").lower().strip()
     s = re.sub(r"\([^)]*\)", " ", s)
     for suffix in _NAME_SUFFIX_STRIPS:

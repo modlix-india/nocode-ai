@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.models import CompetitorProfile
@@ -300,11 +299,7 @@ def _filter_self_references(
 
     business_name_norm = _normalize_name(business.get("product_name") or "")
     raw_url = primary_url or business.get("url") or business.get("website") or ""
-    business_url_host = ""
-    try:
-        business_url_host = urlparse(raw_url).netloc.lower().removeprefix("www.")
-    except Exception:
-        pass
+    business_url_host = host_of(raw_url)
     domain_name_norm = (
         _normalize_name(business_url_host.split(".")[0]) if business_url_host else ""
     )
@@ -346,14 +341,9 @@ def _filter_self_references(
             dropped += 1
             continue
         url = str(c.get("url") or "")
-        if business_url_host and url:
-            try:
-                host = urlparse(url).netloc.lower().removeprefix("www.")
-                if host == business_url_host:
-                    dropped += 1
-                    continue
-            except Exception:
-                pass
+        if business_url_host and url and host_of(url) == business_url_host:
+            dropped += 1
+            continue
         combined_text = " ".join(
             [
                 str(c.get("business_type") or ""),
@@ -374,7 +364,6 @@ def _filter_self_references(
 from app.agents.adzump.tools.craft import (
     emit_craft_panel as _emit_final_craft,
     append_competitor_blocks as _append_competitor_craft,
-    render_competitors as _render_competitors,
 )
 
 
@@ -576,8 +565,8 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
 
         # Post-processing: clean aggregator URLs, filter self-references.
         # URLs are settled: the analyst judged each entry's official page from
-        # the code-vetted options (official_url_id, joined above) - no
-        # post-hoc ladder or judge runs (Kailash: the researcher owns it).
+        # the code-vetted options (official_url_id, joined above); nothing
+        # re-judges URLs after this point.
         _clean_urls(competitive)
         _filter_self_references(business, competitive, primary_url=url)
 

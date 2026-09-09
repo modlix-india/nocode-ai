@@ -15,7 +15,6 @@ import base64
 import logging
 from functools import partial
 from hashlib import md5
-from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.agents.product.adapters.playwright_adapter import scrape_page
@@ -322,14 +321,8 @@ def _has_enough_text_for_summary(page) -> bool:
 
 def _is_same_website(a: str, b: str) -> bool:
     """Rough check: both URLs share the same registered domain suffix."""
-    try:
-        # removeprefix, not lstrip - lstrip("www.") treats "www." as a char SET
-        # {w, .} and would mangle real domains like "wisco.com" → "isco.com".
-        ha = urlparse(a).netloc.lower().removeprefix("www.")
-        hb = urlparse(b).netloc.lower().removeprefix("www.")
-        return bool(ha) and bool(hb) and (ha == hb or ha.endswith("." + hb) or hb.endswith("." + ha))
-    except Exception:
-        return False
+    ha, hb = host_of(a), host_of(b)
+    return bool(ha) and bool(hb) and (ha == hb or ha.endswith("." + hb) or hb.endswith("." + ha))
 
 
 def _trim_paragraphs(paragraphs: list[str]) -> list[str]:
