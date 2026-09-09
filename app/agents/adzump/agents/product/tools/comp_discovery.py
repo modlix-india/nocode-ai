@@ -147,9 +147,10 @@ async def _extract_candidates(params: dict, context: dict) -> ToolResult:
     profile_summary = business_brief.get("summary") or ""
     if _is_specific_geography(profile_summary):
         lines += ["", "Geography flag: this business is anchored to a specific "
-                  "micro-market (road/neighborhood level). Apply the "
-                  "same-micro-market rule strictly - state a reason for every "
-                  "wrong-geography exclusion."]
+                  "micro-market (road/neighborhood level). Apply the corridor "
+                  "rule - the same corridor plus the adjacent localities buyers "
+                  "shop as one zone count; a non-cross-shopped corridor does "
+                  "not. State a reason for every wrong-geography exclusion."]
     lines += ["", "Judge every row against the search content you already read "
               "(one-line PICK/SKIP verdict each), then call fetch_candidates "
               f"with the 6-8 strongest IDs (max {_MAX_FETCH_IDS})."]

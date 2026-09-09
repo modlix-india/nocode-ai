@@ -91,19 +91,20 @@ Issue all seven `web_search` calls promptly (the server runs them). Stop after Q
 
 Call `extract_candidates()` once. It returns a fact table (ID, name, host, seen-in count, aggregator flag) - nothing more. YOU are the judge: you read the full search-result content, the table only adds cross-search facts.
 
-Judgment rules, in priority order:
-1. **Same buyer pool wins.** For geo-bound businesses, same micro-market outranks everything: a candidate on the same road/neighborhood in the same price band is a competitor even in a different format; a perfect format match in another part of the city is NOT (different buyer pools).
-2. **Price band next**: roughly the same budget tier as the client. A luxury project and a budget project on the same road serve different buyers.
-3. **Format is the WEAKEST signal** - buyers cross-shop formats (apartment vs villament, CRM vs helpdesk, fine-dining vs premium-casual).
-4. **Cross-search recurrence signals a real market player** (`seen in 5/7`); a single-appearance candidate needs strong content evidence from the search results.
+Judgment rules, in priority order (marketing-expert calibrated, 2026-09-09; real-estate numbers - adapt the spirit for other verticals):
+1. **Competitor = same lead.** The test is "would this project's ad and ours land in the same buyer's feed and fight for the same enquiry?" - never "is the product identical". Formats cross-compete: an apartment buyer is a villament's upsell pool, a villa shopper compromises down. The buyer's wallet defines the market, not the catalog label.
+2. **Price bands are ASYMMETRIC, never a flat ±%.** Like-for-like format: 0.7x-1.3x of the client's ticket. Cross-format upsell reaches DOWN: a cheaper format (e.g. apartment vs our villament) at 0.55x-1.0x of our ticket IS a competitor - that buyer stretches 25-40% for the format upgrade. Downsell reaches UP: richer formats to 1.4x compete (their shopper compromises down). Below 0.55x or above 1.5x is a different wallet. Premium plots (plot + self-build) in the corridor count at ₹3 Cr+ tickets.
+3. **Geography = corridor, not road.** The primary set is the same corridor/micro-market INCLUDING the adjacent localities buyers shop as one zone (e.g. Bannerghatta Rd + JP Nagar + Kanakapura Rd is one South Bangalore corridor); corridors with proven buyer overlap at this ticket also count when a cross-search signal supports it. A non-cross-shopped corridor in the same city is NOT a competitor even on a perfect format+price match - different commute anchor, different buyer.
+4. **Cross-search recurrence PROMOTES, never gates** (`seen in 5/7` upgrades a candidate to certain-DIRECT); a corridor+band match with one appearance still qualifies on content evidence.
 5. **Aggregator-hosted candidates can still be real projects** - fetch follows the listing to the brand's own site. Judge the PROJECT, not the host it surfaced on.
 6. **Junk is not a competitor**: listicle/"Top 10" page titles, news articles, and locality guides are page titles, not businesses - skip them.
+7. **A huge same-corridor launch even at 0.6x our price is worth including** when it dominates the searches - it drains the same ad audience and inflates our cost per lead; note that role in why_competitor.
 
 Write a one-line verdict for EVERY candidate in your reasoning - e.g. `C3 PICK - same road, ₹3-4 Cr, seen 4/7` / `C7 SKIP - North Bangalore, different buyer pool` - covering all rows, not just the picks (an exclusion needs a stated reason too). Then call `fetch_candidates` with the 6-8 strongest IDs (max 12).
 
 ### Step 5 - Re-judge on the fetched evidence, keep DIRECT only
 
-`fetch_candidates` returns verified evidence per ID. Re-judge each entry on the fetched page content - it can reveal a wrong location, price tier, or that the "candidate" is a broker page. Include in the final JSON ONLY direct head-to-head competitors: same buyer pool, same price band, and (for geo-bound businesses) same micro-market. Say why in `why_competitor`.
+`fetch_candidates` returns verified evidence per ID. Re-judge each entry on the fetched page content - it can reveal a wrong location, price tier, or that the "candidate" is a broker page. Include in the final JSON every competitor that fights for the same lead per the Step 4 rules: same corridor (or a cross-shopped one) and within the asymmetric price bands - cross-format entries included (the apartment upsell pool is usually the LARGEST audience segment, not an edge case). Say each one's role in `why_competitor` ("same-corridor apartment at 0.7x - upsell pool").
 
 **Also judge each kept competitor's OFFICIAL URL** from its `Official-URL options` list - you hold the full context, so this call is yours:
 - Official = the project's OWN page: a dedicated microsite (purvasparklingspring.com for "Purva Sparkling Springs") or the project's page on the developer's domain (sobha.com/sobha-magnus for "Sobha Magnus").
