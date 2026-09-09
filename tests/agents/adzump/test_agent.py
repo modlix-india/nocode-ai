@@ -65,25 +65,24 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
                 self.assertIn('field "competitor_creatives"', offer[0])
                 self.assertIn(question, offer[0])
 
-    def test_accepted_prescribes_fetch_not_reask(self):
-        # regression: live 2026-07-27 - after a Yes chip click the verbatim ask
-        # re-fired (nothing marked a Yes as resolving the offer) and the model
-        # copied it instead of fetching. Slice 1d: the stored ACCEPTED is the
-        # signal - the wants-heuristic branch is deleted.
+    def test_accepted_prescribes_analysis_then_review_never_blind_fetch(self):
+        # Kailash 2026-09-09: consent starts the RESEARCH, not the spend - the
+        # user reviews the posted list (add/update/delete) and the fetch runs
+        # only on their go-ahead. (Historic regression still locked: the
+        # verbatim offer question must never re-fire after a Yes.)
         cases = [
-            ("accepted, competitors known", ["Rival"], True,
-             "call `fetch_competitor_creatives`"),
-            ("accepted, no analysis yet", [], False,
-             "run `analyze_competitors`, THEN `fetch_competitor_creatives`"),
+            ("accepted, competitors known -> review checkpoint",
+             ["Rival"], True, "fetch their ads now, or adjust the list"),
+            ("accepted, no analysis yet -> analyze only",
+             [], False, "Run `analyze_competitors` NOW. Do NOT fetch"),
         ]
-        for name, names, attempted, chain in cases:
+        for name, names, attempted, marker in cases:
             with self.subTest(case=name):
                 offer = self._offer_lines(
                     spec_extra={"competitor_creatives": "accepted"},
                     competitor_names=names, attempted=attempted)
                 self.assertEqual(len(offer), 1)
-                self.assertIn(chain, offer[0])
-                self.assertIn("said YES", offer[0])
+                self.assertIn(marker, offer[0])
                 # The verbatim question must be gone - it's what the model copied.
                 self.assertNotIn("Want me to analyze your competitors", offer[0])
                 self.assertNotIn("Want to see the ads", offer[0])

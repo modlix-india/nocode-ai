@@ -519,8 +519,12 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
             with self.subTest(case=name):
                 steer = pending_creatives_fetch_steer(context)
                 self.assertEqual(bool(steer), owed)
-                if owed:
-                    self.assertIn("fetch_competitor_creatives", steer)
+        # A fresh explicit ask fetches NOW; a stored ACCEPTED with the list
+        # just posted goes through the user's REVIEW first (Kailash 2026-09-09).
+        self.assertIn("NOW", pending_creatives_fetch_steer(ctx()))
+        self.assertIn("adjust the list",
+                      pending_creatives_fetch_steer(
+                          ctx(accepted=True, last_user="what about targeting?")))
 
 
 class ClearHelperTests(unittest.TestCase):

@@ -260,16 +260,27 @@ def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
         return ""
     if creatives_offer_resolution(spec, session_ctx) is not OfferResolution.OPEN:
         return ""
+    fresh_go = wants_competitor_creatives(_last_user_text(context))
     if offer_state(
         spec, "competitor_creatives"
-    ) is not OfferState.ACCEPTED and not wants_competitor_creatives(
-        _last_user_text(context)
-    ):
+    ) is not OfferState.ACCEPTED and not fresh_go:
         return ""
+    if fresh_go:
+        return (
+            " The user just asked for the competitor ads - call "
+            "`fetch_competitor_creatives` NOW, in this same turn, before "
+            "asking anything else."
+        )
+    # Consented but the list just landed: the user REVIEWS it before credits
+    # are spent (Kailash 2026-09-09) - add/update/delete first, fetch on go.
     return (
-        " The user already said YES to seeing competitor ads - call "
-        "`fetch_competitor_creatives` NOW, in this same turn, before asking "
-        "anything else."
+        " The competitor list is now on screen. Do NOT fetch creatives yet - "
+        "the user reviews the list first. Ask via the present_options tool "
+        '(no field - control-flow): "Here are your competitors - fetch their '
+        'ads now, or adjust the list first?" with options '
+        '["Fetch their ads", "I\'ll adjust the list first"]. Fetch only on '
+        "their go-ahead; handle add/update/delete requests via "
+        "analyze_competitors, then re-ask."
     )
 
 

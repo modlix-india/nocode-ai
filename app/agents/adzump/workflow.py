@@ -265,19 +265,26 @@ def _prescribe_competitive_analysis(cctx: CampaignContext) -> str:
 def _prescribe_competitor_creatives(cctx: CampaignContext) -> str:
     # Meta campaigns are creative-bound, so the competitors' running ads are
     # the seed material. Consent-gated (ad-library credits + vision tokens).
-    fetch_chain = (
-        "call `fetch_competitor_creatives`"
-        if cctx.competitor_names
-        else "run `analyze_competitors`, THEN `fetch_competitor_creatives` "
-        "in the same turn"
-    )
     if offer_state(cctx.spec, "competitor_creatives") is OfferState.ACCEPTED:
+        if not cctx.competitor_names:
+            return (
+                "competitor creatives - the user said YES. Run "
+                "`analyze_competitors` NOW. Do NOT fetch creatives in the "
+                "same turn: once the list posts, the user REVIEWS it "
+                "(add/update/delete) before any credits are spent. (This is "
+                "an instruction to CALL the tool - never type tool-call "
+                "syntax into your reply.)"
+            )
         return (
-            "competitor creatives - the user said YES to the offer you "
-            f"already made. {fetch_chain} NOW. Do NOT ask again via "
-            "present_options - the question was already asked and answered. "
-            "(These are instructions to CALL tools - never type tool-call "
-            "syntax into your reply.)"
+            "competitor creatives - consented, and the competitor list is on "
+            "screen. The user reviews it before credits are spent: ask via "
+            'the present_options tool (no field - control-flow): "Here are '
+            "your competitors - fetch their ads now, or adjust the list "
+            'first?" with options ["Fetch their ads", "I\'ll adjust the '
+            'list first"]. On their go-ahead call '
+            "`fetch_competitor_creatives`; handle add/update/delete via "
+            "analyze_competitors, then re-ask. (These are instructions to "
+            "CALL tools - never type tool-call syntax into your reply.)"
         )
     # "recent", not "running" - the ad library's crawl lags, so what we
     # show may include recently-paused ads (each card carries its own
