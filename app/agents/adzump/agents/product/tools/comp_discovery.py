@@ -24,10 +24,14 @@ from app.agents.adzump._shared import (
 )
 from app.agents.adzump.competitor_urls import (
     cached_business_listing,
+    cached_business_listings,
     is_aggregator_or_google_host,
+    is_alive,
+    is_broker_style_tld,
     listing_name_matches,
     normalize_business_name,
     parse_official_url,
+    project_page_from_site,
 )
 
 logger = logging.getLogger(__name__)
@@ -204,6 +208,13 @@ async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
                 *(_fetch_one_candidate(c) for c in fetchable),
                 return_exceptions=False,
             )
+        # URL identity is the ANALYST's judgment (Kailash: the researcher with
+        # the full context judges, never a post-hoc cheap model). Code gathers
+        # the vetted options per verified candidate; the final JSON cites one
+        # by ID (official_url_id) or null - the model never writes URLs.
+        verified_now = [c for c in fetched if c.get("fetch_status") == "ok"]
+        await asyncio.gather(
+            *(_attach_url_options(c, session_ctx) for c in verified_now))
 
     _log_candidate_table(list(pool.values()), set(ids), fetched, already_verified)
 
@@ -232,6 +243,119 @@ async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
               "dropped": {"aggregator": aggregator_drops, "fetch_fail": fetch_fails}},
         summary="\n".join(lines),
     )
+
+
+_URL_OPTION_READS = 2  # unread alive options content-read per candidate
+_URL_OPTION_READ_QUESTION = (
+    "ONE line only: whose page is this and what is it - the official website "
+    "of which specific project/brand, a broker/lead-gen page, a portal "
+    "listing, or something else? Name the project it is about."
+)
+
+
+async def _attach_url_options(candidate: dict[str, Any], session_ctx: dict) -> None:
+    """Gather the code-vetted official-URL options for one verified candidate:
+    the page we read, the top Google Business listings for its name, and a
+    project-page extraction from the first listed site - each alive-checked,
+    most content-read. The ANALYST cites exactly one by id (official_url_id)
+    in the final JSON, or null when none is the project's own page - the model
+    never writes URLs, and aggregator/broker-style/dead hosts never become
+    citable (they ship as excluded facts). Mutates the candidate:
+    ``url_options`` (uid -> url, the join's custody map), ``url_option_lines``
+    and ``url_option_notes`` (evidence text)."""
+    options: list[dict[str, Any]] = []
+    notes: list[str] = []
+
+    def add(url: str | None, source: str, listing_name: str = "") -> dict | None:
+        url = (url or "").strip()
+        host = host_of(url)
+        if not url or not host:
+            return None
+        if is_aggregator_or_google_host(host):
+            notes.append(f"{host}: aggregator/portal ({source})")
+            return None
+        if is_broker_style_tld(host):
+            notes.append(f"{host}: broker-style domain, not plain .com/.in ({source})")
+            return None
+        for existing in options:
+            if existing["url"].rstrip("/") == url.rstrip("/"):
+                if listing_name and not existing["listing_name"]:
+                    existing["listing_name"] = listing_name
+                return existing
+        option = {"url": url, "host": host, "source": source,
+                  "listing_name": listing_name, "alive": None, "read": ""}
+        options.append(option)
+        return option
+
+    read_page = add(candidate.get("fetch_url") or candidate.get("url"),
+                    "the page read above")
+    if read_page is not None:
+        read_page["alive"] = True
+        read_page["read"] = "see the Answer above"
+
+    listings = await cached_business_listings(candidate["name"], session_ctx)
+    for listing in listings[:3]:
+        if listing.get("website"):
+            add(listing["website"], "business listing",
+                listing.get("name") or "")
+
+    # Rung-3 heritage: ask the first listed site for its own project page
+    # (memoized; same-host guarded inside) - catches sobha.com carrying
+    # sobha.com/sobha-magnus.
+    first_listing = next(
+        (o for o in options if o["source"] == "business listing"), None)
+    if first_listing is not None:
+        extracted = await project_page_from_site(
+            candidate["name"], first_listing["url"], session_ctx)
+        if extracted:
+            add(extracted, "extracted from the listed site")
+
+    unknown_alive = [o for o in options if o["alive"] is None]
+    liveness = await asyncio.gather(*(is_alive(o["url"]) for o in unknown_alive))
+    for option, alive in zip(unknown_alive, liveness):
+        option["alive"] = alive
+    dead = [o for o in options if not o["alive"]]
+    for option in dead:
+        notes.append(f"{option['host']}: dead ({option['source']})")
+        options.remove(option)
+
+    unread = [o for o in options if not o["read"]][:_URL_OPTION_READS]
+    reads = await asyncio.gather(*(_read_page_line(o["url"]) for o in unread))
+    for option, line in zip(unread, reads):
+        option["read"] = line
+
+    url_options: dict[str, str] = {}
+    lines: list[str] = []
+    for i, option in enumerate(options, start=1):
+        uid = f"{candidate['cid']}.U{i}"
+        url_options[uid] = option["url"]
+        bits = [uid, option["host"], option["source"]]
+        if option["listing_name"]:
+            bits.append(f'listing "{_table_cell(option["listing_name"])}"')
+        if option["read"]:
+            bits.append(option["read"] if option["read"] == "see the Answer above"
+                        else f"reads as: {option['read']}")
+        lines.append(" | ".join(bits))
+    candidate["url_options"] = url_options
+    candidate["url_option_lines"] = lines
+    candidate["url_option_notes"] = notes
+
+
+async def _read_page_line(url: str) -> str:
+    """One-line live read of a URL option; empty on failure (the analyst then
+    weighs that option on its other facts)."""
+    from app.agents.adzump.agents.product.adapters.web_fetch_adapter import (
+        fetch_and_answer,
+    )
+
+    try:
+        result = await asyncio.wait_for(
+            fetch_and_answer(url, _URL_OPTION_READ_QUESTION), timeout=25.0)
+    except Exception:
+        return ""
+    if not isinstance(result, dict) or result.get("status") != "ok":
+        return ""
+    return " ".join(str(result.get("answer") or "").split())[:300]
 
 
 def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
@@ -268,6 +392,14 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
         if answer:
             lines.append("")
             lines.append(f"Answer: {answer}")
+        if c.get("url_options"):
+            lines.append("")
+            lines.append("Official-URL options - cite EXACTLY ONE id in "
+                         "official_url_id, or null when none is this "
+                         "project's OWN page:")
+            lines.extend(f"  {option}" for option in c.get("url_option_lines") or [])
+            for note in c.get("url_option_notes") or []:
+                lines.append(f"  excluded: {note}")
         lines.append("")
 
     footer: list[str] = []
@@ -397,8 +529,8 @@ async def _resolve_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> 
     with a MISSING or aggregator URL get the locality-biased Google Business
     Profile lookup - candidate names here are often junk SEO page titles that
     can't pass the name guard, so a good search URL is left alone; the
-    final-entry ladder (competitor_urls.resolve_project_url) revisits it with
-    the clean analyst name.
+    per-candidate Official-URL options give the analyst the full picture to
+    judge from after the fetch.
 
     A displaced search URL survives as ``search_url`` - the fetch stage retries
     with it when the GBP site turns out dead - and a guard miss keeps it as

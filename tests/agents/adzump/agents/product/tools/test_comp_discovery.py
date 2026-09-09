@@ -210,6 +210,75 @@ class FetchCandidatesTests(unittest.TestCase):
         self.assertIn("ONCE more with different IDs", result.summary)
 
 
+class AttachUrlOptionsTests(unittest.TestCase):
+    """The researcher owns URL judgment: code gathers per-candidate vetted
+    options (read page + GBP top-3 + extraction), aggregator/broker/dead hosts
+    never become citable, and the uid->url custody map feeds the join."""
+
+    def _attach(self, candidate, listings, extracted=None, alive=True):
+        from app.agents.adzump.agents.product.tools.comp_discovery import (
+            _attach_url_options,
+        )
+        with mock.patch.object(
+            comp_discovery, "cached_business_listings",
+            new=mock.AsyncMock(return_value=listings),
+        ), mock.patch.object(
+            comp_discovery, "project_page_from_site",
+            new=mock.AsyncMock(return_value=extracted),
+        ), mock.patch.object(
+            comp_discovery, "is_alive",
+            new=mock.AsyncMock(return_value=alive),
+        ), mock.patch.object(
+            comp_discovery, "_read_page_line",
+            new=mock.AsyncMock(return_value="official site of the project"),
+        ):
+            asyncio.run(_attach_url_options(candidate, {}))
+        return candidate
+
+    def test_options_gathered_vetted_and_id_mapped(self):
+        candidate = self._attach(
+            {"cid": "C3", "name": "Sobha Magnus",
+             "fetch_url": "https://propsoch.com/sobha-magnus"},
+            listings=[
+                {"name": "SOBHA Magnus", "website": "https://www.sobha.com/"},
+                {"name": "Broker Deals",
+                 "website": "https://sobhamagnus.co.in/"},   # broker TLD
+                {"name": "Maps", "website": "https://google.com/maps/x"},
+            ],
+            extracted="https://www.sobha.com/sobha-magnus/")
+        options = candidate["url_options"]
+        self.assertEqual(list(options), ["C3.U1", "C3.U2", "C3.U3"])
+        self.assertEqual(options["C3.U1"], "https://propsoch.com/sobha-magnus")
+        self.assertEqual(options["C3.U2"], "https://www.sobha.com/")
+        self.assertEqual(options["C3.U3"], "https://www.sobha.com/sobha-magnus/")
+        notes = " ".join(candidate["url_option_notes"])
+        self.assertIn("broker-style", notes)
+        self.assertIn("aggregator", notes)
+        lines = " ".join(candidate["url_option_lines"])
+        self.assertIn('listing "SOBHA Magnus"', lines)
+        self.assertIn("reads as: official site of the project", lines)
+
+    def test_dead_options_are_never_citable(self):
+        candidate = self._attach(
+            {"cid": "C1", "name": "Rainbow Mayfair",
+             "fetch_url": "https://rainbowmayfaire.com/"},
+            listings=[{"name": "Rainbow Mayfair",
+                       "website": "https://rainbowmayfair.com/"}],
+            alive=False)  # the GBP option is dead
+        self.assertEqual(list(candidate["url_options"]), ["C1.U1"])
+        self.assertIn("dead", " ".join(candidate["url_option_notes"]))
+
+    def test_duplicate_urls_merge_into_one_option(self):
+        candidate = self._attach(
+            {"cid": "C2", "name": "Purva Sparkling Springs",
+             "fetch_url": "https://purvasparklingspring.com/"},
+            listings=[{"name": "Purva Sparkling Springs",
+                       "website": "https://purvasparklingspring.com"}])
+        self.assertEqual(len(candidate["url_options"]), 1)
+        self.assertIn('listing "Purva Sparkling Springs"',
+                      " ".join(candidate["url_option_lines"]))
+
+
 class ResolveUrlsTests(unittest.TestCase):
     """Candidate-stage URL fill (D-5, scoped back by CP-4): only MISSING or
     aggregator URLs spend a GBP lookup (junk SEO titles rarely pass the name

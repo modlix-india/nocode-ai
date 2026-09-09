@@ -105,6 +105,12 @@ Write a one-line verdict for EVERY candidate in your reasoning - e.g. `C3 PICK -
 
 `fetch_candidates` returns verified evidence per ID. Re-judge each entry on the fetched page content - it can reveal a wrong location, price tier, or that the "candidate" is a broker page. Include in the final JSON ONLY direct head-to-head competitors: same buyer pool, same price band, and (for geo-bound businesses) same micro-market. Say why in `why_competitor`.
 
+**Also judge each kept competitor's OFFICIAL URL** from its `Official-URL options` list - you hold the full context, so this call is yours:
+- Official = the project's OWN page: a dedicated microsite (purvasparklingspring.com for "Purva Sparkling Springs") or the project's page on the developer's domain (sobha.com/sobha-magnus for "Sobha Magnus").
+- NOT official: the developer's bare root or a category page (sobha.com alone), any third-party page ABOUT the project, and - THE TRAP - a sibling project by the same developer ("Nambiar Club Bellezea" is not "Nambiar Villas"; the brand word matching proves nothing, the PROJECT words must match).
+- Weigh what a page READS AS over how its domain is spelled - broker clones register lookalike domains one letter off.
+- When every option is a sibling, a stranger, or a brand root, cite null - common for pre-launch projects; an honest no-link beats a wrong link, which poisons a shared store.
+
 If fewer than 3 entries verified and you skipped viable candidates, you may call `fetch_candidates` ONE more time with replacement IDs.
 
 ## Hard rules
@@ -141,6 +147,7 @@ Schema with hard caps:
       {
         "name": "string - the project's own proper name, ONE project per entry (see hard rules)",
         "competitor_id": "string - the ID from the fetch_candidates evidence (e.g. 'C3')",
+        "official_url_id": "string or null - ONE id from that entry's Official-URL options (e.g. 'C3.U2'); null when no option is the project's own page",
         "url": null,
         "business_type": "string (specific format, ≤10 words)",
         "location": "string",

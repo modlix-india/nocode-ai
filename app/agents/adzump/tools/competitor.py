@@ -23,8 +23,6 @@ from app.agents.adzump._shared import (
     is_aggregator_host,
     primary_screenshot_url,
 )
-from app.agents.adzump.competitor_identity import judge_entry_urls, judge_mode
-from app.agents.adzump.competitor_urls import resolve_project_url
 
 logger = logging.getLogger(__name__)
 
@@ -55,71 +53,44 @@ def _normalize_name(s: str) -> str:
 
 
 def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
-    """B2: the analyst cites fetch_candidates evidence by competitor_id; the verified
-    URL (the page fetch-verify actually read) attaches here by ID join. A
-    model-written url is discarded whenever the ID resolves - models corrupt
-    URLs, IDs are exact. Unknown IDs keep the entry as-is (today's path)."""
+    """B2: the analyst cites fetch_candidates evidence by competitor_id and
+    picks the entry's official URL by official_url_id (an id from that
+    entry's code-vetted url_options) - both resolve here by ID join, so the
+    model never writes URLs. The analyst OWNS the official-URL judgment
+    (Kailash: the researcher with the full context judges, not a post-hoc
+    model): a null official_url_id means honestly link-less; an unknown pick
+    falls back to the fetched page rather than shipping nothing."""
     verified = (session_ctx.get("_research_state") or {}).get(
         "verified_competitors") or []
-    url_by_cid = {
-        v["cid"]: (v.get("fetch_url") or v.get("url"))
-        for v in verified
-        if isinstance(v, dict) and v.get("cid")
-    }
+    by_cid = {v["cid"]: v for v in verified
+              if isinstance(v, dict) and v.get("cid")}
     for comp in competitive.get("competitors") or []:
         if not isinstance(comp, dict):
             continue
         cid = comp.pop("competitor_id", None)
+        judged = "official_url_id" in comp  # absent != a deliberate null
+        uid = comp.pop("official_url_id", None)
         if not cid:
             continue
-        if cid in url_by_cid:
-            comp["url"] = url_by_cid[cid]
-        else:
+        entry = by_cid.get(cid)
+        if entry is None:
             logger.warning("competitor_id_unknown: %r for %r (valid: %s)",
-                           cid, comp.get("name"), sorted(url_by_cid) or "none")
-
-
-async def _resolve_final_entry_urls(competitors: list, session_ctx: dict) -> None:
-    """Settle every entry's URL at the project level. A user-pinned URL
-    (url_source=user) is the highest-trust evidence and is never overridden.
-
-    CP-5 v2 migration modes (COMPETITOR_URL_JUDGE_MODE): shadow (default) -
-    the CP-4 ladder decides as shipped while the identity judge runs beside it
-    and divergences are logged for hand-labeling; active - the judge decides
-    (low confidence / no evidence / judge failure all mean honestly link-less,
-    no heuristic fallback); off - ladder only."""
-    eligible = [comp for comp in competitors
-                if isinstance(comp, dict) and comp.get("name")
-                and comp.get("url_source") != "user"]
-    if not eligible:
-        return
-
-    mode = judge_mode()
-    judgements = None
-    if mode in ("shadow", "active"):
-        judgements = await judge_entry_urls(eligible, session_ctx)
-
-    if mode == "active" and judgements is not None:
-        for comp, judgement in zip(eligible, judgements):
-            comp["url"] = judgement.url
-        return
-
-    # Ladder decides (shadow/off). Sequential on purpose: entries share the
-    # session lookup memo, and analyst names are clean here so GBP matches.
-    for i, comp in enumerate(eligible):
-        ladder_url = await resolve_project_url(
-            comp["name"], comp.get("url"), session_ctx
-        )
-        if judgements is not None:
-            judgement = judgements[i]
-            if (judgement.url or None) != (ladder_url or None):
-                logger.info(
-                    "url_judge_divergence: name=%r ladder=%s judge=%s "
-                    "confidence=%s status=%s reason=%s",
-                    comp["name"], ladder_url, judgement.url,
-                    judgement.confidence, judgement.status, judgement.reason,
-                )
-        comp["url"] = ladder_url
+                           cid, comp.get("name"), sorted(by_cid) or "none")
+            continue
+        options = entry.get("url_options") or {}
+        if not judged:
+            # Old-shape output (no pick emitted): the fetched page, as before.
+            comp["url"] = entry.get("fetch_url") or entry.get("url")
+        elif uid is None:
+            # The analyst judged: no option is this project's own page.
+            comp["url"] = None
+        elif uid in options:
+            comp["url"] = options[uid]
+        else:
+            logger.warning("official_url_id_unknown: %r for %r (valid: %s) - "
+                           "falling back to the fetched page",
+                           uid, comp.get("name"), sorted(options) or "none")
+            comp["url"] = entry.get("fetch_url") or entry.get("url")
 
 
 _URL_VERIFY_QUESTION = (
@@ -585,13 +556,12 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
         _normalize_entries(competitive)
         _join_verified_urls(competitive, session_ctx)
 
-        # Post-processing: clean aggregator URLs, filter self-references,
-        # then settle each entry's URL at the project level (CP-4).
+        # Post-processing: clean aggregator URLs, filter self-references.
+        # URLs are settled: the analyst judged each entry's official page from
+        # the code-vetted options (official_url_id, joined above) - no
+        # post-hoc ladder or judge runs (Kailash: the researcher owns it).
         _clean_urls(competitive)
         _filter_self_references(business, competitive, primary_url=url)
-        await _resolve_final_entry_urls(
-            competitive.get("competitors") or [], session_ctx
-        )
 
         # Merge into the existing list, never replace it: a re-discovery
         # ("find more competitors") refreshes known entries in place (pins and
@@ -770,19 +740,24 @@ async def _lookup_single_competitor(
             parent_tool_use_id=tool_use_id,
             auth=auth,
             parent_session_context=session_ctx,
+            enforce_verified_competitors=True,
             user_message=(
                 f"Look up these businesses as potential direct competitors: {query}\n\n"
                 f"Our product: {product_name} - {product_summary[:500]}\n\n"
-                "Check existing research data in context first; for any not found, "
-                "use web_search. Do NOT call scrape_url.\n\n"
+                "Search each name with web_search (1-2 focused queries per "
+                "name), then run the SAME verification pipeline as full "
+                "discovery: extract_candidates(), judge the rows, "
+                "fetch_candidates with the picks. Do NOT call scrape_url.\n\n"
                 "For EACH queried business, decide:\n"
                 " - ADD if it's a true head-to-head competitor (same offering type, "
                 "same geography, similar price tier).\n"
                 " - SKIP if it's only adjacent/alternative or you couldn't find info.\n\n"
                 "Return a ```json block with:\n"
-                "- 'competitive.competitors' array: one entry per ADDED business with "
-                "name, url, business_type, location, pricing, key_usps, weakness, "
-                "why_competitor.\n"
+                "- 'competitive.competitors' array: one entry per ADDED business "
+                "with name, competitor_id (its fetch_candidates ID), "
+                "official_url_id (ONE of that entry's Official-URL options, or "
+                "null), url: null, business_type, location, pricing, key_usps, "
+                "weakness, why_competitor.\n"
                 "- 'competitive.skipped' array: one entry per SKIPPED business with "
                 "{name, reason} - reason is ≤15 words (e.g. 'different area', "
                 "'different price tier', 'not found on web').\n"
@@ -804,6 +779,9 @@ async def _lookup_single_competitor(
                 pass
 
         if output.competitive and output.competitive.get("competitors"):
+            # Same custody join as discovery: competitor_id -> verified entry,
+            # official_url_id -> the analyst's URL pick from the vetted options.
+            _join_verified_urls(output.competitive, session_ctx)
             raw_new = output.competitive["competitors"]
         elif output.product:
             # Business-shaped dict (product_name, not name); from_stored folds it.
@@ -818,7 +796,6 @@ async def _lookup_single_competitor(
 
         skipped = (output.competitive or {}).get("skipped") or []
 
-        await _resolve_final_entry_urls(new_competitors, session_ctx)
 
         # A looked-up name that matches an existing entry is a REFRESH, never
         # a duplicate (live 2026-09-08: "check Nambiar's official website"

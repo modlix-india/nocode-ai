@@ -1,5 +1,6 @@
-"""tools/competitor.py helpers: the competitor_id -> verified URL join (B2),
-user URL pins (verify + apply), and the ladder's respect for them."""
+"""tools/competitor.py helpers: the competitor_id + official_url_id -> URL
+join (the researcher owns URL judgment; code holds custody), user URL pins
+(verify + apply), and refresh/merge behavior."""
 from __future__ import annotations
 
 import asyncio
@@ -12,28 +13,42 @@ from app.agents.adzump.tools.competitor import (
     _apply_url_updates,
     _find_competitor,
     _join_verified_urls,
-    _resolve_final_entry_urls,
     _verify_competitor_url,
 )
 
 
 class JoinVerifiedUrlsTests(unittest.TestCase):
-    """The analyst cites evidence by ID; code attaches the verified URL. A
-    model-written url is discarded when the ID resolves; unknown or absent
-    IDs leave the entry untouched (the CP-4 ladder still runs after)."""
+    """The analyst cites evidence by competitor_id and judges the official URL
+    by official_url_id; code attaches the custody-held URLs. A model-written
+    url is discarded when the ID resolves; a deliberate null pick means
+    honestly link-less; unknown picks fall back to the fetched page."""
 
     SESSION = {"_research_state": {"verified_competitors": [
         {"cid": "C1", "name": "Sobha Magnus",
          "url": "https://propsoch.com/sobha-magnus",
-         "fetch_url": "https://www.sobha.com/sobha-magnus/"},
+         "fetch_url": "https://www.sobha.com/sobha-magnus/",
+         "url_options": {"C1.U1": "https://www.sobha.com/sobha-magnus/",
+                         "C1.U2": "https://www.sobha.com/"}},
         {"cid": "C2", "name": "Lodha Azur", "url": "https://lodhagroup.com/azur"},
     ]}}
 
     def test_join_rows(self):
         rows = [
-            ("id joins fetch_url, model url discarded",
+            ("analyst's pick wins, model url discarded",
              {"name": "Sobha Magnus", "competitor_id": "C1",
+              "official_url_id": "C1.U1",
               "url": "https://sobha-magnus-typo.com"},
+             "https://www.sobha.com/sobha-magnus/"),
+            ("deliberate null pick means link-less",
+             {"name": "Sobha Magnus", "competitor_id": "C1",
+              "official_url_id": None, "url": "https://typed.example"},
+             None),
+            ("unknown pick falls back to the fetched page",
+             {"name": "Sobha Magnus", "competitor_id": "C1",
+              "official_url_id": "C1.U9", "url": None},
+             "https://www.sobha.com/sobha-magnus/"),
+            ("no pick emitted (old shape): fetched page, as before",
+             {"name": "Sobha Magnus", "competitor_id": "C1", "url": None},
              "https://www.sobha.com/sobha-magnus/"),
             ("no fetch_url falls back to verified url",
              {"name": "Lodha Azur", "competitor_id": "C2", "url": None},
@@ -51,7 +66,8 @@ class JoinVerifiedUrlsTests(unittest.TestCase):
                 competitive = {"competitors": [comp]}
                 _join_verified_urls(competitive, dict(self.SESSION))
                 self.assertEqual(comp.get("url"), expected_url)
-                self.assertNotIn("competitor_id", comp)  # transport key stripped
+                self.assertNotIn("competitor_id", comp)   # transport keys
+                self.assertNotIn("official_url_id", comp)  # stripped
 
     def test_empty_state_is_noop(self):
         comp = {"name": "X", "competitor_id": "C1", "url": "https://x.example"}
@@ -289,8 +305,6 @@ class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
             "app.agents.adzump.agents.product.agent.get_product_agent",
             return_value=analyst,
         ), mock.patch.object(
-            competitor, "_resolve_final_entry_urls", new=mock.AsyncMock(),
-        ), mock.patch.object(
             competitor, "_filter_self_references",
         ), mock.patch(
             "app.core.streaming.pre_emit_agent_started", new=mock.AsyncMock(),
@@ -305,63 +319,6 @@ class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
         self.assertEqual(pinned["creatives"], [{"creativeId": "a"}])
         self.assertIn("1 new", result.summary)
         self.assertIn("1 already known", result.summary)
-
-
-class FinalEntryUrlModeTests(unittest.TestCase):
-    """User pins are never judged or laddered; shadow keeps ladder decisions
-    (judge only observes); active applies the judge's verdicts wholesale."""
-
-    def _resolve(self, competitors, *, mode, judgement=None):
-        from app.agents.adzump.competitor_identity import UrlJudgement
-        judgements = [judgement or UrlJudgement(status="no_evidence")
-                      for c in competitors if c.get("url_source") != "user"]
-        with mock.patch.object(
-            competitor, "resolve_project_url",
-            new=mock.AsyncMock(return_value="https://ladder.example"),
-        ) as ladder, mock.patch.object(
-            competitor, "judge_entry_urls",
-            new=mock.AsyncMock(return_value=judgements),
-        ) as judge, mock.patch.dict(
-            "os.environ", {"COMPETITOR_URL_JUDGE_MODE": mode},
-        ):
-            asyncio.run(_resolve_final_entry_urls(competitors, {}))
-        return ladder, judge
-
-    def test_pin_never_overridden_and_shadow_keeps_ladder(self):
-        pinned = {"name": "Nambiar Villas", "url": "https://real.example",
-                  "url_source": "user"}
-        unpinned = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
-        ladder, judge = self._resolve([pinned, unpinned], mode="shadow")
-        self.assertEqual(pinned["url"], "https://real.example")
-        self.assertEqual(unpinned["url"], "https://ladder.example")
-        ladder.assert_awaited_once()
-        judge.assert_awaited_once()
-        self.assertNotIn(pinned, judge.await_args.args[0])  # pins never judged
-
-    def test_active_mode_applies_judge_verdict_without_ladder(self):
-        from app.agents.adzump.competitor_identity import UrlJudgement
-        entry = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
-        ladder, _ = self._resolve(
-            [entry], mode="active",
-            judgement=UrlJudgement(status="judged", url="https://judge.example",
-                                   picked_eid="E1", confidence="high"))
-        self.assertEqual(entry["url"], "https://judge.example")
-        ladder.assert_not_awaited()
-
-    def test_active_mode_judge_failure_means_link_less(self):
-        from app.agents.adzump.competitor_identity import UrlJudgement
-        entry = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
-        ladder, _ = self._resolve(
-            [entry], mode="active",
-            judgement=UrlJudgement(status="judge_failed"))
-        self.assertIsNone(entry["url"])
-        ladder.assert_not_awaited()
-
-    def test_off_mode_never_calls_the_judge(self):
-        entry = {"name": "Sobha Magnus", "url": "https://propsoch.com/x"}
-        _, judge = self._resolve([entry], mode="off")
-        judge.assert_not_awaited()
-        self.assertEqual(entry["url"], "https://ladder.example")
 
 
 if __name__ == "__main__":

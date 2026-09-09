@@ -1,15 +1,12 @@
-"""Project-level competitor URL resolution (CP-4).
+"""Competitor URL evidence helpers.
 
-The required identity for a competitor entry is the PROJECT page - a dedicated
-microsite or the project's page on the developer domain - never a bare brand
-root or a category page. This module owns that ladder plus the GBP lookup
-guards shared with the candidate stage (comp_discovery imports them back):
-
-1. GBP lookup (session-memoized), guarded by name match + non-aggregator host
-2. project-specific listing website (D-6 token test) + alive (HEAD 2xx) -> accept
-3. non-project-specific listing site -> ask it for the project page URL
-   (same-host guarded)
-4. nothing found -> keep the best we hold (D-7 precedence)
+The GBP lookup (session-memoized), the acceptance guards (name matching,
+aggregator/broker-host vetting), liveness, and project-page extraction - the
+mechanical facts behind competitor URLs. The JUDGMENT lives with the
+researcher: comp_discovery gathers these into per-candidate Official-URL
+options and the analyst cites one by id (or null) in its final JSON. The old
+CP-4 rule-ladder and the standalone identity judge are retired (Kailash: the
+researcher with the full context judges, never a post-hoc model).
 """
 
 from __future__ import annotations
@@ -17,8 +14,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from urllib.parse import urlparse
-
 import httpx
 
 from app.agents.adzump._shared import host_of, is_aggregator_host
@@ -28,13 +23,6 @@ logger = logging.getLogger(__name__)
 # Extends the shared AGGREGATOR_HOSTS with google.com - covers Maps citation
 # URLs that show up in search results (google.com/maps/search/<brand>).
 _AGGREGATOR_EXTRA_HOSTS: frozenset[str] = frozenset({"google.com"})
-
-# D-6: tokens too generic to prove a URL is about THIS project.
-_GENERIC_URL_TOKENS: frozenset[str] = frozenset({
-    "villa", "villas", "apartment", "apartments", "flat", "flats",
-    "home", "homes", "luxury", "premium", "bhk", "road",
-})
-_MIN_DISTINCTIVE_TOKEN_LENGTH = 4
 
 _LIVENESS_TIMEOUT_SECONDS = 4.0
 _EXTRACTION_TIMEOUT_SECONDS = 20.0
@@ -53,86 +41,10 @@ _NAME_SUFFIX_STRIPS = (
 )
 
 
-async def resolve_project_url(
-    name: str, current_url: str | None, session_ctx: dict
-) -> str | None:
-    """The CP-4 ladder for one FINAL competitor entry (clean analyst name).
-
-    Returns the entry's settled URL - may equal ``current_url``; None when the
-    entry had none and nothing was found (the entry stays link-less, honestly).
-    A ``current_url`` that already passes the D-6 token test short-circuits
-    without spending a lookup.
-    """
-    current_url = (current_url or "").strip() or None
-    if current_url and (is_aggregator_or_google_host(host_of(current_url))
-                        or is_broker_style_tld(host_of(current_url))):
-        # Aggregator pages and broker-style domains can never be the entry's
-        # official URL - honestly link-less beats a clone.
-        current_url = None
-    if current_url and _is_project_specific(current_url, name, session_ctx) \
-            and await is_alive(current_url):
-        # D-9: a dead current_url can never settle - without the liveness
-        # check here, a dead lookalike domain (rainbowmayfaire.com, live
-        # 2026-09-08) short-circuited the ladder forever and the correct
-        # GBP-listed site was never even consulted.
-        logger.info("project_url_kept: %r already project-specific (%s)",
-                    name, current_url)
-        return current_url
-
-    listing = await cached_business_listing(name, session_ctx)
-    website = ""
-    if listing:
-        if not listing_name_matches(name, listing["name"]):
-            logger.info("project_url_rejected: name mismatch %r vs listing %r (%s)",
-                        name, listing["name"], listing["website"])
-        else:
-            listing_host = host_of(listing["website"])
-            if not listing_host or is_aggregator_or_google_host(listing_host):
-                logger.info("project_url_rejected: shared/aggregator host %s for %r",
-                            listing_host, name)
-            elif is_broker_style_tld(listing_host):
-                # Brokers claim GBP listings for projects; a broker-style
-                # domain on the listing is a claimed profile, not identity.
-                logger.info("project_url_rejected: broker-style domain %s for %r",
-                            listing_host, name)
-            else:
-                website = listing["website"]
-    if not website:
-        logger.info("project_url_kept: %r no guard-passing GBP listing (%s)",
-                    name, current_url or "no url")
-        return current_url
-
-    if _is_project_specific(website, name, session_ctx):
-        if await is_alive(website):
-            logger.info("project_url_resolved: %r -> %s (rung 2: GBP project site)",
-                        name, website)
-            return website
-        # A dead site answers nothing at rung 3 and loses at rung 4 - skip both.
-        logger.info("project_url_kept: %r GBP site dead (%s)",
-                    name, current_url or "no url")
-        return current_url
-
-    project_page = await project_page_from_site(name, website, session_ctx)
-    if project_page:
-        logger.info("project_url_resolved: %r -> %s (rung 3: listing-site extraction)",
-                    name, project_page)
-        return project_page
-
-    # Rung 4 (D-7 keep-best): live GBP site beats a category/aggregator page;
-    # a dead one keeps whatever the search stage found.
-    if await is_alive(website):
-        logger.info("project_url_resolved: %r -> %s (rung 4: live GBP site)",
-                    name, website)
-        return website
-    logger.info("project_url_kept: %r extraction found nothing (%s)",
-                name, current_url or "no url")
-    return current_url
-
-
 async def cached_business_listings(name: str, session_ctx: dict) -> list[dict]:
-    """Locality-biased GBP lookup, memoized per session - the candidate stage
-    (comp_discovery), the final-entry ladder, and the identity judge all share
-    one Places call per name, misses included. Returns the RAW top-3 listings
+    """Locality-biased GBP lookup, memoized per session - the candidate URL
+    fill and the per-candidate Official-URL options share one Places call per
+    name, misses included. Returns the RAW top-3 listings
     (``[{name, website}]``, website may be ""); acceptance guards run with
     each caller. Concurrent first lookups for one name can both miss and both
     call Places (benign: last write wins, cost of one duplicate call)."""
@@ -150,9 +62,9 @@ async def cached_business_listings(name: str, session_ctx: dict) -> list[dict]:
 
 
 async def cached_business_listing(name: str, session_ctx: dict) -> dict | None:
-    """The ladder's view of the lookup: the TOP listing when it has a website,
-    else None (a lower listing's website is weaker identity evidence than the
-    ranking says - the judge weighs those, the ladder never did)."""
+    """The guarded top-1 view: the TOP listing when it has a website, else
+    None (a lower listing's website is weaker identity evidence than the
+    ranking says - the analyst weighs those via the options list)."""
     listings = await cached_business_listings(name, session_ctx)
     if listings and listings[0].get("website"):
         return listings[0]
@@ -195,10 +107,9 @@ def is_broker_style_tld(host: str) -> bool:
     """Kailash's prior (2026-09-04): in Indian real estate ~90% of sites that
     aren't plain .com/.in are broker lead-gen clones (.co.in, .info, .live
     swarms around every launch: nambiarvillasbannerghatta.co.in,
-    nambiarbannerghatta.info). Such a host may not become an entry's OFFICIAL
-    URL - creatives still flow (the ad search is name-driven) and a user pin
-    (url_source=user) bypasses this entirely. A code-side prior the CP-6 judge
-    can subsume later."""
+    nambiarbannerghatta.info). Such a host never becomes a citable
+    Official-URL option - creatives still flow (the ad search is name-driven)
+    and a user pin (url_source=user) bypasses this entirely."""
     if not host:
         return False
     host = host.split(":", 1)[0]
@@ -218,53 +129,6 @@ def parse_official_url(answer: str) -> str | None:
     if not (url.startswith("http://") or url.startswith("https://")):
         return None
     return url
-
-
-# ─── D-6 project-specific test ──────────────────────────────────────────────
-
-def _is_project_specific(url: str, name: str, session_ctx: dict) -> bool:
-    """D-6: a distinctive project-name token appears in the HOST (a dedicated
-    microsite), or in the PATH of a brand-owned host (the project's page on
-    the developer domain). A project slug on a third-party host
-    (propsoch.com/sobha-magnus) proves the page is ABOUT the project, not the
-    project's own page. No distinctive tokens = unprovable = not specific."""
-    tokens = _distinctive_tokens(name, session_ctx)
-    if not tokens:
-        return False
-    parsed = urlparse(url)
-    host_text = _compact(parsed.netloc)
-    if any(_token_stem(token) in host_text for token in tokens):
-        return True
-    name_tokens = normalize_business_name(name).split()
-    brand = name_tokens[0] if name_tokens else ""
-    if not brand or _token_stem(brand) not in host_text:
-        return False
-    path_text = _compact(parsed.path)
-    return any(_token_stem(token) in path_text for token in tokens)
-
-
-def _distinctive_tokens(name: str, session_ctx: dict) -> list[str]:
-    """Project-name tokens that can prove a URL is about THIS project: the
-    leading brand token is dropped (it matches the developer's own root -
-    'sobha' proves nothing about Sobha Magnus on sobha.com), as are generic
-    real-estate words, campaign-address words, and short tokens."""
-    place = (session_ctx.get("product_data") or {}).get("place") or {}
-    address_tokens = set(re.findall(r"[a-z0-9]+", (place.get("address") or "").lower()))
-    tokens = normalize_business_name(name).split()[1:]
-    return [t for t in tokens
-            if len(t) >= _MIN_DISTINCTIVE_TOKEN_LENGTH
-            and t not in _GENERIC_URL_TOKENS
-            and t not in address_tokens]
-
-
-def _token_stem(token: str) -> str:
-    """Singular/plural-tolerant prefix: 'springs' matches purvasparklingspring.com."""
-    stem = token[:-1] if token.endswith("s") else token
-    return stem if len(stem) >= _MIN_DISTINCTIVE_TOKEN_LENGTH else token
-
-
-def _compact(text: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
 
 
 # ─── Rung helpers ───────────────────────────────────────────────────────────

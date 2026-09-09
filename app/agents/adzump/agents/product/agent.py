@@ -160,17 +160,18 @@ def _discovery_violations(payload: dict | None, research_state: dict) -> list[st
 
 def _scrub_unverified(competitive: dict, research_state: dict) -> list[str]:
     """Last resort after the bounce: unverified entries keep their (usually
-    fine) names but lose the model-typed url and the unresolvable citation -
-    the URL ladder/judge settle their links from real evidence instead."""
+    fine) names but lose the model-typed url and the unresolvable citations -
+    they ship honestly link-less (creatives still fetch by name)."""
     verified_ids = {c.get("cid")
                     for c in research_state.get("verified_competitors") or []}
     scrubbed: list[str] = []
     for comp in competitive.get("competitors") or []:
         if not isinstance(comp, dict) or comp.get("competitor_id") in verified_ids:
             continue
-        if comp.get("url") or comp.get("competitor_id"):
+        if comp.get("url") or comp.get("competitor_id") or comp.get("official_url_id"):
             comp["url"] = None
             comp.pop("competitor_id", None)
+            comp.pop("official_url_id", None)
             scrubbed.append(comp.get("name") or "?")
     return scrubbed
 
