@@ -216,5 +216,81 @@ class JourneyEngineTests(unittest.TestCase):
         self.assertTrue(launch_required <= set(names))
 
 
+class DependencyMirrorTests(unittest.TestCase):
+    """Slice 6 · the forward ask-order graph (Step.requires) and the backward
+    invalidation graph (_FIELD_DEPENDENTS) are ONE graph read in two
+    directions, maintained by hand in two files. The drift that matters:
+    step B is asked after A because B's answer assumes A - so a change to A
+    must clear B, or a stale B ships (the wrong-city-launch bug class, R11)."""
+
+    # Step name -> the spec field(s) that step fills. Steps outside the spec
+    # cascade are exempt: product is the whole session (a new URL restarts
+    # everything), target_areas lives in product_data (its invalidation is the
+    # location hook, behavior-tested in test_campaign_data).
+    STEP_FIELDS = {
+        "location": ("location",),
+        "platform": ("platform",),
+        "competitive_analysis": ("competitive_analysis",),
+        "competitor_creatives": ("competitor_creatives",),
+        "duration": ("duration",),
+        "budget": ("budget",),
+        "parent_account": ("parent_account",),
+        "account": ("account",),
+        "fb_page": ("fb_page",),
+        "instagram": ("ig_page", "instagram"),
+    }
+    EXEMPT = {"product", "target_areas"}
+
+    @staticmethod
+    def _invalidated_by(field: str) -> set[str]:
+        """Transitive closure of _FIELD_DEPENDENTS from one changed field."""
+        from app.agents.adzump.tools.campaign_data import _FIELD_DEPENDENTS
+        cleared: set[str] = set()
+        frontier = [field]
+        while frontier:
+            for dep in _FIELD_DEPENDENTS.get(frontier.pop(), ()):
+                if dep not in cleared:
+                    cleared.add(dep)
+                    frontier.append(dep)
+        return cleared
+
+    def test_every_step_is_mapped_or_exempt(self):
+        # A NEW step must be placed in this mirror deliberately - either
+        # mapped to its spec field(s) or exempted with a reason above.
+        names = {step.name for step in NEW_CAMPAIGN.steps}
+        self.assertEqual(names - self.EXEMPT, set(self.STEP_FIELDS))
+        self.assertTrue(self.EXEMPT <= names)
+
+    def test_requires_edges_have_invalidation_mirrors(self):
+        for step in NEW_CAMPAIGN.steps:
+            fields = self.STEP_FIELDS.get(step.name, ())
+            for required_step in step.requires:
+                for changed in self.STEP_FIELDS.get(required_step, ()):
+                    cleared = self._invalidated_by(changed)
+                    for field in fields:
+                        with self.subTest(step=step.name,
+                                          after=required_step, field=field):
+                            self.assertIn(
+                                field, cleared,
+                                f"'{step.name}' is asked after "
+                                f"'{required_step}', so its answer assumes it "
+                                f"- but changing '{changed}' never clears "
+                                f"'{field}': a stale value would ship.",
+                            )
+
+    def test_dependents_name_real_spec_fields(self):
+        # Typo guard: every key and value in the invalidation map must be a
+        # real CampaignSpec field or a known legacy marker - a misspelled
+        # entry silently clears nothing.
+        from app.agents.adzump.models import LEGACY_DECLINED_KEYS, CampaignSpec
+        from app.agents.adzump.tools.campaign_data import _FIELD_DEPENDENTS
+        known = set(CampaignSpec.model_fields) | set(LEGACY_DECLINED_KEYS.values())
+        for changed, dependents in _FIELD_DEPENDENTS.items():
+            self.assertIn(changed, known)
+            for dep in dependents:
+                with self.subTest(changed=changed, dependent=dep):
+                    self.assertIn(dep, known)
+
+
 if __name__ == "__main__":
     unittest.main()
