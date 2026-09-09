@@ -722,8 +722,39 @@ async def _lookup_single_competitor(
 
     # ── Removals ──
     removed_names: list[str] = []
+    removal_notes: list[str] = []
     if remove:
-        names_to_remove = {_normalize_name(n) for n in remove.split(",") if n.strip()}
+        # Traceability guard: removal names must be the USER's words. Live
+        # 2026-09-09: 'remove sobha magnum' was relayed as remove='Sobha
+        # Magnus' - the model conflated near-identical siblings and deleted
+        # the REAL project while the phantom stayed. A relayed name absent
+        # from the user's message is swapped for the entry the user actually
+        # named (when that's unambiguous), else skipped with a note.
+        from app.agents.adzump.tools.campaign_data import _last_user_text
+        user_compact = _normalize_name(_last_user_text(context))
+        names_to_remove: set[str] = set()
+        for requested in (n.strip() for n in remove.split(",") if n.strip()):
+            requested_norm = _normalize_name(requested)
+            if not user_compact or requested_norm in user_compact:
+                names_to_remove.add(requested_norm)
+                continue
+            user_named = [
+                c for c in competitors_list
+                if isinstance(c, dict)
+                and _normalize_name(c.get("name") or "")
+                and _normalize_name(c.get("name") or "") in user_compact
+            ]
+            if len(user_named) == 1:
+                actual = user_named[0].get("name") or "?"
+                logger.warning("competitor_remove_swapped: tool said %r, the "
+                               "user named %r - removing the user's pick",
+                               requested, actual)
+                names_to_remove.add(_normalize_name(actual))
+            else:
+                removal_notes.append(
+                    f"Didn't remove '{requested}' - the user's message names "
+                    "a different (or no single) entry; confirm which one."
+                )
         kept: list[dict] = []
         for c in competitors_list:
             cname = _normalize_name(c.get("name") or "")
@@ -778,7 +809,14 @@ async def _lookup_single_competitor(
                 " - SKIP ONLY when you cannot find the business at all, or "
                 "the name is too ambiguous to identify one business (reason: "
                 "'not found' / 'ambiguous - which X did you mean?'). NEVER "
-                "skip for format/price/location.\n\n"
+                "skip for format/price/location.\n"
+                " - TYPO RESOLUTION: when a named business does not verifiably "
+                "exist but the evidence clearly points to a near-identical "
+                "REAL project ('Sobha Magnum' when only 'Sobha Magnus' "
+                "exists), add THE REAL project under its correct name and "
+                "state the correction in why_competitor. NEVER build an entry "
+                "for a phantom name out of clone/prelaunch sites - broker "
+                "clones squat on every plausible spelling.\n\n"
                 "Return a ```json block with:\n"
                 "- 'competitive.competitors' array: one entry per ADDED business "
                 "with name, competitor_id (its fetch_candidates ID), "
@@ -862,7 +900,7 @@ async def _lookup_single_competitor(
 
     # ── Nothing happened ──
     if not removed_names and not new_competitors and not skipped \
-            and not url_acks and not refreshed_names:
+            and not url_acks and not refreshed_names and not removal_notes:
         if url_rejections:
             return ToolResult(
                 success=False,
@@ -900,6 +938,9 @@ async def _lookup_single_competitor(
     sections: list[str] = []
     if removed_names:
         sections.append("**Removed:** " + ", ".join(removed_names))
+    if removal_notes:
+        sections.append("**Not removed:**\n"
+                        + "\n".join(f"- {n}" for n in removal_notes))
     if new_competitors:
         names = [c.get("name") or "?" for c in new_competitors]
         sections.append("**Added:**\n" + "\n".join(f"- {n}" for n in names))
