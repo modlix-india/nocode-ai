@@ -40,11 +40,15 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────
 #
-# gpt-4o-mini for the same reason as VisionAnalyst: vision-capable at ~1/20th
-# of Sonnet's price, and the task is labeling, not reasoning.
-ESSENCE_PROVIDER = "openai"
-ESSENCE_MODEL_TIER = "fast"
-ESSENCE_MODEL_OVERRIDE = "openai:gpt-4o-mini"
+# DeepSeek vision after the 2026-09-10 bench (scripts/bench_essence.py, report
+# in logs/bench_essence_report.md): grounded hooks where gpt-4o-mini fabricated
+# text not on the image, reads on-image prices/OCR verbatim, ~20x cheaper
+# vision input, and streams reasoning for the observability card. Trade-off:
+# ~4x slower per batch - acceptable for a background enrich. VisionAnalyst
+# (logo/creative picks) stays on gpt-4o-mini pending its own bench.
+ESSENCE_PROVIDER = "deepseek"
+ESSENCE_MODEL_TIER = "deepseek-v4-flash-vision-exp"
+ESSENCE_MODEL_OVERRIDE = "deepseek:deepseek-v4-flash-vision-exp"
 
 # One verdict is ~150-200 output tokens; the chunk cap keeps the whole batch
 # well under the ceiling so truncation (-> unparseable JSON) can't happen.
