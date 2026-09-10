@@ -44,6 +44,10 @@ from app.agents.adzump.creative_intelligence.sources.base import (
     AdIntelligenceSource,
     SourceFetch,
 )
+from app.agents.adzump.services.business_storage import (
+    normalize_business_url,
+    resolve_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +94,12 @@ def _campaign_country(ctx: dict) -> str:
     return ((product.get("place") or {}).get("country_code") or "").strip()
 
 
+def _business_url(ctx: dict) -> str:
+    """Normalized businessUrl of the session's product (the AISuggestedData
+    storage key), or empty when the session has no product yet."""
+    return normalize_business_url(resolve_url(ctx.get("session_context") or {}))
+
+
 def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
     """Pull (key, name) from a competitor profile. ``key`` is the normalized
     domain when the profile has a URL, else a name-scoped key.
@@ -125,6 +135,8 @@ async def creatives_for(
     fetched, prior = await _fetch_stage(
         key=key, name=name, ctx=ctx, force=force, source=source)
     if fetched is None:
+        if prior:
+            await _stamp_business_url(prior, ctx)
         return prior
     return await _process_stage(key=key, name=name, ctx=ctx,
                                 fetched=fetched, prior=prior, enrich=enrich)
@@ -183,6 +195,7 @@ async def _process_stage(
         logo_url=fetched.logo_url,
         platform_ids=fetched.platform_ids,
         creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],
+        business_urls=_merged_business_urls(prior, ctx),
         last_fetched_at=datetime.now(timezone.utc).isoformat(),
         fetch_status="ok" if fetched.creatives else "empty",
     )
@@ -196,11 +209,40 @@ async def _process_stage(
     return competitor
 
 
+def _merged_business_urls(prior: Competitor | None, ctx: dict) -> list[str]:
+    """The prior record's product associations plus the current session's
+    product - a shared record accretes every product that researched it."""
+    urls = list(prior.business_urls) if prior else []
+    url = _business_url(ctx)
+    if url and url not in urls:
+        urls.append(url)
+    return urls
+
+
+async def _stamp_business_url(record: Competitor, ctx: dict) -> None:
+    """Backfill the current product onto a record served straight from the store
+    (cache hit / stale-serve / kept-prior). Only real ingests write, so without
+    this a product whose competitors are all cache-warm would never appear in
+    ``businessUrls`` - and the creatives page groups the library by that field.
+    At most one write per product-competitor pair; a failed stamp only logs,
+    the serve itself must never break on it."""
+    url = _business_url(ctx)
+    if not url or url in record.business_urls:
+        return
+    record.business_urls.append(url)
+    try:
+        await store.upsert_competitor(record, ctx)
+    except Exception as e:
+        logger.warning("creative_intelligence: businessUrl stamp failed key=%s: %s: %s",
+                       record.competitor_key, type(e).__name__, str(e)[:200])
+
+
 async def creatives_for_all(
     competitors: list[CompetitorProfile], ctx: dict, *, force: bool = False,
     source: AdIntelligenceSource | None = None,
     enrich: EnrichCreatives | None = None,
     on_resolved: Callable[[str, Competitor], Awaitable[None]] | None = None,
+    on_stage: Callable[[str], Awaitable[None]] | None = None,
 ) -> dict[str, Competitor]:
     """Resolve every entry, pipelined: source fetches stay strictly sequential
     (the vendor is rate-limited and metered), but each competitor's unmetered
@@ -212,6 +254,11 @@ async def creatives_for_all(
     competitor resolves (cache hits immediately, fetched ones as their processing
     lands), so a caller can stream partial results to the user. Callback failures
     are logged, never poison the batch.
+
+    ``on_stage(message)`` - optional async callback for phase-level progress
+    ("searching X…", "N ads found - saving…") so a minutes-long batch never
+    leaves the user staring at a silent spinner. Same failure contract as
+    ``on_resolved``.
 
     Returns ``{key: Competitor}`` for every competitor resolved. Skips entries
     without a usable domain - the source query and our dedup key both need one."""
@@ -229,6 +276,15 @@ async def creatives_for_all(
         except Exception as e:
             logger.warning("creative_intelligence: on_resolved failed key=%s: %s: %s",
                            key, type(e).__name__, str(e)[:200])
+
+    async def _stage(message: str) -> None:
+        if on_stage is None:
+            return
+        try:
+            await on_stage(message)
+        except Exception as e:
+            logger.warning("creative_intelligence: on_stage failed: %s: %s",
+                           type(e).__name__, str(e)[:120])
 
     async def _process_and_deliver(key: str, name: str, fetched: SourceFetch,
                                    prior: Competitor | None) -> None:
@@ -263,6 +319,7 @@ async def creatives_for_all(
         if key in seen:  # same domain listed twice - fetch once
             continue
         seen.add(key)
+        await _stage(f"Searching the ad library - {name}…")
         try:
             fetched, prior = await _fetch_stage(
                 key=key, name=name, ctx=ctx, force=force, source=source)
@@ -273,8 +330,11 @@ async def creatives_for_all(
             continue
         if fetched is None:
             if prior:
+                await _stage(f"{name}: already in the library")
+                await _stamp_business_url(prior, ctx)
                 await _deliver(key, prior)
             continue
+        await _stage(f"{name}: {len(fetched.creatives)} ads found - saving…")
         tasks.append(asyncio.create_task(
             _process_and_deliver(key, name, fetched, prior)))
 

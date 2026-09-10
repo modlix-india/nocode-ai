@@ -15,6 +15,7 @@ don't spend ad-library credits unless creatives are actually wanted.
 from __future__ import annotations
 
 import logging
+import time
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
@@ -43,7 +44,7 @@ def _essence_enrich(context: dict):
 
     async def _enrich(images):
         # The launcher owns the card open; extract() emits agent_finished.
-        await pre_emit_agent_started(
+        essence_tuid = await pre_emit_agent_started(
             stream, agent_id="creative_essence", label="Essence Analyst",
             parent_tool_use_id=context.get("tool_use_id", ""), context=session_ctx,
         )
@@ -53,6 +54,7 @@ def _essence_enrich(context: dict):
                 "url": session_ctx.get("primary_url") or session_ctx.get("url", ""),
                 "craft_id": session_ctx.get("craft_id", ""),
             },
+            agent_tool_use_id=essence_tuid,
         )
 
     return _enrich
@@ -151,6 +153,21 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             audience="both",
         )
 
+    # One live "Ad Library" span narrates the whole batch (search / found /
+    # saved per competitor) - a minutes-long fetch must never show a silent
+    # spinner. The essence spans open per ingest alongside it.
+    from app.core.streaming import pre_emit_agent_started
+
+    stream = context.get("event_stream")
+    adlib_start = time.monotonic()
+    adlib_tuid = await pre_emit_agent_started(
+        stream, agent_id="ad_library", label="Ad Library",
+        parent_tool_use_id=context.get("tool_use_id", ""), context=session_ctx,
+    )
+
+    async def _adlib_stage(message: str) -> None:
+        await emit_progress(context, message, tool_use_id=adlib_tuid)
+
     total_creatives = 0
     resolved = 0
 
@@ -168,18 +185,20 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             competitors[i] = profile.to_stored()
         total_creatives += dumped["totalCreatives"]
         resolved += 1
-        await emit_progress(
-            context,
-            f"{record.name or key}: {dumped['totalCreatives']} ads "
-            f"({resolved}/{len(keyed_indices)} competitors)…",
+        await _adlib_stage(
+            f"{record.name or key}: {dumped['totalCreatives']} ads saved "
+            f"({resolved}/{len(keyed_indices)} competitors)"
         )
         await rerender_craft(session_ctx, context, business,
                              spec.get("platform") or "")
 
+    adlib_status = "error"
     try:
         results = await ci.creatives_for_all(
             fetchable, context, force=force,
-            enrich=_essence_enrich(context), on_resolved=_on_resolved)
+            enrich=_essence_enrich(context), on_resolved=_on_resolved,
+            on_stage=_adlib_stage)
+        adlib_status = "success"
     except Exception as e:
         logger.warning("fetch_competitor_creatives failed: %s: %s",
                        type(e).__name__, str(e)[:200])
@@ -187,6 +206,14 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             success=False, error=f"Creative fetch failed: {e}",
             display_error="Couldn't fetch competitor ads right now.",
         )
+    finally:
+        if stream is not None:
+            await stream.emit_agent_finished(
+                agent_id="ad_library", status=adlib_status,
+                duration_ms=int((time.monotonic() - adlib_start) * 1000),
+                step_count=resolved,
+                summary=f"{total_creatives} ads from {resolved} competitors",
+            )
 
     # The consented fetch ran to completion - the offer is resolved even when it
     # found nothing (zero ads, no usable domains). An explicit marker, not the
