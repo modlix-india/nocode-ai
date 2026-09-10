@@ -207,19 +207,57 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertNotIn("search_type", captured)
         self.assertEqual(captured.get("query"), "X")
 
-    def test_mention_tier_ships_unattributed_ads_without_identity(self):
-        # No attributable page anywhere (all broker ads) -> the ads still ship
-        # as the mention tier, capped, and WITHOUT claiming a page identity.
-        brokers = [_ad(page_id=f"b{i}", page_name=f"Broker {i}")
-                   for i in range(scrapecreators.MENTION_ADS_CAP + 5)]
+    def test_mention_tier_requires_a_brand_mention(self):
+        # No attributable page anywhere (all broker ads): only ads whose OWN
+        # text names the brand ship (capped, no page identity claimed). Ads
+        # that merely matched locality keywords are attribution mismatches
+        # and never enter the library (Rule 5, live 2026-09-10).
+        mentioning = [_ad(page_id=f"b{i}", page_name=f"Broker {i}")
+                      for i in range(scrapecreators.MENTION_ADS_CAP + 5)]
+        for ad in mentioning:
+            ad["snapshot"]["body"] = {"text": "New launch: Nambiar Villas X!"}
+        unrelated = [_ad(page_id=f"u{i}", page_name=f"Other {i}")
+                     for i in range(4)]
         source = self._source_with_pages([
-            {"searchResults": brokers, "cursor": ""},
+            {"searchResults": unrelated + mentioning, "cursor": ""},
         ])
         fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas X"))
         self.assertEqual(len(fetched.creatives), scrapecreators.MENTION_ADS_CAP)
         self.assertEqual(fetched.resolved_name, "")
         self.assertEqual(fetched.logo_url, "")
         self.assertEqual(fetched.platform_ids, {})
+        with self.subTest("no ad names the brand -> nothing ships"):
+            source = self._source_with_pages([
+                {"searchResults": unrelated, "cursor": ""},
+            ])
+            fetched = asyncio.run(source.fetch(domain="",
+                                               name="Nambiar Villas X"))
+            self.assertEqual(fetched.creatives, [])
+
+    def test_carousel_expands_one_creative_per_card(self):
+        # Rule 4: N cards -> N creatives, each with its OWN asset and link -
+        # collapsing a carousel into one fileUrl is what produced mixed
+        # imagery under one ad.
+        ad = _ad()
+        ad["snapshot"]["display_format"] = "CAROUSEL"
+        ad["snapshot"]["images"] = []
+        ad["snapshot"]["cards"] = [
+            {"original_image_url": f"https://cdn/c{i}.jpg",
+             "title": f"Card {i}", "link_url": f"https://x.com/c{i}",
+             "body": {"text": f"card body {i}"}}
+            for i in range(3)
+        ]
+        creatives = scrapecreators._to_creatives(ad)
+        self.assertEqual([c.creative_id for c in creatives],
+                         ["a1:0", "a1:1", "a1:2"])
+        self.assertEqual([c.source_asset_url for c in creatives],
+                         [f"https://cdn/c{i}.jpg" for i in range(3)])
+        self.assertEqual([c.landing_url for c in creatives],
+                         [f"https://x.com/c{i}" for i in range(3)])
+        self.assertEqual(creatives[1].headline, "Card 1")
+        with self.subTest("single-asset ad stays one creative, id unchanged"):
+            creatives = scrapecreators._to_creatives(_ad())
+            self.assertEqual([c.creative_id for c in creatives], ["a1"])
 
     def test_cursor_pagination_stops_without_cursor(self):
         source = self._source_with_pages([

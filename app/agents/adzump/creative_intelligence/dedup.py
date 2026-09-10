@@ -16,9 +16,23 @@ from app.agents.adzump.creative_intelligence import phash
 
 
 def dedupe(creatives: list[Creative]) -> list[Creative]:
-    """Full deterministic cascade: exact first (cheap), then perceptual on the
+    """Full deterministic cascade: creative_id first (a re-run must update,
+    never duplicate), then exact content hash (cheap), then perceptual on the
     survivors."""
-    return dedupe_perceptual(dedupe_exact(creatives))
+    return dedupe_perceptual(dedupe_exact(dedupe_by_creative_id(creatives)))
+
+
+def dedupe_by_creative_id(creatives: list[Creative]) -> list[Creative]:
+    """Tier-0: one creative per creative_id - last one wins (the freshest
+    mapping of the same ad). Id-less creatives all pass through."""
+    by_id: dict[str, Creative] = {}
+    idless: list[Creative] = []
+    for c in creatives:
+        if c.creative_id:
+            by_id[c.creative_id] = c
+        else:
+            idless.append(c)
+    return list(by_id.values()) + idless
 
 
 def dedupe_exact(creatives: list[Creative]) -> list[Creative]:

@@ -74,14 +74,22 @@ class CompetitorCardsTests(unittest.TestCase):
                                 "sourceAssetUrl": "v.jpg"}, "f.jpg"),
             ("carousel poster rehosted", {"mediaType": "carousel", "posterUrl": "p.jpg",
                                           "sourceAssetUrl": "v.jpg"}, "p.jpg"),
-            ("vendor fallback", {"mediaType": "carousel", "sourceAssetUrl": "v.jpg"}, "v.jpg"),
+            # Vendor source URLs are signed-with-expiry and rot into error
+            # bodies - NEVER rendered (the "blank cards" bug, 2026-09-10).
+            # A legacy creative with only a source url is skipped.
+            ("vendor url never renders",
+             {"mediaType": "carousel", "sourceAssetUrl": "v.jpg"}, None),
             ("video poster", {"mediaType": "video", "posterUrl": "p.jpg",
                               "posterSourceUrl": "vp.jpg"}, "p.jpg"),
         ]:
             with self.subTest(url_precedence=name):
                 children: list = []
                 render_competitor_creatives(children, [creative], 1, 1)
-                self.assertEqual(_carousel_cards(children)[0]["url"], expected)
+                cards = _carousel_cards(children)
+                if expected is None:
+                    self.assertFalse(cards)
+                else:
+                    self.assertEqual(cards[0]["url"], expected)
         with self.subTest("video gets the play marker from its poster"):
             children = []
             render_competitor_creatives(

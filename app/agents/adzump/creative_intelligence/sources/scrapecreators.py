@@ -88,23 +88,32 @@ class ScrapeCreatorsSource:
         if page_ads:
             first = page_ads[0]
             snapshot = first.get("snapshot") or {}
+            creatives = [creative
+                         for a in page_ads[:MAX_CREATIVES_PER_COMPETITOR]
+                         for creative in _to_creatives(a)]
             return SourceFetch(
-                creatives=[_to_creative(a) for a in
-                           page_ads[:MAX_CREATIVES_PER_COMPETITOR]],
+                creatives=creatives,
                 resolved_name=first.get("page_name") or "",
                 logo_url=snapshot.get("page_profile_picture_url") or "",
                 platform_ids={"page_id": first.get("page_id")} if first.get("page_id") else {},
             )
-        # Mention tier: no attributable page - ship broker/reseller ads that
-        # matched the project keywords, WITHOUT claiming a page identity
-        # (no resolved_name/logo/page_id - these are ads ABOUT the project,
-        # from mixed pages, not the competitor's own creative strategy).
-        if ads:
+        # Mention tier: no attributable page - broker/reseller ads ABOUT the
+        # project, WITHOUT claiming a page identity (no resolved_name/logo/
+        # page_id). Attribution gate (Rule 5): the ad's own text must name the
+        # brand - a keyword search also returns ads for OTHER projects that
+        # merely share locality words, and shipping those mixes competitors'
+        # creatives (live 2026-09-10: an unrelated ad landed under Shriram).
+        mentions = [a for a in ads if _mentions_brand(a, name)]
+        if ads and not mentions:
+            logger.info("scrapecreators_attribution_dropped: name=%r "
+                        "unattributed=%d - none name the brand", name, len(ads))
+        if mentions:
             logger.info("scrapecreators_mention_tier: name=%r shipping %d of %d "
-                        "unattributed ads", name, min(len(ads), MENTION_ADS_CAP),
-                        len(ads))
+                        "brand-mentioning ads", name,
+                        min(len(mentions), MENTION_ADS_CAP), len(mentions))
         return SourceFetch(
-            creatives=[_to_creative(a) for a in ads[:MENTION_ADS_CAP]],
+            creatives=[creative for a in mentions[:MENTION_ADS_CAP]
+                       for creative in _to_creatives(a)],
         )
 
     # -- HTTP -----------------------------------------------------------------
@@ -228,6 +237,77 @@ def _video_url(item: dict) -> str:
     return item.get("video_hd_url") or item.get("video_sd_url") or ""
 
 
+def _card_text(card: dict) -> str:
+    body = card.get("body")
+    return (body.get("text") if isinstance(body, dict) else body) or ""
+
+
+def _mentions_brand(raw: dict, name: str) -> bool:
+    """Attribution for the mention tier: the ad's OWN text (page name, title,
+    body, card titles) must name the brand - keyword search also returns ads
+    for unrelated projects sharing locality words."""
+    brand = _compact(name)
+    if not brand:
+        return False
+    snapshot = raw.get("snapshot") or {}
+    body = snapshot.get("body")
+    texts = [raw.get("page_name"), snapshot.get("title"),
+             body.get("text") if isinstance(body, dict) else body]
+    for card in snapshot.get("cards") or []:
+        if isinstance(card, dict):
+            texts += [card.get("title"), _card_text(card)]
+    return any(brand in _compact(t) for t in texts if t)
+
+
+def _days_running(start, end) -> int:
+    try:
+        if start and end:
+            return max(0, int((int(end) - int(start)) / 86400))
+    except (TypeError, ValueError):
+        pass
+    return 0
+
+
+def _to_creatives(raw: dict) -> list[Creative]:
+    """One Creative per ASSET. A carousel ad has N cards, each with its own
+    asset - collapsing them into one record with a single fileUrl is what
+    produced mixed/unrelated imagery under one ad (Rule 4). Every card becomes
+    its own creative (id ``<archive_id>:<n>``) so each asset is independently
+    rehosted and verified. Single-asset ads map exactly as before."""
+    snapshot = raw.get("snapshot") or {}
+    cards = [c for c in (snapshot.get("cards") or []) if isinstance(c, dict)]
+    with_assets = [(c, _video_url(c), _image_url(c)) for c in cards]
+    with_assets = [(c, v, i) for c, v, i in with_assets if v or i]
+    if len(with_assets) < 2:
+        return [_to_creative(raw)]
+
+    base_id = str(raw.get("ad_archive_id") or "")
+    start, end = raw.get("start_date"), raw.get("end_date")
+    body = snapshot.get("body")
+    snap_text = (body.get("text") if isinstance(body, dict) else body) or ""
+    return [
+        Creative(
+            creative_id=f"{base_id}:{n}",
+            media_type="video" if video else "image",
+            source_asset_url=video or image,
+            poster_source_url=(card.get("video_preview_image_url") or ""
+                               if video else ""),
+            headline=card.get("title") or snapshot.get("title") or "",
+            primary_text=_card_text(card) or snap_text,
+            cta=card.get("cta_text") or snapshot.get("cta_text") or "",
+            landing_url=card.get("link_url") or snapshot.get("link_url") or "",
+            platform="meta",
+            publisher_platforms=raw.get("publisher_platform") or [],
+            first_seen=_unix_to_iso(start),
+            last_seen=_unix_to_iso(end),
+            is_active=bool(raw.get("is_active")),
+            days_running=_days_running(start, end),
+            metrics={"estSpend": raw.get("spend") or 0},
+        )
+        for n, (card, video, image) in enumerate(with_assets)
+    ]
+
+
 def _to_creative(raw: dict) -> Creative:
     snapshot = raw.get("snapshot") or {}
     # Carousel/multi-image ads carry their media per CARD, not in the top-level
@@ -256,17 +336,10 @@ def _to_creative(raw: dict) -> Creative:
             poster = videos[0].get("video_preview_image_url") or ""
 
     first_card = cards[0] if cards else {}
-    card_body = first_card.get("body")
-    card_text = (card_body.get("text") if isinstance(card_body, dict)
-                 else card_body) or ""
+    card_text = _card_text(first_card)
 
     start, end = raw.get("start_date"), raw.get("end_date")
-    days_running = 0
-    try:
-        if start and end:
-            days_running = max(0, int((int(end) - int(start)) / 86400))
-    except (TypeError, ValueError):
-        pass
+    days_running = _days_running(start, end)
 
     return Creative(
         creative_id=str(raw.get("ad_archive_id") or ""),

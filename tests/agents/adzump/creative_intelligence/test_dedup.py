@@ -12,7 +12,11 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 
 from app.agents.adzump.creative_intelligence import phash
-from app.agents.adzump.creative_intelligence.dedup import dedupe, dedupe_exact
+from app.agents.adzump.creative_intelligence.dedup import (
+    dedupe,
+    dedupe_by_creative_id,
+    dedupe_exact,
+)
 from app.agents.adzump.creative_intelligence.models import Creative
 
 # 64-bit hex hashes: all-ones and one-bit-off are near-dups; ones vs zeros are far apart.
@@ -75,6 +79,13 @@ class DedupTests(unittest.TestCase):
         with self.subTest("exact tier keeps the higher-signal representative"):
             out = dedupe_exact([_c("a", "H", impr=10), _c("b", "H", active=True, impr=1)])
             self.assertEqual([c.creative_id for c in out], ["b"])  # active beats impressions
+        with self.subTest("creative_id tier: a re-run updates, never duplicates"):
+            first = _c("same-id", "H1", "")
+            fresher = _c("same-id", "H2", "", active=True)
+            out = dedupe_by_creative_id([first, fresher, _c("", "H3", "")])
+            self.assertEqual(len(out), 2)
+            kept = next(c for c in out if c.creative_id == "same-id")
+            self.assertTrue(kept.is_active)  # last one wins
 
 
 if __name__ == "__main__":

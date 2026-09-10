@@ -82,6 +82,13 @@ class LibraryTests(unittest.TestCase):
         u = mock.patch.object(library.store, "upsert_competitor",
                               new=mock.AsyncMock(return_value="id1"))
         u.start(); self.addCleanup(u.stop)
+        # Served-URL verification passes by default here (it has its own
+        # dedicated tests in test_verify.py) - these tests own the
+        # cache/fetch/essence policy, not asset validity.
+        ver = mock.patch(
+            "app.agents.adzump.creative_intelligence.verify.verify_creative",
+            new=mock.AsyncMock(return_value=(True, "")))
+        ver.start(); self.addCleanup(ver.stop)
 
     def test_shared_key_searches_every_name(self):
         # Two entries sharing one domain key: the ad search is name-driven,
@@ -102,6 +109,20 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(calls, ["Purva Symphony", "Valmark Cityville"])
         self.assertEqual(len(fetched.creatives), 2)
         self.assertIsNone(prior)
+
+    def test_all_failed_validation_is_error_not_empty(self):
+        # Rule 7: a pipeline failure must never be disguised as "this
+        # competitor has no ads" - and the diagnostics say why.
+        with mock.patch(
+                "app.agents.adzump.creative_intelligence.verify.verify_creative",
+                new=mock.AsyncMock(return_value=(False, "fetch_failed"))):
+            rec = self._run(stored=None,
+                            source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
+        self.assertEqual(rec.fetch_status, "error")
+        self.assertIn("fetch_failed=2", rec.fetch_error)
+        self.assertEqual(rec.creatives, [])
+        self.assertEqual(rec.total_creatives, 0)
+        self.assertEqual({d["creativeId"] for d in rec.dropped}, {"a1", "b2"})
 
     def _run(self, *, stored, source, enrich=None, ctx=None):
         library.store.upsert_competitor.reset_mock()

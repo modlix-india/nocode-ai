@@ -104,6 +104,39 @@ async def get_competitor(key: str, ctx: dict) -> Competitor | None:
     return competitor
 
 
+async def list_competitors(ctx: dict, *, page_size: int = 50,
+                           max_pages: int = 40) -> list[Competitor]:
+    """Every record in the library (paged) - the repair sweep's read path.
+    Unparseable records are skipped with a warning, never fatal."""
+    competitors: list[Competitor] = []
+    for page in range(max_pages):
+        payload = {
+            "storageName": STORAGE_NAME,
+            "appCode": APP_CODE,
+            "clientCode": _library_client_code(ctx),
+            "page": page,
+            "size": page_size,
+        }
+        result = await get_saas_client().post(
+            STORAGE_READ_PAGE, headers=_library_headers(ctx), json=payload)
+        if not result.success:
+            logger.warning("creative_library_list_failed: page=%d err=%s",
+                           page, result.error)
+            break
+        records = extract_storage_records(result.data)
+        if not records:
+            break
+        for record in records:
+            try:
+                competitors.append(Competitor.model_validate(record))
+            except ValidationError as e:
+                logger.warning("creative_library_list_invalid: key=%s err=%s",
+                               record.get("competitorKey"), str(e)[:150])
+        if len(records) < page_size:
+            break
+    return competitors
+
+
 async def _read(key: str, ctx: dict) -> tuple[Competitor | None, str | None]:
     """Read the record and its storage id (the id is needed only for upsert).
     Returns (Competitor, record_id) or (None, None) on miss."""

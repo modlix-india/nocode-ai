@@ -192,11 +192,13 @@ def render_competitor_creatives(
     cards: list[dict] = []
     for c in (creatives or []):
         is_video = c.get("mediaType") == "video"
-        # Prefer rehosted URLs (fileUrl/posterUrl) over the vendor's TTL-flaky
-        # source URLs, whatever the media type.
-        poster = c.get("posterUrl") or c.get("posterSourceUrl")
-        url = poster if is_video \
-            else (c.get("fileUrl") or c.get("posterUrl") or c.get("sourceAssetUrl"))
+        # REHOSTED urls only - the vendor's source URLs are signed with an
+        # expiry and silently rot into error bodies (the "blank cards" bug,
+        # 2026-09-10). A creative without a rehosted asset is not renderable;
+        # the ingest verification + repair sweep keep such creatives out of
+        # the store, and any legacy leftovers are skipped here.
+        poster = c.get("posterUrl") or ""
+        url = poster if is_video else (c.get("fileUrl") or c.get("posterUrl"))
         if not url:
             continue
         caption = str(c.get("headline") or "").strip()
@@ -206,7 +208,7 @@ def render_competitor_creatives(
         if is_video:
             # Poster in the tile; the click target is the video itself, so
             # opening it in a new tab plays natively.
-            video_url = c.get("fileUrl") or c.get("sourceAssetUrl")
+            video_url = c.get("fileUrl")
             if video_url:
                 card = {"type": "image", "url": video_url, "thumb_url": poster}
         if caption:

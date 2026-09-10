@@ -164,6 +164,18 @@ class Creative(BaseModel):
     days_running: int = Field(default=0, alias="daysRunning")
     variants: int = 0
 
+    # Verified-asset facts (stamped by verify.py during ingest so the UI can
+    # reserve the right box before the media loads and badge video duration).
+    # Zero/empty means the creative predates verification (repaired by the
+    # Rule-9 sweep, scripts/sweep_creative_library.py).
+    width: int = 0
+    height: int = 0
+    aspect_ratio: float = Field(default=0.0, alias="aspectRatio")
+    duration_seconds: float = Field(default=0.0, alias="durationSeconds")
+    poster_width: int = Field(default=0, alias="posterWidth")
+    poster_height: int = Field(default=0, alias="posterHeight")
+    verified_at: str = Field(default="", alias="verifiedAt")
+
     # Vendor-variable numeric bag (impressions/likes/spend/…); kept as a dict
     # because which keys a source exposes differs per vendor.
     metrics: dict[str, Any] = Field(default_factory=dict)
@@ -208,9 +220,20 @@ class Competitor(BaseModel):
 
     creatives: list[Creative] = Field(default_factory=list)
 
+    # Normalized businessUrls (AISuggestedData keys) of the products whose
+    # research surfaced this competitor - how the creatives page groups the
+    # shared library by product. Grows by union, never replaced.
+    business_urls: list[str] = Field(default_factory=list, alias="businessUrls")
+
     source: str = SOURCE
     last_fetched_at: str = Field(default="", alias="lastFetchedAt")
     fetch_status: FetchStatus = Field(default="ok", alias="fetchStatus")
+    # Why fetch_status is "error" - a pipeline failure must never be disguised
+    # as "this competitor has no ads".
+    fetch_error: str = Field(default="", alias="fetchError")
+    # Diagnostic trail of creatives removed by verification or the repair
+    # sweep: {creativeId, fileUrl, reason, droppedAt}. Bounded by the writer.
+    dropped: list[dict[str, Any]] = Field(default_factory=list)
     schema_version: int = Field(default=SCHEMA_VERSION, alias="schemaVersion")
 
     @computed_field(alias="totalCreatives")

@@ -69,6 +69,12 @@ ESSENCE_RECENCY_DAYS = 30
 # competitor's whole unmetered half.
 _ENRICH_TIMEOUT_SECONDS = 400
 _PROCESS_TIMEOUT_SECONDS = 600
+# Served-URL verification (verify.py) is small GETs against our own file
+# server - parallel but polite.
+MAX_CONCURRENT_VERIFICATIONS = 6
+# The dropped[] diagnostic trail is bounded so a chronically-failing
+# competitor can't grow its record without limit.
+MAX_DROPPED_ENTRIES = 50
 
 _SOURCES = {"scrapecreators": ScrapeCreatorsSource, "adlibrary": AdLibrarySource}
 _default_source_instance: object | None = None
@@ -207,8 +213,11 @@ async def _process_stage(
     *, key: str, name: str, ctx: dict, fetched: SourceFetch,
     prior: Competitor | None, enrich: EnrichCreatives | None,
 ) -> Competitor:
-    """The unmetered half: rehost, dedup, essence, store. Safe to overlap with
-    other competitors' fetches - nothing here touches the vendor API."""
+    """The unmetered half: rehost, dedup, VERIFY, essence, store. Safe to
+    overlap with other competitors' fetches - nothing here touches the vendor
+    API. The record is built fully validated before the ONE store write, so a
+    partially-verified record can never be observed (Rule 8)."""
+    discovered = len(fetched.creatives)
     competitor = Competitor(
         competitor_key=key,
         name=fetched.resolved_name or name,
@@ -218,16 +227,77 @@ async def _process_stage(
         creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],
         business_urls=_merged_business_urls(prior, ctx),
         last_fetched_at=datetime.now(timezone.utc).isoformat(),
-        fetch_status="ok" if fetched.creatives else "empty",
     )
     binaries = await _attach_binaries(competitor, ctx)
-    # Deterministic dedup cascade: exact (md5) then perceptual (pHash). Vision
-    # never culls - it only adds essence (see dedup.py, creative_essence agent).
+    rehosted = sum(1 for c in competitor.creatives if c.file_url)
+    # Deterministic dedup cascade: creative_id, then exact (md5), then
+    # perceptual (pHash). Vision never culls - it only adds essence.
     competitor.creatives = dedupe(competitor.creatives)
+    # Rule 2/3/6: every asset is verified through the SERVED public URL before
+    # it can be written; failures are dropped with a diagnostic entry.
+    competitor.creatives, drop_entries, drop_reasons = await _verify_creatives(
+        competitor.creatives)
+    competitor.dropped = (drop_entries
+                          + (prior.dropped if prior else []))[:MAX_DROPPED_ENTRIES]
+
+    # Rule 7: the status must not lie. Everything-failed is a PIPELINE
+    # failure, never "this competitor has no ads".
+    if competitor.creatives:
+        competitor.fetch_status = "ok"
+        competitor.fetch_error = ""
+    elif discovered == 0:
+        competitor.fetch_status = "empty"
+    else:
+        competitor.fetch_status = "error"
+        competitor.fetch_error = (
+            f"all {discovered} discovered creatives failed validation: "
+            + ", ".join(f"{r}={n}" for r, n in sorted(drop_reasons.items())))
+
+    logger.info(
+        "creative_intelligence: ingest key=%s discovered=%d rehosted=%d "
+        "verified=%d written=%d dropped=%s",
+        key, discovered, rehosted, len(competitor.creatives),
+        len(competitor.creatives),
+        (dict(sorted(drop_reasons.items())) or "{}"),
+    )
+
     _carry_forward_essence(prior, competitor)
     await _enrich_essence(competitor, binaries, enrich)
     await store.upsert_competitor(competitor, ctx)
     return competitor
+
+
+async def _verify_creatives(
+    creatives: list[Creative],
+) -> tuple[list[Creative], list[dict], dict[str, int]]:
+    """Served-URL verification for every creative (bounded concurrency).
+    Returns (kept, dropped_diagnostics, reason_counts)."""
+    from app.agents.adzump.creative_intelligence import verify
+
+    sem = asyncio.Semaphore(MAX_CONCURRENT_VERIFICATIONS)
+    kept: list[Creative] = []
+    drop_entries: list[dict] = []
+    reasons: dict[str, int] = {}
+
+    async def _check(c: Creative) -> None:
+        async with sem:
+            ok, reason = await verify.verify_creative(c)
+        if ok:
+            kept.append(c)
+            return
+        reasons[reason] = reasons.get(reason, 0) + 1
+        drop_entries.append({
+            "creativeId": c.creative_id,
+            "fileUrl": c.file_url or c.source_asset_url,
+            "reason": reason,
+            "droppedAt": datetime.now(timezone.utc).isoformat(),
+        })
+
+    await asyncio.gather(*(_check(c) for c in creatives))
+    # gather scrambles completion order - keep the source ranking.
+    order = {id(c): i for i, c in enumerate(creatives)}
+    kept.sort(key=lambda c: order[id(c)])
+    return kept, drop_entries, reasons
 
 
 def _merged_business_urls(prior: Competitor | None, ctx: dict) -> list[str]:
@@ -402,10 +472,19 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
         return binaries
 
     async def _one(c, src: str, is_poster: bool) -> None:
-        res = await _uploads.rehost_image(
-            src, "competitor_creative", ctx, name=f"{key}-{c.creative_id}",
-            perceptual=True,
-        )
+        # Rule 1: the vendor URL is signed with an expiry - rehost NOW, retry
+        # twice with backoff, and a creative whose asset never lands is
+        # DROPPED downstream (never stored with a source url as fileUrl).
+        res = None
+        for attempt in range(3):
+            if attempt:
+                await asyncio.sleep(0.5 * (2 ** (attempt - 1)))
+            res = await _uploads.rehost_image(
+                src, "competitor_creative", ctx, name=f"{key}-{c.creative_id}",
+                perceptual=True,
+            )
+            if res and res.get("url"):
+                break
         if res and res.get("url"):
             if is_poster:
                 c.poster_url = res["url"]
@@ -419,10 +498,16 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
                     res["imageBytes"], res.get("contentType") or "image/jpeg")
 
     async def _one_video(c) -> None:
-        url = await _uploads.rehost_video(
-            c.source_asset_url, "competitor_creative", ctx,
-            name=f"{key}-{c.creative_id}",
-        )
+        url = None
+        for attempt in range(3):
+            if attempt:
+                await asyncio.sleep(0.5 * (2 ** (attempt - 1)))
+            url = await _uploads.rehost_video(
+                c.source_asset_url, "competitor_creative", ctx,
+                name=f"{key}-{c.creative_id}",
+            )
+            if url:
+                break
         if url:
             c.file_url = url  # dedup hashes stay on the poster still
 
