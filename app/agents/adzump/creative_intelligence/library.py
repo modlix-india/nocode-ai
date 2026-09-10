@@ -133,7 +133,7 @@ async def creatives_for(
     if not key:
         return None
     fetched, prior = await _fetch_stage(
-        key=key, name=name, ctx=ctx, force=force, source=source)
+        key=key, names=[name], ctx=ctx, force=force, source=source)
     if fetched is None:
         if prior:
             await _stamp_business_url(prior, ctx)
@@ -143,12 +143,18 @@ async def creatives_for(
 
 
 async def _fetch_stage(
-    *, key: str, name: str, ctx: dict, force: bool,
+    *, key: str, names: list[str], ctx: dict, force: bool,
     source: AdIntelligenceSource | None,
 ) -> tuple[SourceFetch | None, Competitor | None]:
     """The rate-limited half: cache check + source fetch. Returns
     ``(fetched, prior)`` - when ``fetched`` is None, ``prior`` IS the answer
-    (cache hit, stale-serve on failure, or kept-prior on empty fetch)."""
+    (cache hit, stale-serve on failure, or kept-prior on empty fetch).
+
+    ``names`` - every DISTINCT entry name sharing this key. The ad search is
+    name-driven, so a shared domain searches once per name and merges (live
+    2026-09-10: 'Purva Symphony' wrongly shared cityville.in and its single
+    search returned zero ads for Valmark Cityville, which never got searched
+    under its own name). Dedup downstream collapses any overlap."""
     src = source or _default_source()
 
     record = await store.get_competitor(key, ctx)
@@ -157,18 +163,33 @@ async def _fetch_stage(
         return None, record
 
     why = "forced" if force else ("stale" if record else "miss")
-    logger.info("creative_intelligence: fetching key=%s reason=%s", key, why)
+    logger.info("creative_intelligence: fetching key=%s reason=%s names=%d",
+                key, why, len(names))
     # A name-scoped key is not a host - advertiser attribution then runs on
     # name match alone (domain-link matching needs a real domain).
     search_domain = "" if key.startswith("name:") else key
-    try:
-        fetched = await src.fetch(domain=search_domain, name=name,
+    fetched: SourceFetch | None = None
+    for name in names:
+        try:
+            got = await src.fetch(domain=search_domain, name=name,
                                   country=_campaign_country(ctx))
-    except Exception as e:
-        # AdLibraryError, transport errors, bad JSON - ANY source failure serves
-        # stale rather than raising (the batch contract in the module docstring).
-        logger.warning("creative_intelligence: source fetch failed key=%s: %s: %s",
-                       key, type(e).__name__, str(e)[:200])
+        except Exception as e:
+            # AdLibraryError, transport errors, bad JSON - ANY source failure
+            # for this name is logged; other names still search. All-fail
+            # serves stale (the batch contract in the module docstring).
+            logger.warning("creative_intelligence: source fetch failed key=%s "
+                           "name=%r: %s: %s",
+                           key, name, type(e).__name__, str(e)[:200])
+            continue
+        if fetched is None:
+            fetched = got
+        else:
+            fetched.creatives.extend(got.creatives)
+            # Identity fields: first name that resolved them wins.
+            fetched.resolved_name = fetched.resolved_name or got.resolved_name
+            fetched.logo_url = fetched.logo_url or got.logo_url
+            fetched.platform_ids = fetched.platform_ids or got.platform_ids
+    if fetched is None:  # every name's fetch failed
         return None, record  # serve stale if we have it; else None
 
     if not fetched.creatives and record and record.creatives:
@@ -264,7 +285,6 @@ async def creatives_for_all(
     without a usable domain - the source query and our dedup key both need one."""
     results: dict[str, Competitor] = {}
     skipped = 0
-    seen: set[str] = set()
     tasks: list[asyncio.Task] = []
 
     async def _deliver(key: str, record: Competitor) -> None:
@@ -311,18 +331,24 @@ async def creatives_for_all(
             return
         await _deliver(key, record)
 
+    # Group first: several entries can share one key (two projects on a
+    # developer domain - or a bad URL join upstream). The search is
+    # name-driven, so every distinct name in the group gets its own search.
+    key_names: dict[str, list[str]] = {}
     for comp in competitors:
         key, name = competitor_identity(comp)
         if not key:
             skipped += 1
             continue
-        if key in seen:  # same domain listed twice - fetch once
-            continue
-        seen.add(key)
-        await _stage(f"Searching the ad library - {name}…")
+        names = key_names.setdefault(key, [])
+        if name and name.lower() not in (n.lower() for n in names):
+            names.append(name)
+
+    for key, names in key_names.items():
+        await _stage(f"Searching the ad library - {', '.join(names)}…")
         try:
             fetched, prior = await _fetch_stage(
-                key=key, name=name, ctx=ctx, force=force, source=source)
+                key=key, names=names, ctx=ctx, force=force, source=source)
         except Exception as e:
             # e.g. a stored record that no longer validates - skip, don't abort.
             logger.warning("creative_intelligence: competitor failed key=%s: %s: %s",
@@ -330,13 +356,13 @@ async def creatives_for_all(
             continue
         if fetched is None:
             if prior:
-                await _stage(f"{name}: already in the library")
+                await _stage(f"{names[0]}: already in the library")
                 await _stamp_business_url(prior, ctx)
                 await _deliver(key, prior)
             continue
-        await _stage(f"{name}: {len(fetched.creatives)} ads found - saving…")
+        await _stage(f"{names[0]}: {len(fetched.creatives)} ads found - saving…")
         tasks.append(asyncio.create_task(
-            _process_and_deliver(key, name, fetched, prior)))
+            _process_and_deliver(key, names[0], fetched, prior)))
 
     if tasks:
         await asyncio.gather(*tasks)  # each task handles its own failure

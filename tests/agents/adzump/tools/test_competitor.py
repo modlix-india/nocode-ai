@@ -73,6 +73,17 @@ class JoinVerifiedUrlsTests(unittest.TestCase):
              {"name": "Clone Co", "competitor_id": "C3",
               "official_url_id": "C3.U9", "url": None},
              None),
+            # Name-mismatch guard: an entry citing a candidate whose host and
+            # title share NO brand token gets its URL dropped (live 2026-09-10:
+            # 'Purva Symphony' cited the Valmark Cityville candidate, and the
+            # wrong domain key hijacked Valmark's ad search).
+            ("cross-brand citation is dropped",
+             {"name": "Purva Symphony", "competitor_id": "C1",
+              "official_url_id": "C1.U1", "url": None},
+             None),
+            ("generic-only name never false-flags",
+             {"name": "Luxury Villas", "competitor_id": "C2", "url": None},
+             "https://lodhagroup.com/azur"),
         ]
         for label, comp, expected_url in rows:
             with self.subTest(label):

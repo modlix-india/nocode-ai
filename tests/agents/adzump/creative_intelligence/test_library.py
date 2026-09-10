@@ -47,10 +47,11 @@ class FakeEnrich:
         return self._essences
 
 
-def _record(*, age_days: int, creatives=None) -> Competitor:
+def _record(*, age_days: int, creatives=None, business_urls=None) -> Competitor:
     fetched = (datetime.now(timezone.utc) - timedelta(days=age_days)).isoformat()
     return Competitor(competitor_key="nike.com", name="Nike", last_fetched_at=fetched,
-                      creatives=creatives or [Creative(creative_id="old")])
+                      creatives=creatives or [Creative(creative_id="old")],
+                      business_urls=business_urls or [])
 
 
 def _ad(creative_id: str, media_type: str = "image", *,
@@ -82,12 +83,32 @@ class LibraryTests(unittest.TestCase):
                               new=mock.AsyncMock(return_value="id1"))
         u.start(); self.addCleanup(u.stop)
 
-    def _run(self, *, stored, source, enrich=None):
+    def test_shared_key_searches_every_name(self):
+        # Two entries sharing one domain key: the ad search is name-driven,
+        # so BOTH names search and their ads merge - the first entry's name
+        # must never silently represent the others (live 2026-09-10).
+        calls: list[str] = []
+
+        class RecordingSource(FakeSource):
+            async def fetch(self, *, domain, name, country=""):
+                calls.append(name)
+                return SourceFetch(creatives=[_ad("ad-" + name)], resolved_name=name)
+
+        with mock.patch.object(library.store, "get_competitor",
+                               new=mock.AsyncMock(return_value=None)):
+            fetched, prior = asyncio.run(library._fetch_stage(
+                key="cityville.in", names=["Purva Symphony", "Valmark Cityville"],
+                ctx={}, force=False, source=RecordingSource()))
+        self.assertEqual(calls, ["Purva Symphony", "Valmark Cityville"])
+        self.assertEqual(len(fetched.creatives), 2)
+        self.assertIsNone(prior)
+
+    def _run(self, *, stored, source, enrich=None, ctx=None):
         library.store.upsert_competitor.reset_mock()
         with mock.patch.object(library.store, "get_competitor",
                                new=mock.AsyncMock(return_value=stored)):
             return asyncio.run(library.creatives_for(
-                key="nike.com", name="Nike", ctx={}, source=source, enrich=enrich))
+                key="nike.com", name="Nike", ctx=ctx or {}, source=source, enrich=enrich))
 
     def test_cache_or_fetch_or_stale_policy(self):
         with self.subTest("fresh hit never calls the source"):
@@ -116,7 +137,7 @@ class LibraryTests(unittest.TestCase):
             self.assertEqual(rec.creatives[0].creative_id, "old")
             library.store.upsert_competitor.assert_not_awaited()
         with self.subTest("one failed FETCH does not abort the batch"):
-            async def fetch_one_bad(*, key, name, ctx, force, source):
+            async def fetch_one_bad(*, key, names, ctx, force, source):
                 if key == "bad.com":
                     raise RuntimeError("poisoned record")
                 return None, _record(age_days=1)  # cache hit
@@ -142,6 +163,39 @@ class LibraryTests(unittest.TestCase):
         with self.subTest("no key -> None"):
             self.assertIsNone(asyncio.run(library.creatives_for(
                 key="", name="x", ctx={}, source=FakeSource())))
+
+    def test_business_url_stamping(self):
+        ctx = {"session_context": {"product_profile": {"url": "http://www.Springs.com/villas/"}}}
+        url = "https://springs.com/villas"
+        with self.subTest("ingest stamps the session's product, unioned with prior"):
+            stored = _record(age_days=99, business_urls=["https://other.com"])
+            rec = self._run(stored=stored, source=FakeSource(creatives=[_ad("new")]), ctx=ctx)
+            self.assertEqual(rec.business_urls, ["https://other.com", url])
+        with self.subTest("cache hit backfills a missing product with ONE write"):
+            rec = self._run(stored=_record(age_days=1), source=FakeSource(), ctx=ctx)
+            self.assertEqual(rec.business_urls, [url])
+            library.store.upsert_competitor.assert_awaited_once()
+        with self.subTest("cache hit with the product already stamped never writes"):
+            self._run(stored=_record(age_days=1, business_urls=[url]),
+                      source=FakeSource(), ctx=ctx)
+            library.store.upsert_competitor.assert_not_awaited()
+        with self.subTest("no product in session: no stamp, no write"):
+            rec = self._run(stored=_record(age_days=1), source=FakeSource())
+            self.assertEqual(rec.business_urls, [])
+            library.store.upsert_competitor.assert_not_awaited()
+        with self.subTest("a failed stamp write still serves the record"):
+            with mock.patch.object(library.store, "upsert_competitor",
+                                   new=mock.AsyncMock(side_effect=RuntimeError("refused"))):
+                rec = self._run(stored=_record(age_days=1), source=FakeSource(), ctx=ctx)
+            self.assertEqual(rec.creatives[0].creative_id, "old")
+        with self.subTest("batch cache-hit path stamps too"):
+            library.store.upsert_competitor.reset_mock()
+            with mock.patch.object(library.store, "get_competitor",
+                                   new=mock.AsyncMock(return_value=_record(age_days=1))):
+                results = asyncio.run(library.creatives_for_all(
+                    [CompetitorProfile(name="Nike", url="https://nike.com")], ctx=ctx))
+            self.assertEqual(results["nike.com"].business_urls, [url])
+            library.store.upsert_competitor.assert_awaited_once()
 
     def test_default_source_selection(self):
         rows = [("scrapecreators", library.ScrapeCreatorsSource),
@@ -240,10 +294,10 @@ class LibraryTests(unittest.TestCase):
             async def on_resolved(key, record):
                 delivered.append(key)
 
-            async def stage(*, key, name, ctx, force, source):
+            async def stage(*, key, names, ctx, force, source):
                 if key == "cached.com":
                     return None, _record(age_days=1)  # cache hit
-                return SourceFetch(creatives=[_ad("a1")], resolved_name=name), None
+                return SourceFetch(creatives=[_ad("a1")], resolved_name=names[0]), None
 
             with mock.patch.object(library, "_fetch_stage", new=stage), \
                  mock.patch.object(library.store, "get_competitor",

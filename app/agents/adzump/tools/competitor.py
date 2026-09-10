@@ -51,6 +51,32 @@ def _normalize_name(s: str) -> str:
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
 
 
+_NAME_MATCH_STOPWORDS = frozenset({
+    "villa", "villas", "villament", "villaments", "apartment", "apartments",
+    "flat", "flats", "home", "homes", "house", "houses", "plot", "plots",
+    "project", "projects", "property", "properties", "luxury", "premium",
+    "gated", "community", "sale", "bangalore", "bengaluru", "road", "south",
+    "north", "east", "west", "launch", "upcoming",
+})
+
+
+def _url_matches_entry_name(comp_name: str, url: str, candidate_name: str) -> bool:
+    """Code check on the analyst's citation: the entry must share at least one
+    brand token with the cited candidate's host or page title. Live
+    2026-09-10: 'Purva Symphony' cited the Valmark Cityville candidate and
+    shipped cityville.in - that wrong-domain key then hijacked Valmark's ad
+    search (one search per domain, first entry's name wins). No token
+    overlap = the citation is dropped, never trusted."""
+    from app.agents.adzump.competitor_urls import normalize_business_name
+
+    tokens = [t for t in normalize_business_name(comp_name).split()
+              if len(t) >= 4 and t not in _NAME_MATCH_STOPWORDS]
+    if not tokens:
+        return True  # nothing brand-like to check against - don't false-flag
+    haystack = _normalize_name(host_of(url)) + " " + _normalize_name(candidate_name)
+    return any(t in haystack for t in tokens)
+
+
 def _vetted_fallback(entry: dict) -> str | None:
     """The join's fallback URL (the fetched page) re-checked against the same
     vetting the options passed - a hallucinated pick or old-shape output must
@@ -108,6 +134,12 @@ def _join_verified_urls(competitive: dict, session_ctx: dict) -> None:
                            "falling back to the fetched page",
                            uid, comp.get("name"), sorted(options) or "none")
             comp["url"] = _vetted_fallback(entry)
+        if comp.get("url") and not _url_matches_entry_name(
+                comp.get("name") or "", comp["url"], entry.get("name") or ""):
+            logger.warning(
+                "competitor_url_name_mismatch: %r cited %s (%s) - URL dropped",
+                comp.get("name"), cid, host_of(comp["url"]))
+            comp["url"] = None
 
 
 _URL_VERIFY_QUESTION = (
