@@ -31,30 +31,115 @@ from app.agents.adzump.tools.craft import rerender_craft
 logger = logging.getLogger(__name__)
 
 
-def _essence_enrich(context: dict):
+class _CompetitorSpans:
+    """One AgentCard row per competitor in the current fetch. A span opens
+    lazily on its first stage message, its status line narrates every phase,
+    and it closes with the essence rollup as the row's takeaway. The essence
+    worker attributes its progress + insight lines here too - the user sees
+    competitors, never agent instances."""
+
+    def __init__(self, context: dict, session_ctx: dict) -> None:
+        self._context = context
+        self._session_ctx = session_ctx
+        self._stream = context.get("event_stream")
+        self._parent_tuid = context.get("tool_use_id", "")
+        self._open: dict[str, dict] = {}
+
+    async def _ensure(self, key: str, name: str) -> dict:
+        span = self._open.get(key)
+        if span is None:
+            from app.core.streaming import pre_emit_agent_started
+
+            agent_id = f"competitor:{key}"
+            tuid = await pre_emit_agent_started(
+                self._stream, agent_id=agent_id, label=name or key,
+                parent_tool_use_id=self._parent_tuid,
+                context=self._session_ctx,
+            )
+            span = {"tuid": tuid, "agent_id": agent_id,
+                    "started": time.monotonic()}
+            self._open[key] = span
+        return span
+
+    async def stage(self, key: str, name: str, message: str) -> None:
+        span = await self._ensure(key, name)
+        await emit_progress(self._context, message, tool_use_id=span["tuid"])
+
+    async def ids(self, key: str, name: str) -> tuple[str, str]:
+        """(tuid, agent_id) for the essence worker's attribution."""
+        span = await self._ensure(key, name)
+        return span["tuid"], span["agent_id"]
+
+    async def close(self, key: str, *, ads: int, creatives: list[dict]) -> None:
+        span = self._open.pop(key, None)
+        if span is None or self._stream is None:
+            return
+        await self._stream.emit_agent_finished(
+            agent_id=span["agent_id"], status="success",
+            duration_ms=int((time.monotonic() - span["started"]) * 1000),
+            step_count=ads,
+            summary=_essence_rollup(ads, creatives),
+        )
+
+    async def close_leftovers(self) -> None:
+        for key in list(self._open):
+            span = self._open.pop(key)
+            if self._stream is None:
+                continue
+            await self._stream.emit_agent_finished(
+                agent_id=span["agent_id"], status="error",
+                duration_ms=int((time.monotonic() - span["started"]) * 1000),
+                summary="did not finish - dropped from this batch",
+            )
+
+
+def _essence_rollup(ads: int, creatives: list[dict]) -> str:
+    """The row's takeaway, computed from stored verdicts (never a model call):
+    '15 ads · hooks: offer 6, aspiration 3 · 9 video / 6 static'."""
+    hooks: dict[str, int] = {}
+    video = static = analyzed = 0
+    for c in creatives or []:
+        essence = c.get("essence") if isinstance(c, dict) else None
+        if not essence:
+            continue
+        analyzed += 1
+        hook = essence.get("hookType") or essence.get("hook_type") or ""
+        if hook and hook != "other":
+            hooks[hook] = hooks.get(hook, 0) + 1
+        if (c.get("mediaType") or c.get("media_type")) == "video":
+            video += 1
+        else:
+            static += 1
+    parts = [f"{ads} ad{'s' if ads != 1 else ''}"]
+    if analyzed:
+        top = sorted(hooks.items(), key=lambda kv: -kv[1])[:2]
+        if top:
+            parts.append("hooks: " + ", ".join(
+                f"{h.replace('_', ' ')} {n}" for h, n in top))
+        parts.append(f"{video} video / {static} static")
+    return " · ".join(parts)
+
+
+def _essence_enrich(context: dict, spans: _CompetitorSpans):
     """The injected Tier-3 hook (see ``creative_intelligence/enrich.py``): one
-    Essence Analyst card + one single-shot extract per competitor ingest.
-    Constructed HERE - the tool owns orchestration; the library only awaits the
-    typed Protocol and never imports the agent."""
+    single-shot extract per competitor ingest, narrating onto that
+    competitor's card row. Constructed HERE - the tool owns orchestration; the
+    library only awaits the typed Protocol and never imports the agent."""
     from app.agents.adzump.agents.creative_essence import get_essence_analyst
-    from app.core.streaming import pre_emit_agent_started
 
     stream = context.get("event_stream")
     session_ctx = context.get("session_context", {}) or {}
 
-    async def _enrich(images):
-        # The launcher owns the card open; extract() emits agent_finished.
-        essence_tuid = await pre_emit_agent_started(
-            stream, agent_id="creative_essence", label="Essence Analyst",
-            parent_tool_use_id=context.get("tool_use_id", ""), context=session_ctx,
-        )
+    async def _enrich(images, *, key: str = "", name: str = ""):
+        tuid, agent_id = await spans.ids(key, name)
         return await get_essence_analyst().extract(
             images, stream, context.get("auth"),
             parent_session_context={
                 "url": session_ctx.get("primary_url") or session_ctx.get("url", ""),
                 "craft_id": session_ctx.get("craft_id", ""),
             },
-            agent_tool_use_id=essence_tuid,
+            status_tuid=tuid,
+            insight_agent_id=agent_id,
         )
 
     return _enrich
@@ -153,20 +238,12 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             audience="both",
         )
 
-    # One live "Ad Library" span narrates the whole batch (search / found /
-    # saved per competitor) - a minutes-long fetch must never show a silent
-    # spinner. The essence spans open per ingest alongside it.
-    from app.core.streaming import pre_emit_agent_started
-
-    stream = context.get("event_stream")
-    adlib_start = time.monotonic()
-    adlib_tuid = await pre_emit_agent_started(
-        stream, agent_id="ad_library", label="Ad Library",
-        parent_tool_use_id=context.get("tool_use_id", ""), context=session_ctx,
-    )
-
-    async def _adlib_stage(message: str) -> None:
-        await emit_progress(context, message, tool_use_id=adlib_tuid)
+    # One live card row PER COMPETITOR (the user thinks in competitors, not
+    # agent instances): its span opens when its search starts, its status line
+    # narrates every phase (search / found / saving / reading essence), and it
+    # closes with the essence rollup as the takeaway. A minutes-long fetch must
+    # never show a silent spinner.
+    spans = _CompetitorSpans(context, session_ctx)
 
     total_creatives = 0
     resolved = 0
@@ -185,20 +262,16 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             competitors[i] = profile.to_stored()
         total_creatives += dumped["totalCreatives"]
         resolved += 1
-        await _adlib_stage(
-            f"{record.name or key}: {dumped['totalCreatives']} ads saved "
-            f"({resolved}/{len(keyed_indices)} competitors)"
-        )
+        await spans.close(key, ads=dumped["totalCreatives"],
+                          creatives=dumped["creatives"])
         await rerender_craft(session_ctx, context, business,
                              spec.get("platform") or "")
 
-    adlib_status = "error"
     try:
         results = await ci.creatives_for_all(
             fetchable, context, force=force,
-            enrich=_essence_enrich(context), on_resolved=_on_resolved,
-            on_stage=_adlib_stage)
-        adlib_status = "success"
+            enrich=_essence_enrich(context, spans), on_resolved=_on_resolved,
+            on_stage=spans.stage)
     except Exception as e:
         logger.warning("fetch_competitor_creatives failed: %s: %s",
                        type(e).__name__, str(e)[:200])
@@ -207,13 +280,9 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             display_error="Couldn't fetch competitor ads right now.",
         )
     finally:
-        if stream is not None:
-            await stream.emit_agent_finished(
-                agent_id="ad_library", status=adlib_status,
-                duration_ms=int((time.monotonic() - adlib_start) * 1000),
-                step_count=resolved,
-                summary=f"{total_creatives} ads from {resolved} competitors",
-            )
+        # A competitor that failed/timed out mid-pipeline must not leave a
+        # forever-spinning row.
+        await spans.close_leftovers()
 
     # The consented fetch ran to completion - the offer is resolved even when it
     # found nothing (zero ads, no usable domains). An explicit marker, not the

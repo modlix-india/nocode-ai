@@ -40,7 +40,7 @@ class FakeEnrich:
         self._fail = fail
         self.calls: list[list[str]] = []
 
-    async def __call__(self, images):
+    async def __call__(self, images, **who):
         self.calls.append(sorted(ci.creative.content_hash for ci in images))
         if self._fail:
             raise RuntimeError("boom")
@@ -330,9 +330,9 @@ class LibraryTests(unittest.TestCase):
                     return await super().fetch(domain=domain, name=name)
 
             class GatedEnrich(FakeEnrich):
-                async def __call__(self, images):
+                async def __call__(self, images, **who):
                     await asyncio.wait_for(fetched_second.wait(), timeout=2)
-                    return await super().__call__(images)
+                    return await super().__call__(images, **who)
 
             gated = GatedEnrich()
 
@@ -382,7 +382,7 @@ class LibraryTests(unittest.TestCase):
         # gather - tool, turn, spinner - sat open 12+ minutes. A hang must
         # degrade to essence-less creatives within the deadline.
         class HungEnrich:
-            async def __call__(self, images):
+            async def __call__(self, images, **who):
                 await asyncio.sleep(3600)
 
         with mock.patch.object(library, "_ENRICH_TIMEOUT_SECONDS", 0.05):
@@ -394,7 +394,7 @@ class LibraryTests(unittest.TestCase):
 
     def test_hung_processing_drops_one_competitor_not_the_batch(self):
         class HungEnrich:
-            async def __call__(self, images):
+            async def __call__(self, images, **who):
                 await asyncio.sleep(3600)
 
         profiles = [

@@ -134,11 +134,15 @@ class AgentEventStream:
             data={"text": text, "agent_id": current_agent_id.get()},
         ))
 
-    async def emit_thinking(self, reasoning: str) -> None:
-        """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek)."""
+    async def emit_thinking(self, reasoning: str, agent_id: str | None = None) -> None:
+        """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek).
+
+        ``agent_id`` overrides the ambient ContextVar attribution - a worker
+        producing insight for ANOTHER card (essence verdicts narrating a
+        competitor's row) attributes explicitly."""
         await self._queue.put(AgentEvent(
             event=AgentEventType.THINKING,
-            data={"text": reasoning, "agent_id": current_agent_id.get()},
+            data={"text": reasoning, "agent_id": agent_id or current_agent_id.get()},
         ))
 
     async def emit_tool_start(

@@ -56,6 +56,26 @@ def _ci(content_hash: str, media_type: str = "image", **creative_fields) -> Crea
 
 
 class DeterministicSeamTests(unittest.TestCase):
+    def test_insight_line_rows(self):
+        from app.agents.adzump.agents.creative_essence.agent import _insight_line
+        from app.agents.adzump.creative_intelligence.models import Essence
+
+        for label, essence, expected in [
+            ("full verdict",
+             Essence(hook_type="offer", hook_text="Pay 10% now",
+                     media_format="static_image"),
+             "offer · “Pay 10% now” · static image"),
+            ("no hook text falls back to angle",
+             Essence(hook_type="aspiration", angle="own a lakeside home",
+                     media_format="static_image"),
+             "aspiration · “own a lakeside home” · static image"),
+            ("nothing labeled",
+             Essence(hook_type="other", media_format="static_image"),
+             "other · static image"),
+        ]:
+            with self.subTest(label):
+                self.assertEqual(_insight_line(essence), expected)
+
     def test_build_parse_collect_shrink(self):
         for name, text, want_hook in [
             ("fenced", f"```json\n{_VERDICT_JSON}\n```", "aspiration"),

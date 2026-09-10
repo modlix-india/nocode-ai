@@ -103,7 +103,8 @@ class EssenceAnalyst(BaseAgent):
         parent_event_stream: AgentEventStream,
         auth: AuthContext,
         parent_session_context: dict | None = None,
-        agent_tool_use_id: str = "",
+        status_tuid: str = "",
+        insight_agent_id: str = "",
     ) -> dict[str, Essence]:
         """Extract essence for every unique content_hash in ``images``.
 
@@ -128,18 +129,29 @@ class EssenceAnalyst(BaseAgent):
         tokens_in = tokens_out = 0
         status = "success"
 
-        # Live status line on this agent's card (the inner stream is silent
-        # by design; progress goes to the parent under our own tuid).
+        # Live narration on the COMPETITOR's card row (the inner stream is
+        # silent by design): status line via the row's tuid, per-verdict
+        # insight lines as its streamed thinking quote.
         analyzed = {"n": 0}
 
         async def _status(message: str) -> None:
-            if not agent_tool_use_id or parent_event_stream is None:
+            if not status_tuid or parent_event_stream is None:
                 return
             try:
-                await parent_event_stream.emit_tool_update(
-                    agent_tool_use_id, message)
+                await parent_event_stream.emit_tool_update(status_tuid, message)
             except Exception:
                 logger.debug("essence_status_emit_failed", exc_info=True)
+
+        async def _insights(got: dict[str, Essence]) -> None:
+            if not insight_agent_id or parent_event_stream is None:
+                return
+            for essence in got.values():
+                try:
+                    await parent_event_stream.emit_thinking(
+                        _insight_line(essence) + "\n",
+                        agent_id=insight_agent_id)
+                except Exception:
+                    logger.debug("essence_insight_emit_failed", exc_info=True)
 
         await _status(f"Reading {len(items)} ad creatives…")
 
@@ -170,6 +182,7 @@ class EssenceAnalyst(BaseAgent):
                 else:
                     _collect(batch, chunk, got)
             analyzed["n"] += len(chunk)
+            await _insights(got)
             await _status(f"Analyzed {analyzed['n']}/{len(items)} creatives…")
             return got, t_in, t_out
 
@@ -190,6 +203,14 @@ class EssenceAnalyst(BaseAgent):
             tokens_out += t_out
         if not essences:
             status = "error"  # every verdict failed to parse - not a quiet success
+
+        if insight_agent_id:
+            # Nested under a competitor's card row: the launcher owns that
+            # span's close (with the rollup) - no separate essence card.
+            if status == "error":
+                await _status("couldn't read these creatives - will retry "
+                              "on the next fetch")
+            return essences
 
         await self._emit_finished(
             parent_event_stream, run_start, status,
@@ -317,6 +338,20 @@ def _build_essence_message(
             },
         })
     return "\n".join(lines), blocks
+
+
+def _insight_line(essence: Essence) -> str:
+    """One expert line per verdict for the card's streaming quote:
+    'offer-led · "pay 10% now, rest on possession" · static image'."""
+    hook = (essence.hook_type or "").replace("_", " ")
+    quote = (essence.hook_text or essence.angle or "").strip()
+    fmt = (essence.media_format or "").replace("_", " ")
+    parts = [p for p in (
+        hook,
+        f"“{quote[:90]}”" if quote else "",
+        fmt,
+    ) if p]
+    return " · ".join(parts) or "unlabeled creative"
 
 
 def _drop_undecodable(items: list[CreativeImage]) -> list[CreativeImage]:

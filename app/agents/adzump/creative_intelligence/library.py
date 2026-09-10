@@ -263,7 +263,7 @@ async def creatives_for_all(
     source: AdIntelligenceSource | None = None,
     enrich: EnrichCreatives | None = None,
     on_resolved: Callable[[str, Competitor], Awaitable[None]] | None = None,
-    on_stage: Callable[[str], Awaitable[None]] | None = None,
+    on_stage: Callable[[str, str, str], Awaitable[None]] | None = None,
 ) -> dict[str, Competitor]:
     """Resolve every entry, pipelined: source fetches stay strictly sequential
     (the vendor is rate-limited and metered), but each competitor's unmetered
@@ -276,10 +276,10 @@ async def creatives_for_all(
     lands), so a caller can stream partial results to the user. Callback failures
     are logged, never poison the batch.
 
-    ``on_stage(message)`` - optional async callback for phase-level progress
-    ("searching X…", "N ads found - saving…") so a minutes-long batch never
-    leaves the user staring at a silent spinner. Same failure contract as
-    ``on_resolved``.
+    ``on_stage(key, name, message)`` - optional async callback for phase-level
+    progress ("searching…", "N ads found - saving…") attributed to ONE
+    competitor, so a minutes-long batch never leaves the user staring at a
+    silent spinner. Same failure contract as ``on_resolved``.
 
     Returns ``{key: Competitor}`` for every competitor resolved. Skips entries
     without a usable domain - the source query and our dedup key both need one."""
@@ -297,11 +297,11 @@ async def creatives_for_all(
             logger.warning("creative_intelligence: on_resolved failed key=%s: %s: %s",
                            key, type(e).__name__, str(e)[:200])
 
-    async def _stage(message: str) -> None:
+    async def _stage(key: str, name: str, message: str) -> None:
         if on_stage is None:
             return
         try:
-            await on_stage(message)
+            await on_stage(key, name, message)
         except Exception as e:
             logger.warning("creative_intelligence: on_stage failed: %s: %s",
                            type(e).__name__, str(e)[:120])
@@ -345,7 +345,7 @@ async def creatives_for_all(
             names.append(name)
 
     for key, names in key_names.items():
-        await _stage(f"Searching the ad library - {', '.join(names)}…")
+        await _stage(key, names[0], "searching the ad library…")
         try:
             fetched, prior = await _fetch_stage(
                 key=key, names=names, ctx=ctx, force=force, source=source)
@@ -356,11 +356,12 @@ async def creatives_for_all(
             continue
         if fetched is None:
             if prior:
-                await _stage(f"{names[0]}: already in the library")
+                await _stage(key, names[0], "already in the library")
                 await _stamp_business_url(prior, ctx)
                 await _deliver(key, prior)
             continue
-        await _stage(f"{names[0]}: {len(fetched.creatives)} ads found - saving…")
+        await _stage(key, names[0],
+                     f"{len(fetched.creatives)} ads found - saving…")
         tasks.append(asyncio.create_task(
             _process_and_deliver(key, names[0], fetched, prior)))
 
@@ -496,8 +497,9 @@ async def _enrich_essence(
         # essence run never returned; the whole fetch card ticked past 12
         # minutes) must degrade to essence-less creatives, never wedge the
         # batch - the next real ingest re-attempts.
-        essences = await asyncio.wait_for(enrich(pending),
-                                          timeout=_ENRICH_TIMEOUT_SECONDS)
+        essences = await asyncio.wait_for(
+            enrich(pending, key=competitor.competitor_key, name=competitor.name),
+            timeout=_ENRICH_TIMEOUT_SECONDS)
     except asyncio.TimeoutError:
         logger.warning("creative_intelligence: enrich timed out after %ds "
                        "key=%s n=%d - shipping without essence",

@@ -140,5 +140,27 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
         self.assertTrue(ctx["session_context"]["_competitor_creatives_fetched"])
 
 
+class EssenceRollupTests(unittest.TestCase):
+    """The card row's takeaway line, computed from stored verdicts."""
+
+    def test_rollup_rows(self):
+        offer = {"essence": {"hookType": "offer"}, "mediaType": "video"}
+        aspiration = {"essence": {"hookType": "aspiration"}, "mediaType": "image"}
+        other = {"essence": {"hookType": "other"}, "mediaType": "image"}
+        bare = {"mediaType": "image"}  # essence never parsed
+        for label, ads, items, expected in [
+            ("hooks counted, top-2, format split",
+             10, [offer, offer, aspiration, other],
+             "10 ads · hooks: offer 2, aspiration 1 · 2 video / 2 static"),
+            ("no essence at all - just the count", 3, [bare], "3 ads"),
+            ("singular ad", 1, [], "1 ad"),
+            ("'other' hooks never dominate the story", 2, [other, other],
+             "2 ads · 0 video / 2 static"),
+        ]:
+            with self.subTest(label):
+                self.assertEqual(creatives._essence_rollup(ads, items),
+                                 expected)
+
+
 if __name__ == "__main__":
     unittest.main()

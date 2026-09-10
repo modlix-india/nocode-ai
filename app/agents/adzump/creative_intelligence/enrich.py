@@ -28,6 +28,10 @@ class CreativeImage(BaseModel):
 class EnrichCreatives(Protocol):
     """Maps creative images to ``{content_hash: Essence}``. Implementations may
     return a subset (a verdict that never parses is simply absent) and must not
-    raise for a per-image failure - the library treats absence as essence=None."""
+    raise for a per-image failure - the library treats absence as essence=None.
 
-    async def __call__(self, images: list[CreativeImage]) -> dict[str, Essence]: ...
+    ``key``/``name`` identify WHOSE creatives these are, so the worker can
+    attribute its live progress and insight lines to that competitor's card."""
+
+    async def __call__(self, images: list[CreativeImage], *,
+                       key: str = "", name: str = "") -> dict[str, Essence]: ...
