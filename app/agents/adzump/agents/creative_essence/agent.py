@@ -18,6 +18,7 @@ import asyncio
 import base64
 import logging
 import time
+from io import BytesIO
 
 from pydantic import ValidationError
 
@@ -98,6 +99,7 @@ class EssenceAnalyst(BaseAgent):
         parent_event_stream: AgentEventStream,
         auth: AuthContext,
         parent_session_context: dict | None = None,
+        agent_tool_use_id: str = "",
     ) -> dict[str, Essence]:
         """Extract essence for every unique content_hash in ``images``.
 
@@ -112,7 +114,7 @@ class EssenceAnalyst(BaseAgent):
         for ci in images:
             if ci.creative.content_hash and ci.data:
                 unique.setdefault(ci.creative.content_hash, ci)
-        items = list(unique.values())
+        items = await asyncio.to_thread(_drop_undecodable, list(unique.values()))
         if not items:
             return {}
 
@@ -121,6 +123,21 @@ class EssenceAnalyst(BaseAgent):
         essences: dict[str, Essence] = {}
         tokens_in = tokens_out = 0
         status = "success"
+
+        # Live status line on this agent's card (the inner stream is silent
+        # by design; progress goes to the parent under our own tuid).
+        analyzed = {"n": 0}
+
+        async def _status(message: str) -> None:
+            if not agent_tool_use_id or parent_event_stream is None:
+                return
+            try:
+                await parent_event_stream.emit_tool_update(
+                    agent_tool_use_id, message)
+            except Exception:
+                logger.debug("essence_status_emit_failed", exc_info=True)
+
+        await _status(f"Reading {len(items)} ad creatives…")
 
         sem = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
 
@@ -148,6 +165,8 @@ class EssenceAnalyst(BaseAgent):
                         _collect(single, [ci], got)
                 else:
                     _collect(batch, chunk, got)
+            analyzed["n"] += len(chunk)
+            await _status(f"Analyzed {analyzed['n']}/{len(items)} creatives…")
             return got, t_in, t_out
 
         chunks = [items[s : s + MAX_IMAGES_PER_CALL]
@@ -294,6 +313,28 @@ def _build_essence_message(
             },
         })
     return "\n".join(lines), blocks
+
+
+def _drop_undecodable(items: list[CreativeImage]) -> list[CreativeImage]:
+    """Exclude creatives whose bytes PIL cannot decode (SVG, truncated
+    download, HTML error body). Sent as-is they 400 the whole vision call
+    (live 2026-09-10: one corrupt mention-tier image took out its batch).
+    Their essence stays None and a later refetch re-attempts."""
+    from PIL import Image
+
+    kept: list[CreativeImage] = []
+    for ci in items:
+        try:
+            with Image.open(BytesIO(ci.data)) as img:
+                img.verify()
+            kept.append(ci)
+        except Exception as e:
+            logger.warning(
+                "essence_skip_undecodable: hash=%s %s: %s",
+                (ci.creative.content_hash or "")[:12],
+                type(e).__name__, str(e)[:80],
+            )
+    return kept
 
 
 def _shrink_for_vision(data: bytes, content_type: str) -> tuple[bytes, str]:

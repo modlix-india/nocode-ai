@@ -34,11 +34,24 @@ _VERDICT_JSON = (
 )
 
 
+def _png_bytes() -> bytes:
+    """A real decodable 1x1 PNG - extract() drops bytes PIL can't verify."""
+    from io import BytesIO
+    from PIL import Image
+
+    buf = BytesIO()
+    Image.new("RGB", (1, 1)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_PNG = _png_bytes()
+
+
 def _ci(content_hash: str, media_type: str = "image", **creative_fields) -> CreativeImage:
     return CreativeImage(
         creative=Creative(creative_id=content_hash, media_type=media_type,
                           content_hash=content_hash, **creative_fields),
-        data=b"PIXELS-" + content_hash.encode(),
+        data=_PNG if content_hash else b"",
     )
 
 

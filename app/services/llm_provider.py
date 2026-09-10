@@ -1216,10 +1216,18 @@ class OpenAIProvider(LLMProvider):
                 kwargs["reasoning"] = reasoning_config
             if extra_request_kwargs:
                 kwargs.update(extra_request_kwargs)
-            stream = self.client.responses.create(**kwargs)
-            for event in stream:
-                queue.put_nowait(event)
-            queue.put_nowait(_sentinel)
+            try:
+                stream = self.client.responses.create(**kwargs)
+                for event in stream:
+                    queue.put_nowait(event)
+            except Exception as e:
+                # Same contract as the DeepSeek worker: a create() failure
+                # (e.g. 400 on a bad image) must reach the consumer, not die
+                # in the executor future while `await queue.get()` hangs
+                # forever (live 2026-09-10).
+                queue.put_nowait(_StreamError(e))
+            finally:
+                queue.put_nowait(_sentinel)
 
         asyncio.get_event_loop().run_in_executor(None, _run_stream)
 
@@ -1233,6 +1241,8 @@ class OpenAIProvider(LLMProvider):
             event = await queue.get()
             if event is _sentinel:
                 break
+            if isinstance(event, _StreamError):
+                raise event.exc
 
             etype = getattr(event, 'type', '')
 
@@ -1334,10 +1344,11 @@ class OpenAIProvider(LLMProvider):
 
 
 class _StreamError:
-    """Queue-passable wrapper for exceptions raised inside the streaming
-    worker thread of `DeepSeekProvider.stream_completion_with_tools` (and
-    MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
-    leaves the consumer's `await queue.get()` hung forever.
+    """Queue-passable wrapper for exceptions raised inside a streaming
+    worker thread (`OpenAIProvider` Responses and
+    `DeepSeekProvider.stream_completion_with_tools`, including MiniMax which
+    inherits it). Without this, a TLS drop, 5xx, or 400 leaves the
+    consumer's `await queue.get()` hung forever.
     """
 
     __slots__ = ("exc",)
