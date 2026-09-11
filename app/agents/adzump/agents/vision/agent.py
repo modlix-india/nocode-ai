@@ -487,7 +487,7 @@ class VisionAnalyst(BaseAgent):
     ) -> ProductAssets:
         """Run one vision pick and return resolved ``ProductAssets``.
 
-        Caller (``product_assets._select_assets_with_llm``) still owns:
+        Caller (``product_assets.select_product_assets``) still owns:
         candidate prefiltering, parallel fetching of thumbnails, and the
         bytes dict for the persister.
 
