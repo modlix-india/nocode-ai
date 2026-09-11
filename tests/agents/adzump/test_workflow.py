@@ -62,9 +62,11 @@ class NextActionInvariants(unittest.TestCase):
             ("creatives declined",
              {"platform": "Meta", "competitor_creatives_declined": "true"},
              {}, "competitor creatives"),
-            ("empty fetch completed",
+            ("empty fetch completed (every competitor covered)",
              {"platform": "Meta"},
-             {"_competitor_creatives_fetched": True}, "competitor creatives"),
+             {"competitor_analysis": {"competitors": [
+                 {"name": "R", "url": "https://r.com", "creatives": []}]}},
+             "competitor creatives"),
         ]
         for label, spec, extra, prefix in rows:
             with self.subTest(label):

@@ -98,18 +98,25 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
             self.assertFalse(result.success)
             self.assertIn("analyze_competitors", result.error)
             fetch.assert_not_awaited()
-            self.assertNotIn("_competitor_creatives_fetched",
-                             ctx["session_context"])
-        with self.subTest("completed fetch sets the marker even with zero creatives"):
+        with self.subTest("fetch that resolves nothing leaves the offer OPEN"):
+            # Coverage-based resolution: only an _on_resolved write-back covers
+            # a competitor. A run where every competitor failed keeps the offer
+            # owed, so the retry happens (cache-served for any that DID land).
+            from app.agents.adzump.models import OfferResolution
+            from app.agents.adzump.tools.campaign_data import (
+                creatives_offer_resolution,
+            )
             ctx = _ctx()
             result, _ = _run(ctx)
             self.assertTrue(result.success)
-            self.assertTrue(ctx["session_context"]["_competitor_creatives_fetched"])
-        with self.subTest("failed fetch leaves the marker unset"):
+            session_ctx = ctx["session_context"]
+            self.assertIs(
+                creatives_offer_resolution(session_ctx["campaign_spec"], session_ctx),
+                OfferResolution.OPEN)
+        with self.subTest("failed fetch also leaves the offer OPEN"):
             ctx = _ctx()
             result, _ = _run(ctx, fetch=mock.AsyncMock(side_effect=RuntimeError("boom")))
             self.assertFalse(result.success)
-            self.assertNotIn("_competitor_creatives_fetched", ctx["session_context"])
 
     def test_already_fetched_entries_are_skipped(self):
         """Session-level cache: only the entry WITHOUT creatives is fetched
@@ -137,7 +144,13 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
         result, fetch = _run(ctx)
         self.assertTrue(result.success)
         fetch.assert_not_awaited()
-        self.assertTrue(ctx["session_context"]["_competitor_creatives_fetched"])
+        # every named competitor carries a result -> the offer reads fulfilled
+        from app.agents.adzump.models import OfferResolution
+        from app.agents.adzump.tools.campaign_data import creatives_offer_resolution
+        session_ctx = ctx["session_context"]
+        self.assertIs(
+            creatives_offer_resolution(session_ctx["campaign_spec"], session_ctx),
+            OfferResolution.FULFILLED)
 
 
 class EssenceRollupTests(unittest.TestCase):

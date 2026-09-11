@@ -388,12 +388,19 @@ class CreativesOfferResolutionTests(unittest.TestCase):
              {"competitor_creatives": "accepted"},
              {"competitor_analysis": {"competitors": [
                  {"name": "R", "url": "https://r.com"}]}}, R.OPEN),
-            ("fetch completed, zero ads", {},
-             {"_competitor_creatives_fetched": True,
-              "competitor_analysis": {"competitors": [dict(rival)]}}, R.FULFILLED),
-            ("creatives attached (pre-marker session)", {},
+            ("fetch completed, zero ads (fetched-empty covers)", {},
+             {"competitor_analysis": {"competitors": [
+                 {**rival, "creatives": []}]}}, R.FULFILLED),
+            ("creatives attached", {},
              {"competitor_analysis": {"competitors": [
                  {**rival, "creatives": [{"creativeId": "1"}]}]}}, R.FULFILLED),
+            # Coverage, not a one-shot latch: a competitor added AFTER the
+            # fetch re-opens the offer (live 2026-09-11: post-fetch adds were
+            # railroaded straight to the duration question).
+            ("competitor added after the fetch re-opens", {},
+             {"competitor_analysis": {"competitors": [
+                 {**rival, "creatives": []},
+                 {"name": "Newcomer", "url": "https://new.com"}]}}, R.OPEN),
             ("moot: analysis ran, no named rivals", {},
              {"competitor_analysis": {"competitors": [{"url": "https://x.com"}]}},
              R.MOOT),
@@ -486,10 +493,10 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
             spec = {"platform": platform}
             if accepted:
                 spec["competitor_creatives"] = "accepted"
-            session_ctx = {
-                "campaign_spec": spec,
-                "_competitor_creatives_fetched": fetched,
-            }
+            session_ctx: dict = {"campaign_spec": spec}
+            if fetched:  # covered = every named competitor carries a result
+                session_ctx["competitor_analysis"] = {"competitors": [
+                    {"name": "R", "url": "https://r.com", "creatives": []}]}
             session = SimpleNamespace(
                 messages=messages if messages is not None
                 else [{"role": "user", "content": last_user}])

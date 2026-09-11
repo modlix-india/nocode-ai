@@ -663,10 +663,12 @@ def creatives_offer_resolution(spec: dict, session_ctx: dict) -> OfferResolution
     the log finally says WHICH signal settled it - slice 4).
       DECLINED  - the user said no to creatives, or to competitive analysis
                   itself (never re-open a consent already refused);
-      FULFILLED - a consented fetch ran to completion (the session marker set
-                  by fetch_competitor_creatives), even with zero ads found -
-                  an empty result must not re-ask forever; also creatives
-                  already attached to profiles (pre-marker sessions);
+      FULFILLED - every CURRENT named competitor carries a fetch result
+                  (``creatives is not None``; [] counts - fetched-empty must
+                  not re-ask forever). COVERAGE, not a one-shot marker: a
+                  competitor added after the fetch re-opens the offer so the
+                  new entry's ads get offered too (live 2026-09-11: post-fetch
+                  adds were railroaded straight to the duration question);
       EXHAUSTED - asked twice (the offer + one resurface) with no answer -
                   review is never held hostage by an ignored offer;
       MOOT      - analysis ran and found no named rivals to fetch for."""
@@ -674,14 +676,11 @@ def creatives_offer_resolution(spec: dict, session_ctx: dict) -> OfferResolution
         return OfferResolution.DECLINED
     if offer_state(spec, "competitive_analysis") is OfferState.DECLINED:
         return OfferResolution.DECLINED
-    if session_ctx.get("_competitor_creatives_fetched"):
+    named = [p for p in competitor_profiles(session_ctx) if p.name.strip()]
+    if named and all(p.creatives is not None for p in named):
         return OfferResolution.FULFILLED
     if (session_ctx.get("_field_asks") or {}).get("competitor_creatives", 0) >= 2:
         return OfferResolution.EXHAUSTED
-    profiles = competitor_profiles(session_ctx)
-    if any(p.creatives for p in profiles):
-        return OfferResolution.FULFILLED
-    named = [p for p in profiles if p.name.strip()]
     if session_ctx.get("competitor_analysis") is not None and not named:
         return OfferResolution.MOOT
     return OfferResolution.OPEN

@@ -231,7 +231,6 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             fetchable.append(profile)
 
     if not fetchable:
-        session_ctx["_competitor_creatives_fetched"] = True
         return ToolResult(
             success=True,
             data={"competitors": competitors},
@@ -285,14 +284,12 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         # forever-spinning row.
         await spans.close_leftovers()
 
-    # The consented fetch ran to completion - the offer is resolved even when it
-    # found nothing (zero ads, no usable domains). An explicit marker, not the
-    # creative lists: an empty result must not re-open the consent every turn
-    # (see campaign_data.creatives_offer_resolution).
-    # NOTE: on the rare failure path above (cancellation / loop bug), earlier
-    # _on_resolved side effects survive while this stays unset - acceptable:
-    # the refetch is cache-served for the competitors already resolved.
-    session_ctx["_competitor_creatives_fetched"] = True
+    # Offer resolution is COVERAGE-based (campaign_data.creatives_offer_
+    # resolution): each _on_resolved above attached a creatives list ([] for
+    # fetched-empty) to its entry, and the offer reads as fulfilled only while
+    # every named competitor carries one. A competitor that failed mid-pipeline
+    # stays uncovered, so the offer re-opens and the retry is cache-served for
+    # the ones that DID resolve - no marker to set, nothing to drift.
 
     summary = (
         f"Fetched creatives for {resolved} competitor"
