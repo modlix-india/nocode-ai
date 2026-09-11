@@ -100,7 +100,7 @@ tests/
         test_suggestions.py     # present_options, _advance_chip, get_pending_suggestions
         test_competitor.py
         test_business_storage.py
-      test_agent.py             # AdzumpAgent: _capture_tagged_answer, _record_prose_decline, _next_action
+      test_agent.py             # AdzumpAgent: _capture_tagged_answer, _record_prose_decline, the journey engine
       agents/{vision,product}/  # sub-agents
     appbuilder/                 # currently MISSING — add coverage
 evals/                          # model-judged behavior (not a merge gate)

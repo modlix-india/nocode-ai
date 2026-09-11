@@ -16,14 +16,13 @@ One deterministic guard remains, on the CREATIVE bucket:
 ``_filename_suggests_logo`` drops a logo-named URL the vision pass let
 through as a creative (e.g. ``clublogo.png`` - seen in the wild).
 
-Cost: ~same as today (sticking with gpt-4o-mini · see D5b in notes).
+Model: deepseek vision since the 2026-09-11 bench - see the Configuration
+block below (was gpt-4o-mini for cost parity with the direct call, D5b).
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import re
 from typing import Any
 
 from pydantic import ValidationError
@@ -32,15 +31,14 @@ from app.core.agent import BaseAgent
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 
+from app.agents.adzump._shared import extract_json
 from app.agents.adzump.agents.vision.context import (
     build_select_context,
     build_review_context,
 )
 from app.agents.adzump.agents.vision.models import (
     AssetSelection,
-    ImageVerdict,
     ReviewResult,
-    LogoChoice,
 )
 
 # DRAFT-NOTE: the public types still live in the product agent's models.py.
@@ -49,7 +47,6 @@ from app.agents.adzump.agents.product.models import (
     CreativeCompleteness,
     CreativeRole,
     LogoPick,
-    PageContent,
     ProductAssets,
     SiteImage,
 )
@@ -59,52 +56,26 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────
 #
-# Staying with gpt-4o-mini for cost parity with the existing direct call
-# (~$0.15/1M in, vision-capable). Sonnet 4.6 would be a 20× cost bump for
-# the same task. See D5b in implementation-notes.md.
-VISION_PROVIDER = "openai"
-VISION_MODEL_TIER = "fast"
-VISION_MODEL_OVERRIDE = "openai:gpt-4o-mini"
+# DeepSeek vision after the 2026-09-11 bench (scripts/bench_vision.py, report
+# in logs/bench_vision_report.md): gpt-4o-mini picked an ET-award laurel
+# GRAPHIC as the hero image (not grounded in the pixels - same failure class
+# the essence bench caught); deepseek rejected it, read the cobrand logo
+# lockup correctly, labeled every candidate with unused-reasons, ~20x cheaper
+# vision input. Trade-off: ~2.7x slower on a 21-candidate site (on the
+# user-visible scrape path) - accepted, a wrong hero in the user's ad is the
+# worse failure.
+VISION_PROVIDER = "deepseek"
+VISION_MODEL_TIER = "deepseek-v4-flash-vision-exp"
+VISION_MODEL_OVERRIDE = "deepseek:deepseek-v4-flash-vision-exp"
 
-# Old direct call used max_tokens=600. Keeping the same ceiling - the
-# output is just a small JSON object.
-VISION_MAX_TOKENS = 600
+# The model's reasoning stream shares the output budget: 2000 truncated
+# mid-reasoning on a 21-candidate site and the unfinished JSON parsed as
+# EMPTY picks - a silent decline into the upload path. 6000 gave the same
+# site 1.5k of headroom (4.4k used).
+VISION_MAX_TOKENS = 6000
 
 # Single-shot LLM call.
 VISION_MAX_TURNS = 1
-
-
-# Regex matches the FIRST ```json … ``` fence in the assistant text.
-# Same shape ProductAgent uses for its final JSON.
-_JSON_FENCE_RE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
-
-
-def _extract_json_from_text(text: str) -> dict | None:
-    """Extract the first ```json fenced block from assistant text.
-
-    The model is instructed to emit a single fenced JSON block as its
-    final message. This helper handles the common shapes: fenced block,
-    bare object, or fenced-without-language.
-    """
-    if not text:
-        return None
-    m = _JSON_FENCE_RE.search(text)
-    raw = m.group(1) if m else text.strip()
-    # Strip stray code fences if model emitted ``` without language tag.
-    raw = re.sub(r"^```[a-z]*\s*", "", raw)
-    raw = re.sub(r"\s*```\s*$", "", raw)
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        # Last resort: find the first {...} block.
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                return json.loads(raw[start : end + 1])
-            except json.JSONDecodeError:
-                return None
-        return None
 
 
 def _parse_selection(final_text: str) -> AssetSelection:
@@ -113,7 +84,7 @@ def _parse_selection(final_text: str) -> AssetSelection:
     Returns an empty ``AssetSelection()`` on any parse / validation failure.
     The caller treats empty as a decline → upload via AD Pilot UI.
     """
-    payload = _extract_json_from_text(final_text)
+    payload = extract_json(final_text)
     if not payload:
         logger.warning("vision_select_no_json final_text=%r", final_text[:300])
         return AssetSelection()
@@ -128,7 +99,7 @@ def _parse_selection(final_text: str) -> AssetSelection:
 def _parse_review(final_text: str) -> ReviewResult:
     """Parse the review-each final JSON as a ``ReviewResult``. Empty on any
     parse/validation failure (caller treats empty as 'no usable verdicts')."""
-    payload = _extract_json_from_text(final_text)
+    payload = extract_json(final_text)
     if not payload:
         logger.warning("vision_review_no_json final_text=%r", final_text[:300])
         return ReviewResult()
@@ -524,7 +495,7 @@ class VisionAnalyst(BaseAgent):
     ) -> ProductAssets:
         """Run one vision pick and return resolved ``ProductAssets``.
 
-        Caller (``product_assets._select_assets_with_llm``) still owns:
+        Caller (``product_assets.select_product_assets``) still owns:
         candidate prefiltering, parallel fetching of thumbnails, and the
         bytes dict for the persister.
 

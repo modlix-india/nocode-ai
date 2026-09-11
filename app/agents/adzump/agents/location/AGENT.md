@@ -445,7 +445,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
    - On Meta, "Bengaluru" maps to something like `meta.key = "23424848"` with `meta.type = "city"`.
    - On Google Ads, "Bengaluru" maps to `google.resourceName = "geoTargetConstants/1026181"`.
 
-   Those IDs ride nested on each `product_data.target_areas` entry (`area.meta` / `area.google`) and are projected into the stored record as `campaign.googleMappedLocations` / `metaMappedLocations`. On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`next_action.py`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
+   Those IDs ride nested on each `product_data.target_areas` entry (`area.meta` / `area.google`) and are projected into the stored record as `campaign.googleMappedLocations` / `metaMappedLocations`. On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`workflow.py`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
 
    **The risk.** Meta and Google periodically reorganise their geo catalogs. They merge cities, split districts, drop legacy IDs, renumber regions. When they do:
    - An ID that used to mean "Bengaluru" might now point to "Mysuru" (silent mis-targeting).

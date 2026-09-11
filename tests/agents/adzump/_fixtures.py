@@ -18,6 +18,7 @@ import types
 from typing import Any
 
 from app.agents.adzump.agent import CampaignContext
+from app.agents.adzump.models import OfferResolution
 
 # Canonical product_data shapes. Override fields per test:
 #   make_session(product={**RE, "product_name": "Foo"})
@@ -83,11 +84,14 @@ def make_cctx(
     account_names: dict | None = None,
     competitor_names: list | None = None,
     attempted: bool = False,
-    ig_offered: bool = False,
-    awaiting: str | None = None,
+    ig_fetched: bool = False,
     turn: int = 1,
+    creatives_resolved: bool = False,
+    pending_ask: str | None = None,
+    field_asks: dict | None = None,
+    pending_location: str | None = None,
 ) -> CampaignContext:
-    """A `CampaignContext` for `_next_action` / prescription tests."""
+    """A `CampaignContext` for `missing_list` / prescription tests."""
     return CampaignContext(
         product=dict(product if product is not None else RE),
         product_profile={},
@@ -98,9 +102,13 @@ def make_cctx(
         set_at={},
         current_turn=turn,
         last_user=last_user,
-        pending_location=None,
-        ig_offered=ig_offered,
-        awaiting_custom_field=awaiting,
+        pending_location=pending_location,
+        ig_accounts_fetched=ig_fetched,
+        pending_ask_field=pending_ask,
+        field_asks=dict(field_asks or {}),
+        competitor_creatives_resolution=(
+            OfferResolution.FULFILLED if creatives_resolved
+            else OfferResolution.OPEN),
     )
 
 

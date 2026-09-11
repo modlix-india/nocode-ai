@@ -20,8 +20,7 @@ import asyncio
 import base64
 import logging
 import time
-from urllib.parse import urlparse
-
+from app.agents.adzump._shared import host_of
 from app.agents.adzump.agents.product.adapters.html_parser import parse_html
 from app.agents.adzump.agents.product.models import ScrapeResult, ScrapeTimings
 
@@ -230,7 +229,7 @@ async def _fetch_page(
                         if any(token in lower_url for token in _PIXEL_PATH_TOKENS):
                             return
                         # Host-based tracking/ad-network filter.
-                        host = (urlparse(resp_url).netloc or "").lower().removeprefix("www.")
+                        host = host_of(resp_url)
                         if any(host == h or host.endswith("." + h) for h in _AD_TRACKING_HOSTS):
                             return
                         # Size filter - known small images are noise; unknown size kept.

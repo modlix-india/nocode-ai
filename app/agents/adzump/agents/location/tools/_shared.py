@@ -15,10 +15,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.agents.adzump._shared import primary_screenshot_url
 from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
-from app.agents.adzump.services.business_storage import save_campaign, resolve_url
-from app.agents.adzump.tools.craft import emit_craft_panel
+from app.agents.adzump.services.business_storage import save_campaign
+from app.agents.adzump.tools.craft import rerender_craft
 
 logger = logging.getLogger(__name__)
 
@@ -82,32 +81,3 @@ async def finalize_targets(
 
     session_ctx[GEO_FINALIZED_KEY] = True
     return mapped
-
-
-async def rerender_craft(
-    session_ctx: dict, context: dict, product: dict, platform: str
-) -> None:
-    """Re-emit the craft panel after targeting changes.
-
-    Does NOT persist - callers must save before calling this."""
-    stream = context.get("event_stream")
-    craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
-    url = resolve_url(session_ctx)
-    if stream and craft_id and url:
-        try:
-            competitive = session_ctx.get("competitor_analysis") or {"competitors": []}
-            await emit_craft_panel(
-                stream,
-                craft_id,
-                url,
-                product,
-                competitive,
-                screenshot_url=primary_screenshot_url(product),
-                baked_summary=(
-                    (session_ctx.get("product_profile") or {}).get("summary")
-                    or product.get("summary", "")
-                ),
-                platform=platform,
-            )
-        except Exception as e:
-            logger.warning("Craft panel re-render failed: %s", e)

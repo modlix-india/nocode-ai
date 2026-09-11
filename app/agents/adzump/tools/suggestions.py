@@ -17,6 +17,7 @@ import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.models import LEGACY_MARKER_TO_FIELD
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -54,18 +55,51 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
         return ToolResult(success=False, error="options array is required.")
 
     field = (params.get("field") or "").strip() or None
+
+    def _answerless_refusal(offender: str) -> ToolResult:
+        # Every chip on a field-tagged ask must say what it writes - a silent
+        # fall-through is the bug class where a click lands nowhere and the
+        # question re-fires. Self-healing (D13): hand back the corrected
+        # options (answer == value; an invented "Custom" chip - deleted from
+        # the flow, but old habits linger - maps to null so a click can never
+        # store the literal string) - the retry is a copy-paste, never a
+        # dead-end turn.
+        corrected = []
+        for o in options:
+            label = o if isinstance(o, str) else str(o.get("label", ""))
+            value = label if isinstance(o, str) else str(o.get("value") or label)
+            answer = (o.get("answer") if isinstance(o, dict) and "answer" in o
+                      else (None if value == "Custom" else value))
+            corrected.append({"label": label, "value": value, "answer": answer})
+        return ToolResult(
+            success=False,
+            error=(
+                f'Option "{offender}" carries no "answer" key. On a field-tagged '
+                f'ask (field="{field}") EVERY option must declare what it writes '
+                'on click ("answer": null = a deliberate fall-through like '
+                '"Facebook only"). Re-call present_options NOW with the SAME '
+                f"question and options={json.dumps(corrected, ensure_ascii=False)}"
+            ),
+            display_error="Re-forming those options…",
+        )
+
     normalized: list[dict[str, str]] = []
     answer_map: dict[str, str] = {}
     for opt in options:
         if isinstance(opt, str):
+            if field:
+                return _answerless_refusal(opt)
             normalized.append({"label": opt, "value": opt})
         elif isinstance(opt, dict) and opt.get("label"):
             label = str(opt["label"])
             value = str(opt.get("value") or label)
+            if field and "answer" not in opt:
+                return _answerless_refusal(label)
             normalized.append({"label": label, "value": value})
             # PR2 · a capturable option declares `answer` (the value to store on
-            # click). Options without `answer` (e.g. "Custom", competitor "Yes")
-            # are fall-through - absent from the map → capture defers to the LLM.
+            # click). An explicit "answer": null is a declared fall-through
+            # ("Facebook only") - absent from the map → capture defers to the
+            # LLM.
             if opt.get("answer") is not None:
                 answer_map[value] = str(opt["answer"])
         else:
@@ -78,13 +112,19 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     suggestions = {"options": normalized, "mode": mode}
 
     parent_session = context.get("_session")
-    if parent_session:
-        parent_session.context["_pending_suggestions"] = suggestions
-    else:
-        session_ctx = context.get("session_context")
-        if session_ctx is None:
-            return ToolResult(success=False, error="No session context available.")
-        session_ctx["_pending_suggestions"] = suggestions
+    session_ctx = parent_session.context if parent_session else context.get("session_context")
+    if session_ctx is None:
+        return ToolResult(success=False, error="No session context available.")
+    session_ctx["_pending_suggestions"] = suggestions
+    # Per-field ask counter (slice 1d/1e): every field-tagged ask that goes on
+    # screen bumps its count. Consumers: the creatives resolved predicate
+    # (asked twice unanswered = settled, so a digression resurfaces an offer at
+    # most ONCE and review is never held hostage) and the refused-required-slot
+    # escape in the duration/budget steps (R12: repeated misses → "help me pick" chips).
+    if field:
+        counted = LEGACY_MARKER_TO_FIELD.get(field, field)
+        asks = session_ctx.setdefault("_field_asks", {})
+        asks[counted] = asks.get(counted, 0) + 1
 
     # Stream the question into the assistant message so it visually precedes
     # the chips. Wrapped in newlines so it separates from any conversational
@@ -98,14 +138,25 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     # match (panel rec); a divergent paraphrase still falls through to emit.
     stream = context.get("event_stream")
     if stream is not None:
-        parent_session = context.get("_session")
         streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
+        # Slice 1e (R7) - the acknowledgement backstop: a capture landed this
+        # turn but the model's streamed prose never named the value → prepend a
+        # short visible ack. The F9 emit-skip below may skip the QUESTION,
+        # never the ack - a click must never look ignored. Runs before the
+        # core turn-break (core/agent.py:478-502), so the ack always streams.
+        ack_pending = session_ctx.pop("_capture_ack_pending", None)
+        ack_text = ""
+        if ack_pending and str(ack_pending.get("value", "")) not in streamed:
+            ack_field = str(ack_pending.get("field", "")).replace("_", " ")
+            ack_text = f"Got it - {ack_field}: {ack_pending.get('value')}.\n"
         nq = _norm_q(question)
         already = bool(nq) and nq in _norm_q(streamed)
         if already:
             logger.info("present_options: question already in streamed prose - skip emit (F9)")
+            if ack_text:
+                await stream.emit_text(f"\n\n{ack_text}")
         else:
-            await stream.emit_text(f"\n\n{question}\n")
+            await stream.emit_text(f"\n\n{ack_text}{question}\n")
 
     logger.info("present_options: mode=%s field=%s options=%s question=%r",
                 mode, field, options, question[:80])
@@ -184,13 +235,14 @@ present_options = ToolDefinition(
             type="string",
             description=(
                 "Set ONLY for data-collection asks that fill a campaign field "
-                "(platform / duration / budget / competitive_analysis_declined / "
-                "account picks). The harness then stores the user's answer "
-                "directly. For each capturable option give an `answer` (the value "
-                "to store on click; usually == value; \"true\" for a competitor "
-                "decline). Omit `answer` on fall-through options (\"Custom\", "
-                "competitor \"Yes\"). Leave `field` unset for control-flow asks "
-                "(launch confirmation)."
+                "(platform / duration / budget / competitive_analysis / "
+                "competitor_creatives / instagram / account picks). The harness "
+                "then stores the user's answer directly. EVERY option on a "
+                "field-tagged ask must carry an `answer` key - the value to "
+                "store on click (usually == value; \"accepted\"/\"declined\" for "
+                "offer Yes/No chips). Use `answer: null` ONLY for a deliberate "
+                "fall-through option (\"Facebook only\"). Leave "
+                "`field` unset for control-flow asks (launch confirmation)."
             ),
             required=False,
         ),
@@ -227,7 +279,7 @@ How to use the business context:
 - If the context shows a mid-market SaaS at $49/mo, budgets should be much smaller.
 - If the context shows a D2C consumer product at ₹500-1500, tune down accordingly.
 - Match labels to the currency/format already used in the conversation (₹/day vs $/day).
-- Always include a sensible "Custom" option for numeric presets so the user can override.
+- Numeric preset questions must END with "or type your own" - never add a "Custom" chip (typed replies are handled).
 - If the message lists options inline (e.g. "Google Ads or Meta?"), honour those exact labels - don't invent new ones.
 
 Other rules:

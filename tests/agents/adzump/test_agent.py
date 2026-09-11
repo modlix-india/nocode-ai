@@ -1,7 +1,7 @@
 """AdzumpAgent orchestration seams: _capture_tagged_answer,
-_resume_elicitation_section, _record_prose_decline, _next_action (workflow tree
-incl. the Instagram-optional branch), get_pending_suggestions, _advance_chip,
-_is_custom_reply, CampaignContext.from_session.
+_resume_elicitation_section, _record_prose_decline, the journey engine
+(incl. the Instagram-optional branch), get_pending_suggestions, _advance_chip,
+CampaignContext.from_session.
 
 Run:
     cd nocode-ai && ./venv/bin/python -m unittest tests.agents.adzump.test_agent -v
@@ -14,8 +14,9 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.agent import (
-    AdzumpAgent, CampaignContext, _is_custom_reply, _next_action,
+    AdzumpAgent, CampaignContext,
 )
+from app.agents.adzump.workflow import NEW_CAMPAIGN, missing_list
 from tests.agents.adzump._fixtures import (
     RE, SAAS, elicitation, make_cctx, make_session,
 )
@@ -37,6 +38,94 @@ def _budget_pe(**extra):
     return elicitation("budget", {"₹5,000/day": "₹5,000/day",
                                   "₹10,000/day": "₹10,000/day",
                                   "₹25,000/day": "₹25,000/day"}, **extra)
+
+
+# ── Meta creative inspiration - consent-gated offer ─────────────────────────
+class CompetitorCreativesOfferTests(unittest.TestCase):
+    META = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",
+            "parent_account": "P", "account": "A", "fb_page": "F", "ig_page": "I"}
+
+    def _offer_lines(self, spec_extra=None, **kw):
+        m = missing_list(NEW_CAMPAIGN, make_cctx({**self.META, **(spec_extra or {})},
+                                   product=SAAS, **kw))
+        return [x for x in m if "competitor creatives" in x]
+
+    def test_unoffered_prescribes_the_ask_once(self):
+        cases = [
+            ("with analysis", dict(competitor_names=["Rival"], attempted=True),
+             "Want to see your competitors' recent ads?"),
+            ("without analysis", {},
+             "Want me to analyze your competitors and show their recent ads?"),
+        ]
+        for name, kw, question in cases:
+            with self.subTest(case=name):
+                offer = self._offer_lines(**kw)
+                self.assertEqual(len(offer), 1)
+                self.assertIn("present_options", offer[0])
+                self.assertIn('field "competitor_creatives"', offer[0])
+                self.assertIn(question, offer[0])
+
+    def test_accepted_prescribes_analysis_then_review_never_blind_fetch(self):
+        # Kailash 2026-09-09: consent starts the RESEARCH, not the spend - the
+        # user reviews the posted list (add/update/delete) and the fetch runs
+        # only on their go-ahead. (Historic regression still locked: the
+        # verbatim offer question must never re-fire after a Yes.)
+        cases = [
+            ("accepted, competitors known -> review checkpoint",
+             ["Rival"], True, "fetch their ads now, or adjust the list"),
+            ("accepted, no analysis yet -> analyze only",
+             [], False, "Run `analyze_competitors` NOW. Do NOT fetch"),
+        ]
+        for name, names, attempted, marker in cases:
+            with self.subTest(case=name):
+                offer = self._offer_lines(
+                    spec_extra={"competitor_creatives": "accepted"},
+                    competitor_names=names, attempted=attempted)
+                self.assertEqual(len(offer), 1)
+                self.assertIn(marker, offer[0])
+                # The verbatim question must be gone - it's what the model copied.
+                self.assertNotIn("Want me to analyze your competitors", offer[0])
+                self.assertNotIn("Want to see the ads", offer[0])
+
+    def test_open_ask_is_never_represcribed(self):
+        # The ask's rail is open → WAIT: no creatives line at all (the resume
+        # steer owns the reply). Once the rail is gone (digression popped it),
+        # the ask resurfaces - capped at once by the exhaustion predicate.
+        self.assertEqual(
+            self._offer_lines(pending_ask="competitor_creatives",
+                              last_user="what will this cost me?"), [])
+        resurfaced = self._offer_lines(last_user="what will this cost me?")
+        self.assertEqual(len(resurfaced), 1)
+        self.assertIn("offer it ONCE", resurfaced[0])
+
+    def test_from_session_reads_rail_and_ig_data(self):
+        # slice 1d: the offered markers are gone - from_session reads the open
+        # rail (legacy field name canonicalized) and the fetched-IG data key.
+        s = make_session(spec=dict(self.META), ig_accounts=[],
+                         pending_elicitation=elicitation(
+                             "competitor_creatives_declined"))
+        cctx = CampaignContext.from_session(s)
+        self.assertEqual(cctx.pending_ask_field, "competitor_creatives")
+        self.assertTrue(cctx.ig_accounts_fetched)
+        bare = CampaignContext.from_session(make_session(spec=dict(self.META)))
+        self.assertIsNone(bare.pending_ask_field)
+        self.assertFalse(bare.ig_accounts_fetched)
+
+    def test_offer_is_suppressed_when_resolved(self):
+        # Declined/fetched/moot resolution is computed by the shared predicate
+        # (covered in test_campaign_data); the creatives step only honours the flag.
+        cases = [
+            ("offer resolved", make_cctx(dict(self.META), product=SAAS,
+                                         competitor_names=["R"], attempted=True,
+                                         creatives_resolved=True)),
+            ("google flow", make_cctx({**self.META, "platform": "Google Ads"},
+                                      product=SAAS, competitor_names=["R"],
+                                      attempted=True)),
+        ]
+        for name, cctx in cases:
+            with self.subTest(case=name):
+                m = missing_list(NEW_CAMPAIGN, cctx)
+                self.assertFalse(any("competitor creatives" in x for x in m))
 
 
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
@@ -66,24 +155,24 @@ class InstagramOptionalTests(unittest.TestCase):
         ]:
             with self.subTest(user=user):
                 self.assertEqual(
-                    _field_traceable("ig_page_declined", "true", user, ctx), expected)
+                    _field_traceable("instagram", "declined", user, ctx), expected)
 
-    def test_next_action_offers_ig_once(self):
+    def test_journey_offers_ig_once(self):
         # regression: F3 (Instagram optional)
-        m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS))
+        m = missing_list(NEW_CAMPAIGN, make_cctx(dict(self.META_FULL), product=SAAS))
         self.assertTrue(any("fetch_meta_ig_accounts" in x for x in m))
 
-    def test_next_action_skip_cue_declines(self):
+    def test_journey_skip_cue_declines(self):
         # regression: F3 (Instagram optional)
-        m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS,
+        m = missing_list(NEW_CAMPAIGN, make_cctx(dict(self.META_FULL), product=SAAS,
                                    last_user="skip insta page"))
-        self.assertTrue(any("ig_page_declined" in x for x in m))
+        self.assertTrue(any('instagram="declined"' in x for x in m))
         self.assertFalse(any("fetch_meta_ig_accounts" in x for x in m))
 
-    def test_next_action_offered_does_not_refetch(self):
+    def test_journey_offered_does_not_refetch(self):
         # regression: F3 (Instagram optional) / v5 (fetch≠render)
-        m = _next_action(make_cctx(dict(self.META_FULL), product=SAAS,
-                                   last_user="proceed", ig_offered=True))
+        m = missing_list(NEW_CAMPAIGN, make_cctx(dict(self.META_FULL), product=SAAS,
+                                   last_user="proceed", ig_fetched=True))
         # The offered-branch may *name* the tool in a "do NOT call it again"
         # instruction - discriminate on the offer-branch's prescription syntax,
         # which is the thing that must be absent.
@@ -95,9 +184,12 @@ class InstagramOptionalTests(unittest.TestCase):
         self.assertTrue(any("present_options" in x for x in m))
 
     def test_declined_drops_ig_and_reaches_review(self):
-        # regression: F3 (Instagram optional)
-        spec = {**self.META_FULL, "ig_page_declined": "true"}
-        m = _next_action(make_cctx(spec, product=SAAS))
+        # regression: F3 (Instagram optional). The Meta creatives offer is
+        # answered too - like IG, it's a once-asked step that precedes review
+        # (from_session derives creatives_resolved from the declined flag).
+        spec = {**self.META_FULL, "ig_page_declined": "true",
+                "competitor_creatives_declined": "true"}
+        m = missing_list(NEW_CAMPAIGN, make_cctx(spec, product=SAAS, creatives_resolved=True))
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
 
@@ -107,10 +199,30 @@ class InstagramOptionalTests(unittest.TestCase):
         # fb_page set but IG neither picked nor declined → not complete yet
         self.assertEqual(
             _review_hint_if_complete(dict(self.META_FULL), {"product_data": SAAS}), "")
-        hint = _review_hint_if_complete({**self.META_FULL, "ig_page_declined": "true"},
-                                        {"product_data": SAAS})
+        answered = {**self.META_FULL, "ig_page_declined": "true",
+                    "competitor_creatives_declined": "true"}
+        hint = _review_hint_if_complete(answered, {"product_data": SAAS})
         self.assertNotEqual(hint, "")
-        self.assertIn("not linked (Facebook only)", hint)
+        self.assertIn("show_campaign_summary", hint)  # card is code-rendered
+
+    def test_review_gate_waits_for_creatives_offer_resolution(self):
+        # Meta review also waits on the competitor-creatives offer: declined,
+        # fetched, or moot (analysis found zero rivals) all unblock it.
+        from app.agents.adzump.tools.campaign_data import _review_hint_if_complete
+        spec = {**self.META_FULL, "ig_page_declined": "true"}
+        cases = [
+            ("unresolved", {}, dict(spec), False),
+            ("declined", {}, {**spec, "competitor_creatives_declined": "true"}, True),
+            ("fetched", {"competitor_analysis": {"competitors": [
+                {"name": "R", "creatives": [{"creativeId": "1"}]}]}}, dict(spec), True),
+            ("moot - zero rivals", {"competitor_analysis": {"competitors": []}},
+             dict(spec), True),
+        ]
+        for name, extra_ctx, case_spec, complete in cases:
+            with self.subTest(case=name):
+                hint = _review_hint_if_complete(
+                    case_spec, {"product_data": SAAS, **extra_ctx})
+                self.assertEqual(bool(hint), complete)
 
 
 # ── PR2 / F17b · tagged-answer capture ──────────────────────────────────────
@@ -121,23 +233,36 @@ class TaggedCaptureTests(unittest.TestCase):
 
     def test_table(self):
         decline = elicitation("competitive_analysis_declined")
+        creatives_decline = elicitation("competitor_creatives_declined")
         cases = [  # (name, pe, user, stored, consumed)
+            ("creatives decline chip", creatives_decline, "No",
+             {"competitor_creatives": "declined"}, True),
+            ("creatives typed clear decline", creatives_decline, "no thanks, skip it",
+             {"competitor_creatives": "declined"}, True),
+            ("creatives yes falls through to model", creatives_decline, "Yes", {}, False),
+            ("offer yes chip writes accepted",
+             elicitation("competitive_analysis", {"Yes": "accepted", "No": "declined"}),
+             "Yes", {"competitive_analysis": "accepted"}, True),
+            ("creatives yes chip writes accepted",
+             elicitation("competitor_creatives", {"Yes": "accepted", "No": "declined"}),
+             "Yes", {"competitor_creatives": "accepted"}, True),
             ("duration chip", _dur_pe(), "30 days",
              {"duration": "30 days"}, True),
             ("budget preset chip", _budget_pe(), "₹10,000/day",
              {"budget": "₹10,000/day"}, True),
             ("decline chip", decline, "No",
-             {"competitive_analysis_declined": "true"}, True),
+             {"competitive_analysis": "declined"}, True),
             ("typed clear decline", decline, "no thanks, skip it",  # the live F17b message
-             {"competitive_analysis_declined": "true"}, True),
+             {"competitive_analysis": "declined"}, True),
             ("yes falls through to model", decline, "Yes", {}, False),
             ("defer with question", decline,
              "not now, first tell me about the audience", {}, False),
             ("informing, not declining", decline, "no competitors named yet", {}, False),
-            ("typed duration", _dur_pe(), "25 days", {"duration": "25 days"}, True),
-            ("typed budget with marker", elicitation("budget", {}), "4k",
-             {"budget": "₹4,000/day"}, True),
-            ("typed budget no marker", elicitation("budget", {}), "around 4000", {}, False),
+            # Typed values fall through to the steered model (layer 2) - the
+            # regex parser is retired (slice 1b); only exact chips + clear
+            # declines capture in code.
+            ("typed duration falls to layer 2", _dur_pe(), "25 days", {}, False),
+            ("typed budget falls to layer 2", elicitation("budget", {}), "4k", {}, False),
             ("cross-field correction", _dur_pe(), "make it Meta", {}, False),
             ("untagged elicitation", {"tool": "confirm_location", "expects": "single"},
              "confirm", {}, False),
@@ -160,6 +285,31 @@ class TaggedCaptureTests(unittest.TestCase):
                 else:
                     self.assertEqual(ack, "")
                     self.assertIsNotNone(s.context.get("_pending_elicitation"))
+
+    def test_stale_rail_steps_aside(self):
+        # S1-11/R6 - a rail kept open across turns must not claim a
+        # much-later exact-match message as its answer.
+        stale = {**_dur_pe(), "first_reply_turn": 2}
+        s = make_session(last_user="30 days", pending_elicitation=stale, turn=9)
+        self.assertEqual(_cap(s), "")
+        self.assertEqual(s.context["campaign_spec"], {})
+        # ...and layer 2 skips it too: the resume section drops the stale rail
+        # instead of steering the model to select for a forgotten ask.
+        self.assertEqual(
+            AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
+        self.assertNotIn("_pending_elicitation", s.context)
+        # Within the window the same chip reply still lands.
+        fresh = {**_dur_pe(), "first_reply_turn": 8}
+        s = make_session(last_user="30 days", pending_elicitation=fresh, turn=9)
+        _cap(s)
+        self.assertEqual(s.context["campaign_spec"].get("duration"), "30 days")
+        # First sight stamps the rail, so age counts from the first reply.
+        unstamped = dict(_dur_pe())
+        s = make_session(last_user="what about targeting?",
+                         pending_elicitation=unstamped, turn=9)
+        _cap(s)
+        self.assertEqual(
+            s.context["_pending_elicitation"].get("first_reply_turn"), 9)
 
     def test_decline_capture_acknowledges(self):
         # regression: D14 (acknowledgement steer on deterministic capture)
@@ -216,118 +366,32 @@ class CaptureMarkerTests(unittest.TestCase):
 
 
 # ── F10 · "Custom" chip → free-text ─────────────────────────────────────────
-class CustomChipFreeTextTests(unittest.TestCase):
-    def test_is_custom_reply(self):
-        # regression: F10 ("Custom" → free-text)
-        for text, expected in [
-            ("Custom", True), ("custom", True), ("custom amount", True),
-            ("Custom budget", True),
-            ("₹5,000/day", False), ("30 days", False), ("Meta", False), ("", False),
-        ]:
-            with self.subTest(text=text):
-                self.assertEqual(bool(_is_custom_reply(text)), expected)
+# ── R12 · refused-required-slot escape (slice 1e) ───────────────────────────
+class RefusedSlotEscapeTests(unittest.TestCase):
+    """S1-10: a required slot asked ESCAPE_AFTER_ASKS times without landing
+    switches to explicit "help me pick" chips - never a silent default."""
 
-    def test_custom_click_keeps_elicitation_open_and_steers(self):
-        # regression: F10 - "Custom" isn't a value: keep the elicitation OPEN,
-        # mark awaiting_custom, return a free-text steer (live bug #11 was
-        # re-rendering the same chips instead).
-        for pe in (_budget_pe(), _dur_pe()):
-            with self.subTest(field=pe["field"]):
-                s = make_session(last_user="Custom", pending_elicitation=pe)
-                ack = _cap(s)
-                self.assertIn("custom value", ack.lower())
-                self.assertTrue(s.context["_pending_elicitation"].get("awaiting_custom"))
-                self.assertEqual(s.context["campaign_spec"], {})   # not stored
-
-    def test_typed_value_after_custom_is_captured(self):
-        # regression: F10 ("Custom" → free-text)
-        s = make_session(last_user="₹7000",
-                         pending_elicitation=_budget_pe(awaiting_custom=True))
-        _cap(s)
-        self.assertEqual(s.context["campaign_spec"].get("budget"), "₹7,000/day")
-        self.assertNotIn("_pending_elicitation", s.context)        # consumed on capture
-
-    def test_offtopic_is_not_mistaken_for_custom(self):
-        # regression: F10 ("Custom" → free-text)
-        s = make_session(last_user="what does daily budget mean?",
-                         pending_elicitation=_budget_pe())
-        self.assertEqual(_cap(s), "")
-        self.assertFalse(s.context["_pending_elicitation"].get("awaiting_custom"))
-
-    def test_resume_keeps_open_when_awaiting_custom(self):
-        # regression: F10 ("Custom" → free-text)
-        s = make_session(last_user="ok",
-                         pending_elicitation=_budget_pe(awaiting_custom=True))
-        out = AdzumpAgent._resume_elicitation_section(None, s, turn=1)
-        self.assertEqual(out, "")
-        self.assertIsNotNone(s.context.get("_pending_elicitation"))  # NOT popped
-        self.assertTrue(s.context["_pending_elicitation"].get("awaiting_custom"))
-
-    def test_next_action_free_text_when_awaiting_chips_otherwise(self):
-        # regression: F10 ("Custom" → free-text)
-        spec = {"platform": "Meta", "duration": "30 days",
-                "parent_account": "P", "account": "A"}
-        budget = [x for x in _next_action(make_cctx(spec, product=SAAS, awaiting="budget"))
-                  if x.startswith("budget")]
-        self.assertTrue(budget)
-        self.assertIn("TYPE", budget[0])
-        # The free-text prescription may *name* present_options in a "do NOT
-        # call" instruction - the chip-CALL signature is what must be absent.
-        self.assertNotIn("present_options(question", budget[0])
-        budget = [x for x in _next_action(make_cctx(spec, product=SAAS))
-                  if x.startswith("budget")]
-        self.assertTrue(budget)
-        self.assertIn("present_options", budget[0])                # normal chip ask
-
-    def test_from_session_resolves_awaiting_custom(self):
-        # regression: F10 - from_session must NOT raise (the walrus-in-conditional
-        # UnboundLocalError) and must resolve awaiting_custom_field; the other
-        # F10 tests build CampaignContext directly, this exercises the live path.
-        s = make_session(last_user="₹7000",
-                         pending_elicitation=_budget_pe(awaiting_custom=True))
-        self.assertEqual(CampaignContext.from_session(s).awaiting_custom_field, "budget")
-        s = make_session(last_user="₹7000", pending_elicitation=_budget_pe())
-        self.assertIsNone(CampaignContext.from_session(s).awaiting_custom_field)
-        self.assertIsNone(CampaignContext.from_session(
-            make_session(last_user="hi")).awaiting_custom_field)
-
-
-# ── F18 · prose-offer typed decline recorded in code ────────────────────────
-class ProseDeclineRecorderTests(unittest.TestCase):
-    @staticmethod
-    def _record(s, turn=1):
-        cctx = CampaignContext.from_session(s)
-        return AdzumpAgent._record_prose_decline(
-            None, s, cctx, s.messages[-1]["content"], turn)
-
-    def test_table(self):
-        pe = elicitation("competitive_analysis_declined")
-        cases = [  # (name, user, extra_spec, pe, turn, recorded)
-            ("clear typed decline", "no thanks, skip it", {}, None, 1, True),
-            ("ambiguous defer", "not now, first tell me about the audience",
-             {}, None, 1, False),
-            ("informing, not declining", "no competitors named yet", {}, None, 1, False),
-            ("pending elicitation defers to tagged capture", "no", {}, pe, 1, False),
-            ("already attempted is a noop", "no thanks",
-             {"competitive_analysis_declined": "true"}, None, 1, False),
-            ("turn 2 is a noop", "no thanks, skip it", {}, None, 2, False),
-        ]
-        for name, user, extra_spec, pe_, turn, recorded in cases:
-            with self.subTest(name):
-                s = make_session(last_user=user,
-                                 spec={"platform": "Google Ads", **extra_spec},
-                                 pending_elicitation=dict(pe_) if pe_ else None,
-                                 turn=turn)
-                self.assertEqual(self._record(s, turn=turn), recorded)
-                if not extra_spec:
-                    self.assertEqual(
-                        "competitive_analysis_declined" in s.context["campaign_spec"],
-                        recorded)
+    def test_escape_after_repeated_asks(self):
+        for field in ("duration", "budget"):
+            with self.subTest(field):
+                cctx = make_cctx({"platform": "Google Ads"}, attempted=True,
+                                 field_asks={field: 3})
+                line = next(x for x in missing_list(NEW_CAMPAIGN, cctx) if x.startswith(field))
+                self.assertIn("want to go with that?", line)
+                self.assertIn("type your own", line)
+                self.assertIn('"answer":', line)           # explicit-click chip
+                self.assertNotIn("Custom", line)           # D13
+                self.assertIn("no silent defaults", line)
+        # Below the threshold: the normal chip ask.
+        cctx = make_cctx({"platform": "Google Ads"}, attempted=True,
+                         field_asks={"duration": 2})
+        line = next(x for x in missing_list(NEW_CAMPAIGN, cctx) if x.startswith("duration"))
+        self.assertIn("How long should the campaign run?", line)
 
 
 # ── F20 · review/publish prescription must not leak tool-call syntax ────────
 def _full_google_cctx():
-    # "full" = every _next_action gate satisfied, so review & publish is the
+    # "full" = every journey step satisfied, so review & publish is the
     # only prescription left. The geo gate checks the nested platform handle
     # on target_areas (platform.is_mapped_for).
     spec = {
@@ -347,7 +411,7 @@ def _full_google_cctx():
 class ReviewPublishPrescriptionTests(unittest.TestCase):
     def test_review_publish_has_no_raw_tool_call_syntax(self):
         # regression: F20 (review/publish prescription leak)
-        missing = _next_action(_full_google_cctx())
+        missing = missing_list(NEW_CAMPAIGN, _full_google_cctx())
         review = next((m for m in missing if "review & publish" in m), None)
         self.assertIsNotNone(review, f"review&publish should appear; got: {missing}")
         # F20: the live leak was the model echoing this prescription's copyable
@@ -446,14 +510,14 @@ def _untagged_present_options(missing: list[str]) -> list[str]:
 class PrescriptionAuditTests(unittest.TestCase):
     def test_data_asks_are_tagged(self):
         # regression: D9 (every data-ask present_options carries field=)
-        missing = _next_action(make_cctx({}))
+        missing = missing_list(NEW_CAMPAIGN, make_cctx({}))
         self.assertEqual(_untagged_present_options(missing), [])
         self.assertTrue(any('field "platform"' in m for m in missing))
         # platform set → competitor + duration + budget asks render
-        missing = _next_action(make_cctx({"platform": "Google Ads"}))
+        missing = missing_list(NEW_CAMPAIGN, make_cctx({"platform": "Google Ads"}))
         self.assertEqual(_untagged_present_options(missing), [])
         joined = "\n".join(missing)
-        self.assertIn('field "competitive_analysis_declined"', joined)
+        self.assertIn('field "competitive_analysis"', joined)
         self.assertIn('field "duration"', joined)
         self.assertIn('field "budget"', joined)
 

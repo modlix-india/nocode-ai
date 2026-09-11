@@ -76,7 +76,8 @@ class PresentOptionsTagTests(unittest.TestCase):
     def test_tagged_returns_answer_map_on_data(self):
         res = asyncio.run(_present_options(
             {"question": "How long?",
-             "options": [{"label": "30 days", "value": "30 days", "answer": "30 days"}, "Custom"],
+             "options": [{"label": "30 days", "value": "30 days", "answer": "30 days"},
+                         {"label": "Custom", "value": "Custom", "answer": None}],
              "field": "duration"},
             {"session_context": {}}))
         self.assertEqual(res.data["elicit_field"], "duration")
@@ -87,6 +88,104 @@ class PresentOptionsTagTests(unittest.TestCase):
             {"question": "Launch?", "options": ["Yes", "No"]},
             {"session_context": {}}))
         self.assertIsNone(res.data)
+
+    def test_offer_ask_increments_count(self):
+        # slice 1d: the offered marker is replaced by a per-offer ask counter -
+        # the resolved predicate treats two unanswered asks as settled, so a
+        # digression resurfaces an offer at most once.
+        session_ctx: dict = {}
+        ask = {"question": "Want to see competitor ads?",
+               "options": [{"label": "Yes", "value": "Yes", "answer": "accepted"},
+                           {"label": "No", "value": "No", "answer": "declined"}],
+               "field": "competitor_creatives"}
+        asyncio.run(_present_options(dict(ask), {"session_context": session_ctx}))
+        self.assertEqual(session_ctx["_field_asks"], {"competitor_creatives": 1})
+        asyncio.run(_present_options(dict(ask), {"session_context": session_ctx}))
+        self.assertEqual(session_ctx["_field_asks"], {"competitor_creatives": 2})
+
+    def test_every_field_ask_counts_but_untagged_does_not(self):
+        # slice 1e: ALL field-tagged asks count (the R12 escape reads
+        # duration/budget counts); control-flow asks (no field) never do.
+        session_ctx: dict = {}
+        asyncio.run(_present_options(
+            {"question": "How long?",
+             "options": [{"label": "30 days", "value": "30 days", "answer": "30 days"},
+                         {"label": "Custom", "value": "Custom", "answer": None}],
+             "field": "duration"},
+            {"session_context": session_ctx}))
+        self.assertEqual(session_ctx["_field_asks"], {"duration": 1})
+        untagged: dict = {}
+        asyncio.run(_present_options(
+            {"question": "Ready to launch?", "options": ["Yes, launch", "No"]},
+            {"session_context": untagged}))
+        self.assertNotIn("_field_asks", untagged)
+
+    def test_field_tagged_option_must_declare_answer(self):
+        # S1-1 · every chip on a field-tagged ask says what it writes; a
+        # missing "answer" key is the silent-fall-through bug class. An
+        # explicit answer=None is a DECLARED fall-through and passes.
+        for options in (
+            ["30 days", "Custom"],                         # string options
+            [{"label": "30 days", "value": "30 days"},
+             {"label": "Custom", "value": "Custom"}],      # no answer keys
+        ):
+            with self.subTest(options=options):
+                res = asyncio.run(_present_options(
+                    {"question": "How long?", "options": options,
+                     "field": "duration"},
+                    {"session_context": {}}))
+                self.assertFalse(res.success)
+                self.assertIn("30 days", res.error)        # names the option
+                # Self-healing: the error hands back the corrected options so
+                # the retry is a copy-paste, never a dead-end turn (live bug:
+                # a Custom-click follow-up died on this refusal).
+                self.assertIn('"answer": "30 days"', res.error)
+                self.assertIn('"answer": null', res.error)   # Custom fall-through
+                # The user never sees the steering text.
+                self.assertNotIn("answer", res.display_error)
+        # Control-flow ask (no field): string options stay fine.
+        res = asyncio.run(_present_options(
+            {"question": "Ready to launch?", "options": ["Yes, launch", "No"]},
+            {"session_context": {}}))
+        self.assertTrue(res.success)
+
+
+class CaptureAckBackstopTests(unittest.TestCase):
+    """S1-7/R7 - a landed capture is always visibly acknowledged: when the
+    model's prose never named the value, present_options prepends the ack; the
+    F9 emit-skip may skip the question, never the ack. Emits happen inside the
+    tool call, i.e. before the core turn-break (core/agent.py:478-502)."""
+
+    Q = "What's your daily budget?"
+
+    def _run_with_pending(self, turn_text):
+        stream = _FakeStream()
+        ctx = _ctx(turn_text, stream)
+        ctx["session_context"]["_capture_ack_pending"] = {
+            "field": "duration", "value": "30 days"}
+        asyncio.run(_present_options(
+            {"question": self.Q, "options": ["₹5,000/day", "Custom"]}, ctx))
+        return stream, ctx["session_context"]
+
+    def test_ack_prepended_when_prose_missed_it(self):
+        stream, sc = self._run_with_pending("Sure!")
+        joined = "".join(stream.texts)
+        self.assertIn("Got it - duration: 30 days.", joined)
+        self.assertIn(self.Q, joined)
+        self.assertNotIn("_capture_ack_pending", sc)       # consumed
+
+    def test_no_double_ack_when_prose_named_the_value(self):
+        stream, sc = self._run_with_pending("Great - 30 days it is!")
+        self.assertNotIn("Got it - duration", "".join(stream.texts))
+        self.assertNotIn("_capture_ack_pending", sc)
+
+    def test_emit_skip_never_skips_the_ack(self):
+        # Question already streamed as prose (F9 skips OUR question emit) -
+        # the ack must still be emitted.
+        stream, sc = self._run_with_pending("What's your daily budget?")
+        joined = "".join(stream.texts)
+        self.assertIn("Got it - duration: 30 days.", joined)
+        self.assertEqual(joined.count("daily budget"), 0)  # question emit skipped
 
 
 if __name__ == "__main__":

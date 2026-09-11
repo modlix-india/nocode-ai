@@ -5,12 +5,12 @@ into the **dynamic context**. Each turn renders:
 
 1. ``## State`` - what's collected, with provenance ("just set" / "set N turns ago").
 2. ``## User just said`` - last user message verbatim.
-3. ``## What's still missing`` - ordered list from ``_next_action``.
+3. ``## What's still missing`` - ordered list from the journey engine.
 4. ``## How to respond`` - 6-case priority rule for the LLM.
 
 The static system prompt carries persona + non-negotiable rules only. The
-workflow tree (``_next_action`` over a typed ``CampaignContext``) lives in
-``next_action.py``; the section renderers live in ``prompt_sections.py``.
+journey engine (``missing_list`` over a typed ``CampaignContext``) lives in
+``workflow.py``; the section renderers live in ``prompt_sections.py``.
 This module keeps the BaseAgent overrides and the turn-start capture rails
 (tagged answers, prose declines, elicitation resume).
 """
@@ -23,11 +23,9 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.agents.adzump.context import build_adzump_context
-from app.agents.adzump.next_action import (
-    CampaignContext,
-    _is_custom_reply,
-    _next_action,
-)
+from app.agents.adzump.workflow import NEW_CAMPAIGN, CampaignContext, missing_list
+from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.observability import log_turn_decision
 from app.agents.adzump.platform import is_mapped_for
 from app.agents.adzump.prompt_sections import (
     _how_to_respond_section,
@@ -41,16 +39,22 @@ from app.agents.adzump.tools.campaign_data import (
     _current_turn,
     _last_user_text,
     _normalize_id,
+    analysis_offer_resolution,
+    instagram_offer_resolution,
     is_clear_decline_reply,
 )
 from app.agents.adzump._shared import primary_screenshot_url
-from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
 from app.agents.adzump.tools.registry import ALL_TOOLS
 from app.agents.adzump.tools.suggestions import infer_suggestions
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# How many user turns an open elicitation may age (measured from the first
+# reply to it) before layer-1/2 auto-capture steps aside and the message is
+# handled conversationally - a forgotten chip row must never claim a fresh
+# message (R6/S1-11).
+STALE_RAIL_TURNS = 4
 
 
 def _hydrate_location_from_product_data(ctx: dict) -> None:
@@ -130,59 +134,65 @@ class AdzumpAgent(BaseAgent):
         acknowledgement steer on a successful capture, else "".
 
         Gated to agentic ``turn == 1`` (the reply only just arrived) - NOT
-        ``session._turn_count`` (restored to the max turn on resume). Match by
-        exact option value (chips), else a conservative typed parser
-        (duration/budget/platform). Ambiguous answers (Custom / "Yes" /
-        off-topic / unparseable) leave ``_pending_elicitation`` intact and fall
-        through to the LLM (then ``_resume_elicitation_section`` steers it)."""
+        ``session._turn_count`` (restored to the max turn on resume). Layer 1:
+        match by exact option value (chips) or a clear typed decline. Anything
+        else ("Yes" / typed values / off-topic) leaves
+        ``_pending_elicitation`` intact and falls through to the steered model
+        (layer 2, ``_resume_elicitation_section``) - the regex typed-parser is
+        retired (slice 1b); every model write passes the same validation."""
         if turn != 1:
             return ""
+        # A pending ack that no tool consumed last turn is stale by the time a
+        # new message arrives - drop it, never ack an old capture late.
+        session.context.pop("_capture_ack_pending", None)
         pe = session.context.get("_pending_elicitation")
         if not pe or not pe.get("field") or pe.get("expects") != "single":
             return ""
         field = pe["field"]
+        # Stale-rail guard (R6/S1-11): a rail kept open across several user
+        # turns must not claim an unrelated later message as its answer. Stamped on first sight - the turn the first
+        # reply to this ask arrives; past the window, layers 1/2 step aside
+        # and the model handles the message conversationally.
+        current = _current_turn({"_session": session})
+        first_reply_turn = pe.setdefault("first_reply_turn", current)
+        if current - first_reply_turn > STALE_RAIL_TURNS:
+            logger.info(
+                "tagged_capture: stale rail field=%s age=%d turns - auto-capture skipped",
+                field, current - first_reply_turn,
+            )
+            return ""
         answers = pe.get("answers") or {}
         last_user = _last_user_text({"_session": session})
         if not last_user:
             return ""
         value = answers.get(last_user)  # (a) exact chip match
-        if value is None and field in ("duration", "budget", "platform"):
-            value = parse_typed_answer(
-                field, last_user, currency_for(session.context)
-            )  # (b) typed
-        if value is None and field == "competitive_analysis_declined" \
-                and is_clear_decline_reply(last_user):
-            value = "true"  # (c) F17 · typed clear decline
-        if value is None:
-            # v4 · F10 - the user picked the "Custom" escape on a duration/budget
-            # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
-            # NEXT typed reply is captured by the typed-parser above, and steer a
-            # free-text ask instead of re-rendering the same chips (the live loop,
-            # bug #11). The mark also drives _next_action (awaiting_custom_field)
-            # and tells _resume_elicitation_section not to pop.
-            if (
-                field in ("duration", "budget")
-                and _is_custom_reply(last_user)
-                and not pe.get("awaiting_custom")
+        if value is None and is_clear_decline_reply(last_user):
+            # (c) F17 · typed clear decline. Legacy field names ride an old
+            # rail; _apply_field canonicalizes their "true" to the enum.
+            if field in ("competitive_analysis", "competitor_creatives"):
+                value = OfferState.DECLINED.value
+            elif field in (
+                "competitive_analysis_declined", "competitor_creatives_declined"
             ):
-                pe["awaiting_custom"] = True
-                logger.info(
-                    "tagged_capture: custom escape for field=%s - awaiting typed value",
-                    field,
-                )
-                return (
-                    "## The user chose a custom value\n"
-                    f"They want to enter their own {field}. Ask them in ONE short line "
-                    f'to TYPE it (e.g. "45 days" / "₹7,500/day") - do NOT call '
-                    f"present_options or show chips. Their typed reply is captured automatically."
-                )
-            return ""  # Yes / off-topic / unparseable → LLM
+                value = "true"
+        if value is None:
+            # Layer-2 fallthrough: no exact chip match, no clear decline - the
+            # steered model owns the reply. Logged so no-matches are countable.
+            logger.info(
+                "tagged_capture: layer2_fallthrough field=%s user_said=%r",
+                field, last_user[:80],
+            )
+            return ""
         stored, info = _apply_field(
             field,
             value,
             last_user,
             session.context,
             _current_turn({"_session": session}),
+        )
+        session.context.setdefault("_turn_captures", []).append(
+            {"layer": 1, "field": field, "value": str(value),
+             "verdict": "stored" if stored else "rejected"}
         )
         if not stored:
             logger.info(
@@ -200,6 +210,11 @@ class AdzumpAgent(BaseAgent):
         # (its chips would carry no field tag → silent drop → re-ask). Lives in
         # session.context but is popped on read, so it never leaks to next turn.
         session.context["_captured_this_turn"] = field
+        # Slice 1e (R7) - consumed by present_options: if the model's visible
+        # prose never names the value, the tool prepends the ack itself, so a
+        # click can never look ignored (emit-skip may skip the question, never
+        # the ack).
+        session.context["_capture_ack_pending"] = {"field": field, "value": str(value)}
         logger.info(
             "tagged_capture: stored field=%s value=%r user_said=%r",
             field,
@@ -209,11 +224,12 @@ class AdzumpAgent(BaseAgent):
         return (
             "## You just captured the user's answer\n"
             f"Their last message set **{field} = {value}**. It is already stored - "
-            "do NOT call set_campaign_spec for it. Acknowledge it in one short "
-            "phrase, then CALL the next tool from the missing-list (a fetch tool or "
-            "present_options) - do NOT write the next question as plain text, and "
-            "NEVER end your turn without making that tool call (a live run stalled "
-            "on a dead-end turn that acknowledged and stopped)."
+            "do NOT call set_campaign_spec for it. Your visible reply MUST begin "
+            f'with a one-short-phrase acknowledgement naming the value (e.g. "Got '
+            f'it - {value}."), then CALL the next tool from the missing-list (a '
+            "fetch tool or present_options) - do NOT write the next question as "
+            "plain text, and NEVER end your turn without making that tool call (a "
+            "live run stalled on a dead-end turn that acknowledged and stopped)."
         )
 
     def _record_prose_decline(
@@ -222,7 +238,7 @@ class AdzumpAgent(BaseAgent):
         """F18 · the competitor offer is non-deterministically asked as PROSE (no
         tagged ``present_options``), so a typed decline has no elicitation for
         ``_capture_tagged_answer`` to match - and the model often just advances
-        without recording it, leaving ``competitive_analysis_declined`` unset and
+        without recording it, leaving the ``competitive_analysis`` offer UNSET and
         the prescription re-firing every turn. Record it in code at turn-start,
         with a NARROW guard (Kiran): only the competitor-offer state, only a
         clear-decline reply (``is_clear_decline_reply`` excludes ambiguous "no…"
@@ -232,20 +248,29 @@ class AdzumpAgent(BaseAgent):
         if turn != 1 or not last_user:
             return False
         pe = session.context.get("_pending_elicitation")
-        if pe and pe.get("field") == "competitive_analysis_declined":
+        if pe and pe.get("field") in (
+            "competitive_analysis", "competitive_analysis_declined"
+        ):
             return False                                     # tagged-capture owns it
         if not (cctx.is_google
                 and not cctx.competitor_analysis_attempted
-                and "competitive_analysis_declined" not in cctx.spec):
+                and offer_state(cctx.spec, "competitive_analysis")
+                is OfferState.UNSET):
             return False
         if not is_clear_decline_reply(last_user):
             return False                                     # ambiguous → let the LLM judge
         stored, _ = _apply_field(
-            "competitive_analysis_declined", "true", last_user,
+            "competitive_analysis", OfferState.DECLINED.value, last_user,
             session.context, _current_turn({"_session": session}),
         )
         if stored:
-            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+            session.context.setdefault("_turn_captures", []).append(
+                {"layer": 1, "field": "competitive_analysis",
+                 "value": OfferState.DECLINED.value, "verdict": "stored"}
+            )
+            session.context["_capture_ack_pending"] = {
+                "field": "competitive analysis", "value": "skipped"}
+            logger.info("prose_decline_recorded: competitive_analysis=declined user_said=%r",
                         last_user[:80])
         return bool(stored)
 
@@ -270,6 +295,20 @@ class AdzumpAgent(BaseAgent):
         pe = session.context.get("_pending_elicitation")
         if not pe:
             return ""
+        # A rail whose field is already answered is dead - pop it silently
+        # (a layer-2/3 write stores the value one turn; this reaps the rail).
+        pe_field = pe.get("field")
+        if pe_field and (session.context.get("campaign_spec") or {}).get(pe_field):
+            session.context.pop("_pending_elicitation", None)
+            return ""
+        # Stale rail (R6/S1-11, same window as the capture guard): layer 2 must
+        # not steer the model to select for a long-forgotten ask - pop it and
+        # let the message be handled conversationally (the missing-list re-asks).
+        current = _current_turn({"_session": session})
+        if current - pe.get("first_reply_turn", current) > STALE_RAIL_TURNS:
+            logger.info("resume_elicitation: stale rail field=%s - dropped", pe_field)
+            session.context.pop("_pending_elicitation", None)
+            return ""
         if pe.get("expects") == "multi":
             return (
                 "## Resuming - upload request is still open\n"
@@ -279,14 +318,27 @@ class AdzumpAgent(BaseAgent):
                 "and do NOT assume it's closed until they signal completion or "
                 "you judge the captured assets sufficient."
             )
-        # v4 · F10 - awaiting a typed custom value: keep the elicitation OPEN
-        # (do NOT pop) so the next typed reply is captured by the typed-parser.
-        # _capture_tagged_answer already emitted the free-text steer this turn.
-        if pe.get("awaiting_custom"):
-            return ""
         # single: one-shot - clear after emitting so it fires for exactly this turn
         session.context.pop("_pending_elicitation", None)
         tool = pe.get("tool", "the previous step")
+        if pe_field and pe.get("answers"):
+            # Layer 2 (slice 1b): a typed reply to a field-tagged chip ask is
+            # the MODEL's to land - select the canonical value and write it.
+            canonical = ", ".join(f'"{v}"' for v in dict(pe["answers"]).values())
+            return (
+                "## Resuming after a question\n"
+                f"Last turn you asked the user to pick **{pe_field}** (chips are "
+                f"already on screen; canonical values: {canonical}). Their current "
+                "message IS the reply - do NOT restate or paraphrase the question.\n"
+                f"- It clearly selects an option (typed variant, \"60 days please\") "
+                f"→ call `set_campaign_spec({pe_field}=<canonical value>)` NOW; for "
+                "duration/budget a clearly stated non-preset value counts too "
+                '(normalize it, e.g. "45 days" / "₹7,500/day").\n'
+                "- It is about a DIFFERENT field or a question → it selects NOTHING "
+                "here; handle it, then re-render the SAME chips via present_options "
+                'with a short "pick one below" - do not guess.\n'
+                "- Never store a value the user didn't state."
+            )
         return (
             "## Resuming after a question\n"
             f"Last turn you asked the user a question (via {tool}); the widget is "
@@ -357,6 +409,10 @@ class AdzumpAgent(BaseAgent):
     async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
         self._migrate_legacy_keys(session.context)
         self._migrate_campaign_ids(session.context)
+        # Rail snapshot for the turn decision record - the state the user's
+        # message ARRIVED into, before capture/resume consume the rail.
+        rail = session.context.get("_pending_elicitation") or {}
+        open_rail_field, open_rail_untagged = rail.get("field"), bool(rail) and not rail.get("field")
         # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
         # snapshot, so the just-answered field drops out of the missing-list
         # this turn. AFTER the migrations (its setdefault would otherwise strand
@@ -368,25 +424,55 @@ class AdzumpAgent(BaseAgent):
         last_user = _last_user_text({"_session": session})
         # F18 · when the competitor offer was asked as PROSE (not a tagged
         # present_options), a clear typed decline has no capture rail - record it
-        # in code at turn-start so competitive_analysis_declined doesn't persist
+        # in code at turn-start so the competitive-analysis ask doesn't persist
         # in `missing` forever. Re-derive cctx since the spec changed.
-        if self._record_prose_decline(session, cctx, last_user, turn):
+        prose_declined = self._record_prose_decline(session, cctx, last_user, turn)
+        if prose_declined:
             cctx = CampaignContext.from_session(session)
-        missing = _next_action(cctx)
-        logger.info(
-            "next_action: turn=%d agentic=%d missing=%s user_said=%r",
-            cctx.current_turn,
-            turn,
-            missing,
-            last_user[:80],
+        missing = missing_list(NEW_CAMPAIGN, cctx)
+        uploads = self._uploaded_assets_section(session)
+        resume = self._resume_elicitation_section(session, turn)
+
+        # Slice 1c · the turn decision record - one line per agentic turn.
+        # prior_capture rotates on agentic turn 1 (captures only happen there),
+        # so the record pairs a repeat-ask with what landed the turn before.
+        captures = session.context.pop("_turn_captures", [])
+        prior_capture = session.context.get("_prior_capture")
+        if turn == 1:
+            session.context["_prior_capture"] = (
+                {"field": captures[-1]["field"], "verdict": captures[-1]["verdict"]}
+                if captures else None
+            )
+        log_turn_decision(
+            session_id=str(getattr(session, "session_id", "")),
+            turn=cctx.current_turn,
+            agentic_turn=turn,
+            missing=missing,
+            steers=[name for name, fired in (
+                ("capture_ack", bool(ack)),
+                ("prose_decline", prose_declined),
+                ("uploaded_assets", bool(uploads)),
+                ("resume_elicitation", bool(resume)),
+            ) if fired],
+            captures=captures,
+            prior_capture=prior_capture,
+            open_rail_field=open_rail_field,
+            open_rail_untagged=open_rail_untagged,
+            offers={
+                "competitive_analysis": analysis_offer_resolution(
+                    cctx.spec, cctx.competitor_analysis_attempted).value,
+                "competitor_creatives": cctx.competitor_creatives_resolution.value,
+                "instagram": instagram_offer_resolution(cctx.spec).value,
+            },
         )
+
         reminder = "\n".join(
             filter(
                 None,
                 [
                     ack,
-                    self._uploaded_assets_section(session),
-                    self._resume_elicitation_section(session, turn),
+                    uploads,
+                    resume,
                     _state_section(cctx),
                     _user_said_section(last_user),
                     _how_to_respond_section(),

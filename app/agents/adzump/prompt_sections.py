@@ -3,12 +3,13 @@
 Pure text builders: each renders one ``##`` section of the turn reminder
 (State / User just said / What's still missing / How to respond) from the
 typed ``CampaignContext`` or plain values. No I/O, no session access -
-split out of agent.py alongside next_action.py.
+split out of agent.py alongside workflow.py.
 """
 
 from __future__ import annotations
 
-from app.agents.adzump.next_action import CampaignContext
+from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.workflow import CampaignContext
 from app.agents.adzump.platform import Platform
 
 
@@ -25,14 +26,8 @@ def _state_section(cctx: CampaignContext) -> str:
     else:
         lines.append("- Product: - (need URL)")
 
-    # Surface the analyzed URL so the review summary can include it
-    # without the LLM hunting for it across nested structures.
-    url = (
-        cctx.product_profile.get("url")
-        or (cctx.product.get("pages_analyzed") or [None])[0]
-        or ""
-    )
-    if url:
+    url = website_display(cctx)
+    if url != "-":
         lines.append(f"- Website: {url}")
 
     if cctx.competitor_names:
@@ -45,7 +40,7 @@ def _state_section(cctx: CampaignContext) -> str:
         lines.append(f"- Competitors: {names}{suffix} ✓")
     elif (
         cctx.competitor_analysis_attempted
-        or "competitive_analysis_declined" in cctx.spec
+        or offer_state(cctx.spec, "competitive_analysis") is OfferState.DECLINED
     ):
         lines.append("- Competitors: none analyzed")
 
@@ -88,14 +83,21 @@ def _provenance(field_name: str, set_at: dict, current_turn: int) -> str:
 def _user_said_section(last_user: str) -> str:
     if not last_user:
         return "\n## User just said\n(no user message yet)"
-    preview = last_user.replace("\n", " ")
+    # Keep the user's line structure - flattening "1. X\n2. Y\n3. Z" into one
+    # line turned a typed competitor LIST into a paragraph the model half-read
+    # (live 2026-09-09). Fenced so the model sees it verbatim.
+    preview = last_user.strip()
     if len(preview) > 500:
         preview = preview[:500] + "…"
-    return f'\n## User just said\n"{preview}"'
+    return f"\n## User just said\n'''\n{preview}\n'''"
 
 def _missing_section(missing: list[str]) -> str:
     if not missing:
-        return "\n## What's still missing\n(nothing - ready for review & publish)"
+        # Reachable exactly when a step is WAITING (its ask is on screen and
+        # blocks completion) - never claim review-readiness here or the
+        # review-over-open-ask behavior the ready gate kills leaks back in.
+        return ("\n## What's still missing\n(nothing to ask - an answer is "
+                "pending on screen; wait for the user's reply)")
     # Render each pending item with its full prescription. Top-1 is
     # marked as the immediate next action; the rest let the LLM keep
     # going within the same agentic-loop turn (e.g. after storing
@@ -142,12 +144,43 @@ def _how_to_respond_section() -> str:
         "(`confirm_location`, `present_options`) in the same turn - ask one, "
         "wait for the reply, then ask the next. (The runtime also enforces "
         "this, but don't rely on it.)\n"
+        "\n**Structure your chat text.** Whenever you list items "
+        "(competitors, options recap, what changed), write markdown bullets "
+        "with a blank line before the list - never a comma-run paragraph.\n"
         "\n**Tool syntax is INTERNAL - never print it.** The `tool(question=…, "
         "options=[…], field=…)` forms in '## What's still missing' are "
         "instructions for YOU to CALL - never text to show the user. CALL the "
         "tool; your visible reply is natural prose only. NEVER write a tool "
         "name or `tool(...)` call syntax into the chat."
     )
+
+def website_display(cctx: CampaignContext) -> str:
+    """The analyzed business URL - the ONE fallback chain (profile url ->
+    first analyzed page -> '-') shared by the State block and the review card
+    so the two renderings can never drift."""
+    return (
+        cctx.product_profile.get("url")
+        or (cctx.product.get("pages_analyzed") or [None])[0]
+        or "-"
+    )
+
+
+def account_display(
+    acct_id: str | None, account_names: dict, platform_value: str | None,
+) -> str:
+    """'{Name} (ID: {id})' for an account-like spec field - the ONE format
+    both the State block and the review card use, so an ID can never degrade
+    to a placeholder like 'Linked'. Google CIDs render dashed."""
+    if not acct_id:
+        return "-"
+    raw = str(acct_id)
+    display_id = raw
+    if Platform.from_value(platform_value) is Platform.GOOGLE \
+            and raw.isdigit() and len(raw) == 10:
+        display_id = f"{raw[:3]}-{raw[3:6]}-{raw[6:]}"
+    name = (account_names.get(raw) or "").strip()
+    return f"{name} (ID: {display_id})" if name else f"ID: {display_id}"
+
 
 def _ad_account_summary(spec: dict, account_names: dict) -> str:
     platform = Platform.from_value(spec.get("platform"))
@@ -170,18 +203,8 @@ def _ad_account_summary(spec: dict, account_names: dict) -> str:
         else "Ad Account"
     )
 
-    def pretty_id(acct_id: str) -> str:
-        raw = str(acct_id)
-        if is_google_platform and raw.isdigit() and len(raw) == 10:
-            return f"{raw[:3]}-{raw[3:6]}-{raw[6:]}"
-        return raw
-
     def fmt(acct_id: str | None) -> str:
-        if not acct_id:
-            return "-"
-        name = (account_names.get(str(acct_id)) or "").strip()
-        display_id = pretty_id(acct_id)
-        return f"{name} (ID: {display_id})" if name else f"ID: {display_id}"
+        return account_display(acct_id, account_names, spec.get("platform"))
 
     lines = [
         f"- {parent_label}: {fmt(spec.get('parent_account'))}",

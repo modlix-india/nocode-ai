@@ -1,13 +1,15 @@
-"""ProductAgent module-level helpers - the JSON-failure salvage path.
-
-Regression for PR #91 B3: the salvage read looked up `search_results_merged`,
-a key with zero writers, so the record promised "search evidence is attached"
-and attached nothing. It must read `search_results` - the {query, candidates}
-entries shortlist_competitors stashes in `_research_state`.
-"""
+"""ProductAgent module-level helpers: the JSON-failure salvage path
+(_build_minimal_result - regression for PR #91 B3, which read a key with zero
+writers) and the discovery output contract (_discovery_violations /
+_scrub_unverified - the code teeth behind 'every competitor cites
+fetch_candidates evidence')."""
 import unittest
 
-from app.agents.adzump.agents.product.agent import _build_minimal_result
+from app.agents.adzump.agents.product.agent import (
+    _build_minimal_result,
+    _discovery_violations,
+    _scrub_unverified,
+)
 
 
 def _ctx(search_results=None):
@@ -46,6 +48,59 @@ class BuildMinimalResultTests(unittest.TestCase):
                     self.assertEqual(len(evidence), 1)
                     for fragment in expected_fragments:
                         self.assertIn(fragment, evidence[0])
+
+
+_RESEARCHED = {"candidate_pool": {"C1": {}},
+               "verified_competitors": [{"cid": "C1", "name": "Sobha Magnus"}]}
+
+
+def _payload(*competitors: dict) -> dict:
+    return {"competitive": {"competitors": list(competitors)}}
+
+
+class DiscoveryContractTests(unittest.TestCase):
+    """Live 2026-09-08: the analyst wrote its final JSON straight from search
+    content, skipping the pipeline - hand-typed URLs, no evidence, and an
+    'empty' list that had never looked. The contract is now checked in code."""
+
+    def test_violation_rows(self):
+        rows = [
+            ("verified citation passes",
+             _payload({"name": "Sobha Magnus", "competitor_id": "C1",
+                       "url": None}), _RESEARCHED, 0),
+            ("name-only entry tolerated (nothing to poison)",
+             _payload({"name": "Sobha Magnus", "url": None}), _RESEARCHED, 0),
+            ("model-typed url on unverified entry",
+             _payload({"name": "Godrej", "url": "https://godrej-typo.com"}),
+             _RESEARCHED, 1),
+            ("unknown evidence id",
+             _payload({"name": "Ghost", "competitor_id": "C9", "url": None}),
+             _RESEARCHED, 1),
+            ("empty list after a real pipeline run is honest",
+             _payload(), {"candidate_pool": {}}, 0),
+            ("empty list without ever looking",
+             _payload(), {}, 1),
+            ("no competitive block at all",
+             {}, {}, 1),
+        ]
+        for label, payload, research_state, expected in rows:
+            with self.subTest(label):
+                self.assertEqual(
+                    len(_discovery_violations(payload, research_state)),
+                    expected)
+
+    def test_scrub_strips_only_unverified(self):
+        verified = {"name": "Sobha Magnus", "competitor_id": "C1", "url": None}
+        invented = {"name": "Godrej", "url": "https://godrej-typo.com"}
+        bad_cite = {"name": "Ghost", "competitor_id": "C9",
+                    "url": "https://ghost.example"}
+        competitive = {"competitors": [verified, invented, bad_cite]}
+        scrubbed = _scrub_unverified(competitive, _RESEARCHED)
+        self.assertEqual(scrubbed, ["Godrej", "Ghost"])
+        self.assertEqual(verified["competitor_id"], "C1")  # untouched
+        for comp in (invented, bad_cite):
+            self.assertIsNone(comp["url"])
+            self.assertNotIn("competitor_id", comp)
 
 
 if __name__ == "__main__":

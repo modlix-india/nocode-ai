@@ -1,6 +1,6 @@
 """Unit: app/agents/adzump/services/business_storage.py - pure record/helper builders.
 
-Covers `_normalize_url` (the storage key - http→https, www-strip, trailing-slash),
+Covers `normalize_business_url` (the storage key - http→https, www-strip, trailing-slash),
 `_build_location_object` (legacy ds-v1 location precedence: map-confirmed →
 user-typed → scraped), and `_build_full_record`'s competitive-block honesty
 (attempted-wins-over-stale-declined backstop).
@@ -15,7 +15,8 @@ from __future__ import annotations
 import unittest
 
 from app.agents.adzump.services.business_storage import (
-    _normalize_url, _build_location_object, _build_full_record,
+    normalize_business_url, _build_location_object, _build_full_record,
+    _record_to_business,
 )
 from tests.agents.adzump._fixtures import RE
 
@@ -32,7 +33,7 @@ class NormalizeUrlLock(unittest.TestCase):
         ]
         for raw, expected in cases:
             with self.subTest(raw=raw):
-                self.assertEqual(_normalize_url(raw), expected)
+                self.assertEqual(normalize_business_url(raw), expected)
 
 
 class BuildLocationObjectLock(unittest.TestCase):
@@ -61,6 +62,37 @@ def _rec(spec, *, competitors=None):
     if competitors is not None:
         sc["competitor_analysis"] = {"competitors": competitors}
     return _build_full_record(sc, "https://example.com")["campaign"]["competitive"]
+
+
+class ProductCategoryRoundTripTests(unittest.TestCase):
+    """Stage A fields (taxonomy.py) survive save -> hydrate: the relevance
+    gate must see the SAME yardstick after a session restart, override
+    included - otherwise every restart re-derives and can flip decisions."""
+
+    _FIELDS = {
+        "product_category": "residential_apartment",
+        "product_subcategory": "",
+        "product_market": "Whitefield, Bangalore",
+        "product_offering_stage": "pre_launch",
+        "product_category_source": "businessType",
+        "product_category_confidence": 0.9,
+        "taxonomy_version": "1",
+        "product_category_override": "residential_villa",
+    }
+
+    def test_save_then_hydrate_is_identity(self):
+        product = {**RE, **self._FIELDS}
+        record = _build_full_record({"product_data": product},
+                                    "https://example.com")
+        self.assertEqual(record["productCategory"], "residential_apartment")
+        self.assertEqual(record["productCategoryOverride"], "residential_villa")
+        restored = _record_to_business(record)
+        self.assertEqual({k: restored[k] for k in self._FIELDS}, self._FIELDS)
+
+    def test_legacy_record_hydrates_unclassified(self):
+        restored = _record_to_business({"businessUrl": "https://old.com"})
+        self.assertEqual(restored["product_category"], "")
+        self.assertEqual(restored["taxonomy_version"], "")
 
 
 class CampaignStatusTests(unittest.TestCase):
@@ -122,6 +154,13 @@ class LaunchRecordTests(unittest.TestCase):
     def test_genuine_decline_still_persists_declined(self):
         # never analyzed + declined → the real decline must still record.
         c = _rec({"platform": "Google Ads", "competitive_analysis_declined": "true"})
+        self.assertFalse(c["attempted"])
+        self.assertTrue(c["declined"])
+
+    def test_enum_decline_persists_identically(self):
+        # S1-2 - the enum spec and the legacy spec produce the identical
+        # durable record (the ds JSON shape never changes).
+        c = _rec({"platform": "Google Ads", "competitive_analysis": "declined"})
         self.assertFalse(c["attempted"])
         self.assertTrue(c["declined"])
 

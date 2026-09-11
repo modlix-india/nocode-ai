@@ -1,9 +1,13 @@
-"""Competitor discovery tool - shortlist competitors from web search results.
+"""Competitor discovery tools - facts + enforcement in code, judgment in the agent.
 
-Scores candidates on code signals (frequency, domain) + semantic signals
-(format/geo/price match via batched classifier), fetches top-K candidate
-pages in parallel, drops aggregators and fetch failures, returns verified
-evidence block for the ProductAgent's final JSON.
+CP-6 cutover: two tools replace the old shortlist_competitors composite.
+``extract_candidates`` pools/dedupes search hits into an ID'd fact table; the
+AGENT (which read the full search content in its own context) judges which
+candidates are real competitors; ``fetch_candidates(ids)`` maps the picked IDs
+back to custody-held URLs and runs the mechanical pipeline: GBP URL resolution,
+host dedup, parallel fetch-verify with aggregator-follow. The Haiku classifier,
+composite weights, score threshold, geo hard-floor, and SEGMENT hints are gone -
+the worse-informed judge no longer vetoes the better-informed one.
 """
 
 from __future__ import annotations
@@ -17,55 +21,23 @@ from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import (
     emit_progress,
     host_of,
-    is_aggregator_host,
+)
+from app.agents.adzump.competitor_urls import (
+    cached_business_listing,
+    cached_business_listings,
+    is_aggregator_or_google_host,
+    is_alive,
+    is_broker_style_tld,
+    listing_name_matches,
+    normalize_business_name,
+    parse_official_url,
+    project_page_from_site,
 )
 
 logger = logging.getLogger(__name__)
 
-# Extends the shared AGGREGATOR_HOSTS with google.com - covers Maps citation
-# URLs that show up in search results (google.com/maps/search/<brand>).
-_AGGREGATOR_EXTRA: frozenset[str] = frozenset({"google.com"})
-
-
-# Composite tool: reads stashed web_search results → scores candidates (code
-# signals + one batched classifier call) → fetches top-K in parallel → drops
-# failures/aggregators → returns merged evidence for the final JSON turn.
-
-# Classifier is swappable between anthropic (default) and openai. The env-based
-# kill switch (SHORTLIST_CLASSIFIER_PROVIDER) lets us revert quickly if Haiku
-# underperforms on the batched format/geo/price classification prompt.
-_SHORTLIST_CLASSIFIER_OPENAI_MODEL = "gpt-4o-mini"
-_SHORTLIST_DEFAULT_MAX_FETCHES = 8
-_SHORTLIST_MIN_COMPOSITE_SCORE = 3  # raised from 2 after reweight (Phase A)
-_SHORTLIST_FETCH_TIMEOUT_SEC = 20.0
-
-
-_NAME_SUFFIX_STRIPS = (
-    " pvt ltd", " pvt. ltd.", " private limited", " ltd", " ltd.",
-    " inc", " inc.", " llc", " gmbh", " corporation", " corp.", " corp",
-    " co.", " company", " group",
-)
-
-
-def _normalize_name(name: str) -> str:
-    """Canonicalise a brand name for dedup. Lowercase, strip punctuation and
-    common business-type suffixes."""
-    import re as _re
-    s = (name or "").lower().strip()
-    # Drop suffixes
-    for suf in _NAME_SUFFIX_STRIPS:
-        if s.endswith(suf):
-            s = s[: -len(suf)].strip()
-    # Strip non-alphanumeric (keep spaces)
-    s = _re.sub(r"[^a-z0-9\s]", " ", s)
-    s = _re.sub(r"\s+", " ", s).strip()
-    return s
-
-
-# Local aliases over the shared helpers. ``_is_aggregator_host`` extends the
-# shared set with google.com (Maps citation URLs) - specific to this tool.
-_host_of = host_of
-
+_MAX_FETCH_IDS = 12
+_FETCH_TIMEOUT_SEC = 20.0
 
 # Whole-word markers - a token equal to one of these signals a sub-city
 # anchor. E.g. "Bannerghatta Road" has the token "road"; "JP Nagar Phase 5"
@@ -86,13 +58,492 @@ _SPECIFIC_GEO_COMPOUND_SUFFIXES = (
     "nagar", "halli", "pura", "palya", "gudi", "pet", "layout", "colony",
 )
 
+_FETCH_QUESTION_TEMPLATE = (
+    "FIRST line: write either 'TYPE: BRAND' (this is the brand's own official site "
+    "with info about ONE company/product) or 'TYPE: AGGREGATOR' (directory listing "
+    "many unrelated brands, comparison portal, marketplace, map search, news article, "
+    "or review site).\n"
+    "SECOND line (only if AGGREGATOR): write 'OFFICIAL_URL: <url>' with the brand's "
+    "own website URL if it is explicitly linked on this page, OR 'OFFICIAL_URL: none' "
+    "if no such link is present. Do NOT invent a URL - only use one that appears on the page.\n\n"
+    "Then answer: What does this page describe? What does the brand offer, where do "
+    "they operate, what's their pricing or business model, and what stands out "
+    "(trust signals, differentiators, target customer)?"
+)
+
+
+# ─── Tool 1: extract_candidates - code facts only ───────────────────────────
+
+async def _extract_candidates(params: dict, context: dict) -> ToolResult:
+    """Harvest search hits (transcript fallback), dedupe, flag
+    aggregator/primary, count cross-query frequency, assign the stable IDs (B2)
+    everything downstream keys on. NO judgment: the agent, which read the full
+    search content, picks. URLs stay in the session-held candidate pool - the
+    model-visible table shows only hosts (the model never transcribes URLs)."""
+    session_ctx = context.get("session_context") or {}
+    research_state = session_ctx.setdefault("_research_state", {})
+    search_results: list[dict] = research_state.get("search_results") or []
+
+    # Anthropic server-side web_search doesn't stash results in session_context
+    # (it happens inside the API, not in our Python) - parse them out of this
+    # run's message history. History wins over any stashed copy: a rerun in the
+    # same session must judge ITS searches, not a previous run's stale stash.
+    messages_getter = context.get("session_messages")
+    messages = messages_getter() if callable(messages_getter) else (messages_getter or [])
+    harvested = _extract_search_results_from_history(messages)
+    if harvested:
+        search_results = harvested
+        research_state["search_results"] = harvested
+
+    if not search_results:
+        return ToolResult(
+            success=False,
+            error="No search results available - run web_search first, then call extract_candidates.",
+        )
+
+    business_brief = session_ctx.get("product_profile") or {}
+    primary_host = host_of(business_brief.get("url") or "")
+    product_name = (session_ctx.get("product_data") or {}).get("product_name", "")
+
+    merged = _merge_candidate_facts(search_results, primary_host, product_name)
+    self_references = [c for c in merged if c["is_primary"]]
+    candidates = [c for c in merged if not c["is_primary"]]
+    if not candidates:
+        return ToolResult(
+            success=False,
+            error="Every search hit resolved to the client's own business - "
+                  "broaden the searches or finish with an empty competitor list.",
+        )
+    for i, cand in enumerate(candidates, start=1):
+        cand["cid"] = f"C{i}"
+    research_state["candidate_pool"] = {c["cid"]: c for c in candidates}
+    # Run boundary: cids are positional per pool build, and _research_state is
+    # shared across analyst runs (discovery, add-by-name). Keep prior verified
+    # evidence only where the id still names the SAME candidate - otherwise a
+    # later run's C2 would inherit an earlier run's C2 evidence and the join
+    # would ship the wrong business's URL under a new name.
+    pool = research_state["candidate_pool"]
+    research_state["verified_competitors"] = [
+        v for v in research_state.get("verified_competitors") or []
+        if isinstance(v, dict)
+        and (pool.get(v.get("cid")) or {}).get("name") == v.get("name")
+    ]
+
+    n_queries = len(search_results)
+    lines = [
+        f"## Candidate Facts ({len(candidates)} candidates from {n_queries} searches)",
+        "",
+        "ID | name | host | seen in | flags",
+    ]
+    for c in candidates:
+        flags = "aggregator-hosted" if c["is_aggregator"] else "-"
+        lines.append(
+            f"{c['cid']} | {_table_cell(c['name'])} | {c['host'] or '-'} | "
+            f"{len(c['seen_in'])}/{n_queries} | {flags}"
+        )
+    if self_references:
+        lines += ["", "Excluded as the client's own business: "
+                  + ", ".join(_table_cell(c["name"]) for c in self_references)]
+    profile_summary = business_brief.get("summary") or ""
+    if _is_specific_geography(profile_summary):
+        lines += ["", "Geography flag: this business is anchored to a specific "
+                  "micro-market (road/neighborhood level). Apply the corridor "
+                  "rule - the same corridor plus the adjacent localities buyers "
+                  "shop as one zone count; a non-cross-shopped corridor does "
+                  "not. State a reason for every wrong-geography exclusion."]
+    lines += ["", "Judge every row against the search content you already read "
+              "(one-line PICK/SKIP verdict each), then call fetch_candidates "
+              f"with the 6-8 strongest IDs (max {_MAX_FETCH_IDS})."]
+    return ToolResult(success=True, summary="\n".join(lines))
+
+
+# ─── Tool 2: fetch_candidates - code enforcement ────────────────────────────
+
+async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
+    """Map the agent's picked IDs to custody-held URLs and run the mechanical
+    pipeline: GBP URL fill, host dedup, parallel fetch-verify with
+    aggregator-follow. Unknown IDs are an evidence-bearing error; already
+    verified IDs are skipped, not re-fetched. Returns ID-keyed evidence -
+    a competitor without a verified session entry structurally cannot ship."""
+    session_ctx = context.get("session_context") or {}
+    research_state = session_ctx.setdefault("_research_state", {})
+    pool: dict[str, dict] = research_state.get("candidate_pool") or {}
+    if not pool:
+        return ToolResult(
+            success=False,
+            error="No candidate pool - call extract_candidates first.",
+        )
+
+    ids: list[str] = []
+    for raw in params.get("ids") or []:
+        cid = str(raw).strip().upper()
+        if cid and cid not in ids:
+            ids.append(cid)
+    if not ids:
+        return ToolResult(success=False, error="Pass the candidate IDs to fetch, e.g. ids=[\"C1\",\"C4\"].")
+    unknown = [cid for cid in ids if cid not in pool]
+    if unknown:
+        return ToolResult(
+            success=False,
+            error=(f"Unknown candidate IDs: {', '.join(unknown)}. Valid IDs are "
+                   f"C1..C{len(pool)} from extract_candidates - re-check your picks."),
+        )
+    if len(ids) > _MAX_FETCH_IDS:
+        return ToolResult(
+            success=False,
+            error=(f"{len(ids)} IDs is over the fetch budget of {_MAX_FETCH_IDS} - "
+                   "pick only the strongest candidates."),
+        )
+
+    already_verified = {c.get("cid") for c in research_state.get("verified_competitors") or []}
+    skipped_verified = [cid for cid in ids if cid in already_verified]
+    picked = [pool[cid] for cid in ids if cid not in already_verified]
+    for c in picked:  # pool dicts persist across calls - clear stale markers
+        c.pop("dropped_dup_host", None)
+        c.pop("no_url", None)
+
+    fetched: list[dict[str, Any]] = []
+    if picked:
+        # Places URL resolution (D-5): missing/aggregator URLs get one
+        # GBP lookup; a guard-passing listing wins. A resolved URL is NOT trusted -
+        # it joins fetch-verify like any search-derived URL. Nothing is guessed.
+        await _resolve_urls(picked, session_ctx)
+        picked = _dedupe_resolved_hosts(picked)
+        fetchable = [c for c in picked if c.get("url")]
+        for c in picked:
+            if not c.get("url"):
+                c["no_url"] = True  # shadow-table outcome marker
+        if fetchable:
+            await emit_progress(
+                context, f"Fetching {len(fetchable)} competitor pages in parallel…")
+            fetched = await asyncio.gather(
+                *(_fetch_one_candidate(c) for c in fetchable),
+                return_exceptions=False,
+            )
+        # URL identity is the ANALYST's judgment (Kailash: the researcher with
+        # the full context judges, never a post-hoc cheap model). Code gathers
+        # the vetted options per verified candidate; the final JSON cites one
+        # by ID (official_url_id) or null - the model never writes URLs.
+        verified_now = [c for c in fetched if c.get("fetch_status") == "ok"]
+        await asyncio.gather(
+            *(_attach_url_options(c, session_ctx) for c in verified_now))
+
+    _log_candidate_table(list(pool.values()), set(ids), fetched, already_verified)
+
+    verified = [c for c in fetched if c.get("fetch_status") == "ok"]
+    aggregator_drops = [c for c in fetched if c.get("fetch_status") == "aggregator"]
+    fetch_fails = [c for c in fetched if c.get("fetch_status") == "failed"]
+    logger.info(
+        "fetch_candidates: picked=%d skipped_verified=%d fetched=%d verified=%d "
+        "(aggregator=%d fetch_fail=%d)",
+        len(ids), len(skipped_verified), len(fetched), len(verified),
+        len(aggregator_drops), len(fetch_fails),
+    )
+
+    # Accumulate across calls (cid-keyed): a second fetch_candidates call with
+    # replacement IDs must not erase earlier verified evidence (B2 join source).
+    all_verified = {c.get("cid"): c
+                    for c in research_state.get("verified_competitors") or []}
+    all_verified.update({c["cid"]: c for c in verified})
+    research_state["verified_competitors"] = list(all_verified.values())
+
+    lines = _evidence_block(verified, aggregator_drops, fetch_fails,
+                            skipped_verified, len(all_verified))
+    return ToolResult(
+        success=True,
+        data={"verified": verified,
+              "dropped": {"aggregator": aggregator_drops, "fetch_fail": fetch_fails}},
+        summary="\n".join(lines),
+    )
+
+
+_URL_OPTION_READS = 2  # unread alive options content-read per candidate
+_URL_OPTION_READ_QUESTION = (
+    "ONE line only: whose page is this and what is it - the official website "
+    "of which specific project/brand, a broker/lead-gen page, a portal "
+    "listing, or something else? Name the project it is about."
+)
+
+
+async def _attach_url_options(candidate: dict[str, Any], session_ctx: dict) -> None:
+    """Gather the code-vetted official-URL options for one verified candidate:
+    the page we read, the top Google Business listings for its name, and a
+    project-page extraction from the first listed site - each alive-checked,
+    most content-read. The ANALYST cites exactly one by id (official_url_id)
+    in the final JSON, or null when none is the project's own page - the model
+    never writes URLs, and aggregator/broker-style/dead hosts never become
+    citable (they ship as excluded facts). Mutates the candidate:
+    ``url_options`` (uid -> url, the join's custody map), ``url_option_lines``
+    and ``url_option_notes`` (evidence text)."""
+    options: list[dict[str, Any]] = []
+    notes: list[str] = []
+
+    def add_option(url: str | None, source: str, listing_name: str = "") -> dict | None:
+        url = (url or "").strip()
+        host = host_of(url)
+        if not url or not host:
+            return None
+        if is_aggregator_or_google_host(host):
+            notes.append(f"{host}: aggregator/portal ({source})")
+            return None
+        if is_broker_style_tld(host):
+            notes.append(f"{host}: broker-style domain, not plain .com/.in ({source})")
+            return None
+        for existing in options:
+            if existing["url"].rstrip("/") == url.rstrip("/"):
+                if listing_name and not existing["listing_name"]:
+                    existing["listing_name"] = listing_name
+                return existing
+        option = {"url": url, "host": host, "source": source,
+                  "listing_name": listing_name, "alive": None, "read": ""}
+        options.append(option)
+        return option
+
+    read_page = add_option(candidate.get("fetch_url") or candidate.get("url"),
+                           "the page read above")
+    if read_page is not None:
+        read_page["alive"] = True
+        read_page["read"] = "see the Answer above"
+
+    listings = await cached_business_listings(candidate["name"], session_ctx)
+    for listing in listings[:3]:
+        if listing.get("website"):
+            add_option(listing["website"], "business listing",
+                       listing.get("name") or "")
+
+    # Rung-3 heritage: ask the first listed site for its own project page
+    # (memoized; same-host guarded inside) - catches sobha.com carrying
+    # sobha.com/sobha-magnus.
+    first_listing = next(
+        (o for o in options if o["source"] == "business listing"), None)
+    if first_listing is not None:
+        extracted = await project_page_from_site(
+            candidate["name"], first_listing["url"], session_ctx)
+        if extracted:
+            add_option(extracted, "extracted from the listed site")
+
+    unknown_alive = [o for o in options if o["alive"] is None]
+    liveness = await asyncio.gather(*(is_alive(o["url"]) for o in unknown_alive))
+    for option, alive in zip(unknown_alive, liveness):
+        option["alive"] = alive
+    dead = [o for o in options if not o["alive"]]
+    for option in dead:
+        notes.append(f"{option['host']}: dead ({option['source']})")
+        options.remove(option)
+
+    unread = [o for o in options if not o["read"]][:_URL_OPTION_READS]
+    reads = await asyncio.gather(*(_read_page_line(o["url"]) for o in unread))
+    for option, line in zip(unread, reads):
+        option["read"] = line
+
+    url_options: dict[str, str] = {}
+    lines: list[str] = []
+    for i, option in enumerate(options, start=1):
+        uid = f"{candidate['cid']}.U{i}"
+        url_options[uid] = option["url"]
+        bits = [uid, option["host"], option["source"]]
+        if option["listing_name"]:
+            bits.append(f'listing "{_table_cell(option["listing_name"])}"')
+        if option["read"]:
+            bits.append(option["read"] if option["read"] == "see the Answer above"
+                        else f"reads as: {option['read']}")
+        lines.append(" | ".join(bits))
+    candidate["url_options"] = url_options
+    candidate["url_option_lines"] = lines
+    candidate["url_option_notes"] = notes
+
+
+async def _read_page_line(url: str) -> str:
+    """One-line live read of a URL option; empty on failure (the analyst then
+    weighs that option on its other facts)."""
+    from app.agents.adzump.agents.product.adapters.web_fetch_adapter import (
+        fetch_and_answer,
+    )
+
+    try:
+        result = await asyncio.wait_for(
+            fetch_and_answer(url, _URL_OPTION_READ_QUESTION), timeout=25.0)
+    except Exception:
+        return ""
+    if not isinstance(result, dict) or result.get("status") != "ok":
+        return ""
+    return " ".join(str(result.get("answer") or "").split())[:300]
+
+
+def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
+                    fetch_fails: list[dict], skipped_verified: list[str],
+                    total_verified: int) -> list[str]:
+    """ID-keyed evidence for the agent's final judgment - no segment hints,
+    no match booleans: the agent re-judges each entry on the fetched content."""
+    if not verified and total_verified:
+        # A cautious re-call that added nothing (re-cited verified IDs, or
+        # replacements that all dropped) must not invite another round: with
+        # thinking on, one such loop burned a 115s deliberation turn (live
+        # 2026-09-11) re-confirming evidence it already held.
+        drops = []
+        if skipped_verified:
+            drops.append(f"{', '.join(skipped_verified)} already verified "
+                         "earlier - that evidence is unchanged and still valid")
+        if aggregator_drops:
+            drops.append(f"{len(aggregator_drops)} aggregator page(s) dropped")
+        if fetch_fails:
+            drops.append(f"{len(fetch_fails)} fetch failure(s)")
+        return [
+            "## Fetch Candidates - NO NEW EVIDENCE",
+            "",
+            "This call verified nothing new"
+            + (f" ({'; '.join(drops)})" if drops else "") + ".",
+            "",
+            f"Your {total_verified} previously verified competitor(s) are the "
+            "complete evidence base - further calls only re-confirm it. Write "
+            "the final JSON NOW, citing the existing IDs; do NOT call "
+            "fetch_candidates again.",
+        ]
+    if not verified and not skipped_verified:
+        return [
+            "## Fetch Candidates - NOTHING VERIFIED",
+            "",
+            f"{len(aggregator_drops)} were aggregator pages with no recoverable "
+            f"brand site, {len(fetch_fails)} failed to fetch.",
+            "",
+            "You may call fetch_candidates ONCE more with different IDs, or write "
+            "the final JSON citing only competitors you can ground in evidence "
+            "(empty competitors array if none, with a note explaining it).",
+        ]
+
+    lines: list[str] = [f"## Verified Competitors ({len(verified)} new, "
+                        f"{total_verified} total)", ""]
+    for c in verified:
+        lines.append(f"### {c['name']}")
+        lines.append(f"ID: {c['cid']}")
+        # The VERIFIED url: fetch_url is the page we actually read (post
+        # aggregator-follow/redirects). Cite by ID in the final JSON - code
+        # attaches this URL; hand-copied URLs get corrupted.
+        verified_url = c.get("fetch_url") or c.get("url")
+        if verified_url:
+            lines.append(f"URL: {verified_url}")
+        answer = (c.get("fetch_answer") or "").strip()
+        if answer.upper().startswith("TYPE: BRAND"):
+            answer = answer[len("TYPE: BRAND"):].lstrip(":\n ").strip()
+        if answer:
+            lines.append("")
+            lines.append(f"Answer: {answer}")
+        if c.get("url_options") or c.get("url_option_notes"):
+            lines.append("")
+            lines.append("Official-URL options - cite EXACTLY ONE id in "
+                         "official_url_id, or null when none is this "
+                         "project's OWN page:")
+            lines.extend(f"  {option}" for option in c.get("url_option_lines") or [])
+            for note in c.get("url_option_notes") or []:
+                lines.append(f"  excluded: {note}")
+            if not c.get("url_options"):
+                lines.append("  (every candidate URL was excluded - cite null; "
+                             "an official page likely does not exist yet)")
+        lines.append("")
+
+    footer: list[str] = []
+    if skipped_verified:
+        footer.append(f"Already verified earlier, not re-fetched: "
+                      + ", ".join(skipped_verified))
+    if fetch_fails:
+        footer.append(f"Dropped due to fetch failure ({len(fetch_fails)}): "
+                      + ", ".join(c["name"] for c in fetch_fails))
+    if aggregator_drops:
+        footer.append(f"Dropped as aggregator ({len(aggregator_drops)}): "
+                      + ", ".join(c["name"] for c in aggregator_drops))
+    if footer:
+        lines += ["---", ""] + footer
+    return lines
+
+
+# ─── Candidate facts (stage-1 helpers) ──────────────────────────────────────
+
+def _table_cell(text: str) -> str:
+    """Candidate names are raw page titles - a '|' or newline in one would
+    shift the fact table's columns and misattribute host/flags to the wrong
+    brand. Collapse whitespace, swap the delimiter."""
+    return " ".join((text or "").split()).replace("|", "/")
+
+
+def _merge_candidate_facts(
+    search_results: list[dict[str, Any]], primary_host: str,
+    primary_name: str = "",
+) -> list[dict[str, Any]]:
+    """Dedupe search hits into one entry per brand and attach the code facts:
+    cross-query frequency (``seen_in``), aggregator flag, self-reference flag.
+
+    Self-reference detection uses host (cityville.in), name fuzzy match
+    (``Valmark CityVille`` ≈ ``Valmark City Ville``), AND the client's brand
+    token in the candidate host - the developer's own domain (valmark.in for a
+    Valmark CityVille campaign) must never enter the competitor list, even
+    under an SEO title the name match can't catch. Leading token only:
+    "Godrej Bannerghatta" contributes "godrej", never the locality.
+    """
+    primary_name_norm = normalize_business_name(primary_name)
+    primary_brand = (primary_name_norm.split() or [""])[0]
+    primary_brand = primary_brand if len(primary_brand) > 3 else ""
+    merged: dict[str, dict[str, Any]] = {}
+
+    for search in search_results:
+        query = search.get("query", "")
+        for cand in search.get("candidates", []):
+            if not isinstance(cand, dict):
+                continue
+            name = str(cand.get("name") or "").strip()
+            if not name:
+                continue
+            url = cand.get("url") or None
+            host = host_of(url)
+            # Prefer URL host as dedup key (same site = same brand); fall back
+            # to normalized name so we still merge when the URL is missing.
+            # Use brand name for dedup when URL is an aggregator/citation
+            # (e.g. google.com/maps) - all such URLs share the same host,
+            # which would incorrectly merge unrelated brands into one entry.
+            key = host if (host and not is_aggregator_or_google_host(host)) else normalize_business_name(name)
+            if not key:
+                continue
+            entry = merged.get(key)
+            if entry is None:
+                entry = {
+                    "name": name,
+                    "url": url,
+                    "host": host,
+                    "seen_in": [],
+                }
+                merged[key] = entry
+            elif not entry["url"] and url:
+                # Fill a missing URL from a later occurrence.
+                entry["url"] = url
+                entry["host"] = host or entry["host"]
+            if query and query not in entry["seen_in"]:
+                entry["seen_in"].append(query)
+
+    out: list[dict[str, Any]] = []
+    for entry in merged.values():
+        host = entry["host"]
+        # Self-reference: match on host OR fuzzy name overlap.
+        # Compare with spaces stripped too ("cityville" vs "city ville").
+        name_norm = normalize_business_name(entry["name"])
+        name_compact = name_norm.replace(" ", "")
+        primary_compact = primary_name_norm.replace(" ", "")
+        entry["is_primary"] = (
+            (bool(primary_host) and host == primary_host)
+            or (bool(primary_compact) and len(primary_compact) > 3
+                and (primary_compact in name_compact or name_compact in primary_compact))
+            or (bool(primary_brand) and primary_brand in (host or ""))
+        )
+        entry["is_aggregator"] = is_aggregator_or_google_host(host)
+        out.append(entry)
+    return out
+
 
 def _is_specific_geography(geo_text: str | None) -> bool:
     """True when a geography string names something tighter than a city.
 
-    Triggers the geo hard-floor for geo-bound verticals (real-estate,
-    restaurants, local services). False for global/regional/city-level
-    profiles - keeps SaaS & D2C flows untouched.
+    Surfaces the geography FLAG in the candidate table for geo-bound verticals
+    (real-estate, restaurants, local services) - the agent applies the
+    same-micro-market rule; code no longer drops anyone on it. False for
+    global/regional/city-level profiles - keeps SaaS & D2C flows untouched.
 
     Heuristic (any of):
       - A whole-word marker token is present (road / street / nagar etc.)
@@ -109,339 +560,68 @@ def _is_specific_geography(geo_text: str | None) -> bool:
     return False
 
 
-def _is_aggregator_host(host: str) -> bool:
-    return is_aggregator_host(host, _AGGREGATOR_EXTRA)
+# ─── URL resolution + fetch-verify (stage-2 helpers) ────────────────────────
 
+async def _resolve_urls(candidates: list[dict[str, Any]], session_ctx: dict) -> None:
+    """Candidate-stage URL fill (D-5, scoped, D-5): only candidates
+    with a MISSING or aggregator URL get the locality-biased Google Business
+    Profile lookup - candidate names here are often junk SEO page titles that
+    can't pass the name guard, so a good search URL is left alone; the
+    per-candidate Official-URL options give the analyst the full picture to
+    judge from after the fetch.
 
-async def _resolve_brand_url(name: str) -> str | None:
-    """Try to find a brand's official URL by guessing common domain patterns.
-
-    Tries ``brandname.com``, ``brandname.in``, ``brandname.co.in`` with a fast
-    HEAD request. Returns the first that responds with HTTP 2xx/3xx, or None.
-    Costs 0 LLM calls, runs in ~1-2s.
-    """
-    import re as _re
-    import httpx
-
-    # Normalize: "SNN Raj Viviente" → "snnrajviviente", "Sobha Galera" → "sobhagalera"
-    slug = _re.sub(r"[^a-z0-9]", "", name.lower())
-    if not slug or len(slug) < 3:
-        return None
-
-    # Also try with hyphens: "snn-raj-viviente"
-    slug_hyphen = _re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-
-    candidates = []
-    for s in dict.fromkeys([slug, slug_hyphen]):  # dedup, preserve order
-        for suffix in (".com", ".in", ".co.in"):
-            candidates.append(f"https://{s}{suffix}")
-            candidates.append(f"https://www.{s}{suffix}")
-
-    async with httpx.AsyncClient(
-        timeout=httpx.Timeout(4.0, connect=2.0),
-        follow_redirects=True,
-        verify=False,
-    ) as client:
-        for url in candidates:
-            try:
-                resp = await client.head(url)
-                if resp.status_code < 400:
-                    final_host = _host_of(str(resp.url))
-                    if final_host and not _is_aggregator_host(final_host):
-                        return str(resp.url)
-            except Exception:
-                continue
-    return None
-
-
-def _score_code_signals(
-    search_results: list[dict[str, Any]], primary_host: str,
-    primary_name: str = "",
-) -> list[dict[str, Any]]:
-    """Dedupe and score candidates on pure-code signals.
-
-    Signals:
-      +1 per search beyond the first the candidate appears in (frequency)
-      +1 if URL host is distinct (not aggregator, not primary business)
-
-    Self-reference detection uses both host (cityville.in) AND name fuzzy match
-    (``Valmark CityVille`` ≈ ``Valmark City Ville``).
-    """
-    primary_name_norm = _normalize_name(primary_name)
-    merged: dict[str, dict[str, Any]] = {}
-
-    for search in search_results:
-        query = search.get("query", "")
-        for cand in search.get("candidates", []):
-            if not isinstance(cand, dict):
-                continue
-            name = str(cand.get("name") or "").strip()
-            if not name:
-                continue
-            url = cand.get("url") or None
-            host = _host_of(url)
-            # Prefer URL host as dedup key (same site = same brand); fall back
-            # to normalized name so we still merge when the URL is missing.
-            # Use brand name for dedup when URL is an aggregator/citation
-            # (e.g. google.com/maps) - all such URLs share the same host,
-            # which would incorrectly merge unrelated brands into one entry.
-            key = host if (host and not _is_aggregator_host(host)) else _normalize_name(name)
-            if not key:
-                continue
-            entry = merged.get(key)
-            if entry is None:
-                entry = {
-                    "name": name,
-                    "url": url,
-                    "host": host,
-                    "summary": str(cand.get("summary") or "").strip(),
-                    "relevance_note": str(cand.get("relevance_note") or "").strip(),
-                    "seen_in": [],
-                }
-                merged[key] = entry
-            else:
-                # Fill missing fields from later occurrences.
-                if not entry["url"] and url:
-                    entry["url"] = url
-                    entry["host"] = host or entry["host"]
-                if not entry["summary"]:
-                    entry["summary"] = str(cand.get("summary") or "").strip()
-                if not entry["relevance_note"]:
-                    entry["relevance_note"] = str(cand.get("relevance_note") or "").strip()
-            if query and query not in entry["seen_in"]:
-                entry["seen_in"].append(query)
-
-    # Compute code score.
-    out: list[dict[str, Any]] = []
-    for entry in merged.values():
-        freq_bonus = max(0, len(entry["seen_in"]) - 1)
-        host = entry["host"]
-        is_aggregator = _is_aggregator_host(host)
-        # Self-reference: match on host OR fuzzy name overlap.
-        # Compare with spaces stripped too ("cityville" vs "city ville").
-        name_norm = _normalize_name(entry["name"])
-        name_compact = name_norm.replace(" ", "")
-        primary_compact = primary_name_norm.replace(" ", "")
-        is_primary = (
-            (bool(primary_host) and host == primary_host)
-            or (bool(primary_compact) and len(primary_compact) > 3
-                and (primary_compact in name_compact or name_compact in primary_compact))
-        )
-        domain_bonus = 1 if (host and not is_aggregator and not is_primary) else 0
-        entry["code_score"] = freq_bonus + domain_bonus
-        entry["is_primary"] = is_primary
-        entry["is_aggregator"] = is_aggregator
-        out.append(entry)
-    return out
-
-
-_CLASSIFIER_SCHEMA: dict = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "classifications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "name": {"type": "string"},
-                    "format_match": {"type": "boolean"},
-                    "buyer_profile_match": {"type": "boolean"},
-                    "geo_match": {"type": "boolean"},
-                    "price_match": {"type": "boolean"},
-                },
-                "required": [
-                    "name",
-                    "format_match",
-                    "buyer_profile_match",
-                    "geo_match",
-                    "price_match",
-                ],
-            },
-        },
-    },
-    "required": ["classifications"],
-}
-
-
-_CLASSIFIER_PROMPT = """You are a strict market-fit classifier. Given a business profile and a list of candidate competitors, decide for each candidate whether it matches on FOUR dimensions. Be CONSERVATIVE - when in doubt, mark FALSE.
-
-- format_match: TRUE if the candidate serves the same buyer need at the granularity the BUYER cares about. Use the BUYER'S lens, not the seller's label.
-  * Real-estate: a luxury apartment and a luxury villament at similar price on the same road both serve "affluent-residence buyers" - format_match=TRUE. A 2 BHK budget apartment vs a 4 BHK luxury villament - format_match=FALSE (different buyers).
-  * SaaS: a mid-market CRM and a mid-market helpdesk both serve "SMB customer-ops teams" - format_match=TRUE. A scheduling tool vs a CRM - format_match=FALSE (different jobs).
-  * Restaurants: a premium North Indian restaurant vs a premium Italian restaurant in the same neighborhood at the same price - format_match=TRUE (same date-night buyer). A premium restaurant vs a fast-food chain - format_match=FALSE.
-
-- buyer_profile_match: TRUE if the target CUSTOMER overlaps significantly - same demographics, same budget tier, same purchase trigger - INDEPENDENT of format.
-  * Real-estate: Prestige Southern Star apartments ₹2-4 Cr and Valmark CityVille villaments ₹3-5 Cr both target affluent families 35-55 in South Bangalore - buyer_profile_match=TRUE even though one is apartment and one is villament.
-  * SaaS: a CRM for 10-person startups vs a CRM for 1000-person enterprises - buyer_profile_match=FALSE even though both are CRMs.
-  * D2C: a ₹1500 face serum and a ₹1500 face cream targeting the same skincare-conscious urban women - buyer_profile_match=TRUE.
-  * If the candidate's target customer is unknown, buyer_profile_match=FALSE (don't give benefit of the doubt).
-
-- geo_match: Match at the SAME GEOGRAPHIC SPECIFICITY the profile uses.
-  * If the profile names a specific road / neighborhood / micro-market (e.g. "Bannerghatta Road, South Bangalore", "Indiranagar", "SoMa, San Francisco"), geo_match is TRUE only if the candidate is in that SAME road / neighborhood / quadrant. A candidate in a different part of the same city (e.g. North Bangalore vs South Bangalore, Koramangala vs Whitefield, Brooklyn vs Manhattan) is geo_match=FALSE - they serve different buyer pools.
-  * If the profile's geography is only city-level (e.g. "Mumbai"), city-level candidates match.
-  * If the profile's geography is regional ("South India", "EMEA") or national, match at that level.
-  * If the profile has NO geographic anchor (pure online/global SaaS, D2C shipping worldwide), geo_match=TRUE for everyone.
-  * If the candidate's geography is unknown/not mentioned, geo_match=FALSE (don't give benefit of the doubt).
-
-- price_match: TRUE only if the candidate's pricing is within roughly ~30% of the profile's price tier. "Luxury ₹4 Cr villaments" and "₹80 L apartments" are NOT price matches even in the same area. If the candidate's pricing is unknown, price_match=FALSE.
-
-Return one classification entry per candidate. Booleans only."""
-
-
-async def _classify_via_anthropic(payload_json: str) -> dict:
-    """One batched Claude Haiku call with json_schema structured output.
-
-    Uses Anthropic's ``output_config`` (GA on Haiku 4.5) so the model is
-    constrained to the schema - no post-hoc regex parsing. Runs the sync
-    SDK in a thread to stay async-compatible with the rest of the tool.
-    """
-    import anthropic
-    from app.config import settings
-
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    resp = await asyncio.to_thread(
-        client.messages.create,
-        model=settings.CLAUDE_HAIKU,
-        max_tokens=4096,
-        system=_CLASSIFIER_PROMPT,
-        messages=[{"role": "user", "content": payload_json}],
-        output_config={
-            "format": {"type": "json_schema", "schema": _CLASSIFIER_SCHEMA},
-        },
-    )
-    # Structured output lands in the first text block's parsed_output (GA
-    # format). Fall back to parsing the text directly if for any reason
-    # the SDK didn't populate it.
-    for block in resp.content:
-        if getattr(block, "type", None) != "text":
+    A displaced search URL survives as ``search_url`` - the fetch stage retries
+    with it when the GBP site turns out dead - and a guard miss keeps it as
+    ``url`` exactly as before, so the floor is the pre-Places behavior. A wrong
+    URL is worse than none (it would poison the shared creative-library key);
+    accepted URLs still pass fetch-verify."""
+    for cand in candidates:
+        url_host = host_of(cand.get("url"))
+        if url_host and not is_aggregator_or_google_host(url_host):
             continue
-        parsed = getattr(block, "parsed_output", None)
-        if isinstance(parsed, dict):
-            return parsed
-        text = getattr(block, "text", "") or ""
-        if text:
-            return json.loads(text)
-    return {}
-
-
-async def _classify_via_openai(payload_json: str) -> dict:
-    """Legacy classifier path - kept behind the env kill switch."""
-    from openai import AsyncOpenAI
-    from app.config import settings
-
-    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    resp = await client.chat.completions.create(
-        model=_SHORTLIST_CLASSIFIER_OPENAI_MODEL,
-        messages=[
-            {"role": "system", "content": _CLASSIFIER_PROMPT},
-            {"role": "user", "content": payload_json},
-        ],
-        temperature=0,
-        max_tokens=4096,
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "candidate_classifications",
-                "schema": _CLASSIFIER_SCHEMA,
-                "strict": True,
-            },
-        },
-    )
-    raw = (resp.choices[0].message.content or "").strip()
-    return json.loads(raw) if raw else {}
-
-
-async def _classify_candidates(
-    candidates: list[dict[str, Any]], profile_summary: str,
-) -> dict[str, dict[str, bool]]:
-    """One batched call classifying every candidate on the three
-    semantic signals. Returns ``{normalized_name: {format_match, geo_match, price_match}}``.
-
-    Provider selection: ``SHORTLIST_CLASSIFIER_PROVIDER`` env - ``anthropic``
-    (default) uses Claude Haiku, ``openai`` keeps the legacy gpt-4o-mini path.
-
-    Fail-soft: if the call errors, returns an empty dict - code_score alone
-    still drives ranking. The shortlist tool won't block on classifier failure.
-    """
-    if not candidates:
-        return {}
-
-    import os
-
-    user_payload = {
-        "profile": profile_summary[:1500],
-        "candidates": [
-            {"name": c["name"], "summary": c.get("summary") or ""}
-            for c in candidates
-        ],
-    }
-    payload_json = json.dumps(user_payload)
-    provider = (os.getenv("SHORTLIST_CLASSIFIER_PROVIDER") or "anthropic").lower()
-
-    try:
-        data = await (
-            _classify_via_openai(payload_json)
-            if provider == "openai"
-            else _classify_via_anthropic(payload_json)
-        )
-    except Exception as e:
-        logger.warning(
-            "shortlist_classifier_failed provider=%s: %s: %s",
-            provider, type(e).__name__, str(e)[:200],
-        )
-        return {}
-
-    out: dict[str, dict[str, bool]] = {}
-    for item in data.get("classifications") or []:
-        if not isinstance(item, dict):
+        listing = await cached_business_listing(cand["name"], session_ctx)
+        if not listing:
             continue
-        name_key = _normalize_name(str(item.get("name") or ""))
-        if not name_key:
+        if not listing_name_matches(cand["name"], listing["name"]):
+            logger.info("places_url_rejected: name mismatch %r vs listing %r",
+                        cand["name"], listing["name"])
             continue
-        out[name_key] = {
-            "format_match": bool(item.get("format_match")),
-            "buyer_profile_match": bool(item.get("buyer_profile_match")),
-            "geo_match": bool(item.get("geo_match")),
-            "price_match": bool(item.get("price_match")),
-        }
-    return out
+        host = host_of(listing["website"])
+        if not host or is_aggregator_or_google_host(host):
+            logger.info("places_url_rejected: shared/aggregator host %s for %r",
+                        host, cand["name"])
+            continue
+        logger.info("places_url_resolved: %r -> %s (search had %s)",
+                    cand["name"], host, host_of(cand.get("url")) or "nothing")
+        if cand.get("url"):
+            cand["search_url"] = cand["url"]
+        cand["url"] = listing["website"]
+        cand["host"] = host
 
 
-_FETCH_QUESTION_TEMPLATE = (
-    "FIRST line: write either 'TYPE: BRAND' (this is the brand's own official site "
-    "with info about ONE company/product) or 'TYPE: AGGREGATOR' (directory listing "
-    "many unrelated brands, comparison portal, marketplace, map search, news article, "
-    "or review site).\n"
-    "SECOND line (only if AGGREGATOR): write 'OFFICIAL_URL: <url>' with the brand's "
-    "own website URL if it is explicitly linked on this page, OR 'OFFICIAL_URL: none' "
-    "if no such link is present. Do NOT invent a URL - only use one that appears on the page.\n\n"
-    "Then answer: What does this page describe? What does the brand offer, where do "
-    "they operate, what's their pricing or business model, and what stands out "
-    "(trust signals, differentiators, target customer)?"
-)
+def _dedupe_resolved_hosts(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Post-resolution host dedup: two candidates can resolve to the same GBP
+    website (extraction dedup ran on the pre-Places URLs). Keeps the first -
+    the list arrives in the agent's pick order."""
+    seen_hosts: set[str] = set()
+    kept: list[dict[str, Any]] = []
+    for cand in candidates:
+        host = host_of(cand.get("url"))
+        if host and host in seen_hosts:
+            cand["dropped_dup_host"] = True  # shadow-table outcome marker
+            logger.info("candidate_dedup_resolved: dropped %r (same host %s)",
+                        cand["name"], host)
+            continue
+        if host:
+            seen_hosts.add(host)
+        kept.append(cand)
+    return kept
 
 
-def _parse_official_url(answer: str) -> str | None:
-    """Pull 'OFFICIAL_URL: <url>' out of a fetch answer. Returns None if
-    missing, 'none', or not a valid-looking http(s) URL."""
-    import re as _re
-    m = _re.search(r"OFFICIAL_URL:\s*(\S+)", answer or "", flags=_re.IGNORECASE)
-    if not m:
-        return None
-    url = m.group(1).strip().rstrip(".,;")
-    if not url or url.lower() == "none":
-        return None
-    if not (url.startswith("http://") or url.startswith("https://")):
-        return None
-    return url
-
-
-async def _fetch_one_for_shortlist(
+async def _fetch_one_candidate(
     candidate: dict[str, Any],
 ) -> dict[str, Any]:
-    """Run a web_fetch for one shortlist candidate.
+    """Run a web_fetch for one picked candidate.
 
     Two-step aggregator handling: if the landing page turns out to be an
     aggregator (directory, map search, marketplace), try to extract the brand's
@@ -460,10 +640,10 @@ async def _fetch_one_for_shortlist(
         try:
             result = await asyncio.wait_for(
                 fetch_and_answer(url, _FETCH_QUESTION_TEMPLATE),
-                timeout=_SHORTLIST_FETCH_TIMEOUT_SEC,
+                timeout=_FETCH_TIMEOUT_SEC,
             )
         except asyncio.TimeoutError:
-            return {"_err": f"timeout after {int(_SHORTLIST_FETCH_TIMEOUT_SEC)}s"}
+            return {"_err": f"timeout after {int(_FETCH_TIMEOUT_SEC)}s"}
         except Exception as e:
             return {"_err": f"{type(e).__name__}: {str(e)[:160]}"}
         if not isinstance(result, dict) or result.get("status") != "ok":
@@ -473,7 +653,19 @@ async def _fetch_one_for_shortlist(
     url = candidate.get("url") or ""
     result = await _one(url)
     if result is None or result.get("_err"):
-        return {**candidate, "fetch_status": "failed", "fetch_error": (result or {}).get("_err", "unknown")}
+        # Places-first fallback (D-5): the GBP website was dead/blocked - retry
+        # once with the search-derived URL it displaced, rather than dropping a
+        # competitor we'd have kept before the inversion.
+        search_url = candidate.get("search_url") or ""
+        if search_url and host_of(search_url) != host_of(url):
+            logger.info("candidate_fetch_fallback: %s dead, retrying %s",
+                        host_of(url), host_of(search_url))
+            url = search_url
+            candidate = {**candidate, "url": search_url}
+            result = await _one(url)
+        if result is None or result.get("_err"):
+            return {**candidate, "fetch_status": "failed",
+                    "fetch_error": (result or {}).get("_err", "unknown")}
 
     answer = result.get("answer") or ""
     is_aggregator = answer.strip().upper().startswith("TYPE: AGGREGATOR")
@@ -481,12 +673,12 @@ async def _fetch_one_for_shortlist(
     # If the first URL turned out to be an aggregator, try once to follow the
     # brand's official URL extracted from the aggregator page content.
     if is_aggregator:
-        official_url = _parse_official_url(answer)
+        official_url = parse_official_url(answer)
         # Guard against redirect loops: the extracted URL must differ from the
         # one we just fetched, AND not itself be an aggregator.
-        if official_url and _host_of(official_url) and _host_of(official_url) != _host_of(url) \
-                and not _is_aggregator_host(_host_of(official_url)):
-            logger.info("shortlist_fetch_redirect: %s → %s", _host_of(url), _host_of(official_url))
+        if official_url and host_of(official_url) and host_of(official_url) != host_of(url) \
+                and not is_aggregator_or_google_host(host_of(official_url)):
+            logger.info("candidate_fetch_redirect: %s -> %s", host_of(url), host_of(official_url))
             followup = await _one(official_url)
             if followup is not None and not followup.get("_err"):
                 fa = followup.get("answer") or ""
@@ -496,8 +688,6 @@ async def _fetch_one_for_shortlist(
                         "fetch_status": "ok",
                         "fetch_answer": fa,
                         "fetch_url": followup.get("url"),
-                        "fetch_title": followup.get("title"),
-                        "resolved_from": url,
                     }
         # First URL was aggregator and we couldn't resolve a better one → drop.
         return {**candidate, "fetch_status": "aggregator", "fetch_answer": answer}
@@ -507,9 +697,10 @@ async def _fetch_one_for_shortlist(
         "fetch_status": "ok",
         "fetch_answer": answer,
         "fetch_url": result.get("url"),
-        "fetch_title": result.get("title"),
     }
 
+
+# ─── Search-result harvest ──────────────────────────────────────────────────
 
 def _parse_web_search_result_block(
     block: dict[str, Any],
@@ -543,12 +734,7 @@ def _parse_web_search_result_block(
         title = (item.get("title") or "").strip()
         if not title:
             continue
-        candidates.append({
-            "name": title,
-            "url": item.get("url"),
-            "summary": "",
-            "relevance_note": "",
-        })
+        candidates.append({"name": title, "url": item.get("url")})
     return candidates
 
 
@@ -560,7 +746,7 @@ def _extract_search_results_from_history(
     Each assistant turn can contain ``server_tool_use`` blocks (carrying the
     query) paired with ``web_search_tool_result`` blocks (carrying the hits,
     keyed by ``tool_use_id``). Convert them to the ``{query, candidates}``
-    shape ``_shortlist_competitors`` expects.
+    shape ``_merge_candidate_facts`` expects.
     """
     queries_by_id: dict[str, str] = {}
     hits_by_id: dict[str, list[dict[str, Any]]] = {}
@@ -600,246 +786,83 @@ def _extract_search_results_from_history(
     ]
 
 
-async def _shortlist_competitors(params: dict, context: dict) -> ToolResult:
-    """Score stashed search candidates, filter, parallel-fetch top-K, drop failures."""
-    max_fetches = int(params.get("max_fetches") or _SHORTLIST_DEFAULT_MAX_FETCHES)
-    max_fetches = max(1, min(max_fetches, 12))
+# ─── Shadow candidate table ─────────────────────────────────────────────────
 
-    session_ctx = context.get("session_context") or {}
-    research_state = session_ctx.setdefault("_research_state", {})
-    search_results: list[dict] = research_state.get("search_results") or []
-
-    # Anthropic server-side web_search doesn't stash results in session_context
-    # (it happens inside the API, not in our Python). Fall back to parsing
-    # message history for web_search_tool_result blocks.
-    if not search_results:
-        messages_getter = context.get("session_messages")
-        messages = messages_getter() if callable(messages_getter) else (messages_getter or [])
-        search_results = _extract_search_results_from_history(messages)
-        if search_results:
-            research_state["search_results"] = search_results
-
-    if not search_results:
-        return ToolResult(
-            success=False,
-            error="No search results available - run web_search first, then call shortlist_competitors.",
-        )
-
-    # Profile + primary-host context for scoring.
-    business_brief = session_ctx.get("product_profile") or {}
-    profile_summary = business_brief.get("summary") or ""
-    primary_url = business_brief.get("url") or ""
-    primary_host = _host_of(primary_url)
-
-    # Layer A: code signals.
-    await emit_progress(context, "Scoring candidates…")
-    product_name = (session_ctx.get("product_data") or {}).get("product_name", "")
-    scored = _score_code_signals(search_results, primary_host, primary_name=product_name)
-    # Filter only self-references. Aggregator-URL candidates are kept - they go
-    # through URL resolution + aggregator-follow fetch to recover their real URLs.
-    pre_filtered = [c for c in scored if not c["is_primary"]]
-
-    # Layer B: one batched classifier call.
-    await emit_progress(context,f"Classifying {len(pre_filtered)} candidates…")
-    classifications = await _classify_candidates(pre_filtered, profile_summary)
-
-    # Composite score - weights prioritize location + buyer-pool over
-    # granular format. Format becomes a tie-breaker instead of a gate.
-    # Rationale: a luxury apartment at the same price on the same road
-    # IS a competitor for a villament; a villa in the wrong city is NOT.
-    # See _CLASSIFIER_PROMPT for the vertical-agnostic definitions.
-    specific_geo = _is_specific_geography(profile_summary)
-    for cand in pre_filtered:
-        key = _normalize_name(cand["name"])
-        sig = classifications.get(key) or {}
-        cand["format_match"] = bool(sig.get("format_match"))
-        cand["buyer_profile_match"] = bool(sig.get("buyer_profile_match"))
-        cand["geo_match"] = bool(sig.get("geo_match"))
-        cand["price_match"] = bool(sig.get("price_match"))
-        cand["composite_score"] = (
-            cand["code_score"]
-            + 3 * int(cand["geo_match"])              # location first
-            + 2 * int(cand["buyer_profile_match"])    # then buyer pool
-            + 1 * int(cand["price_match"])
-            + 1 * int(cand["format_match"])           # format is tie-breaker
-        )
-
-    # Geo hard-floor: for geo-bound profiles (specific road/neighborhood),
-    # exclude candidates that miss BOTH geo_match AND buyer_profile_match -
-    # they aren't competing for the same buyer pool. They can still appear
-    # via ALTERNATIVE (not a full drop) but won't dominate DIRECT.
-    if specific_geo:
-        geo_excluded = [
-            c for c in pre_filtered
-            if not c["geo_match"] and not c["buyer_profile_match"]
-        ]
-        pre_filtered = [
-            c for c in pre_filtered
-            if c["geo_match"] or c["buyer_profile_match"]
-        ]
-        if geo_excluded:
-            logger.info(
-                "shortlist_geo_floor: excluded %d wrong-geo+wrong-buyer candidates "
-                "(specific geography detected in profile)",
-                len(geo_excluded),
-            )
-
-    # Rank + filter for fetch.
-    pre_filtered.sort(key=lambda c: c["composite_score"], reverse=True)
-    above_threshold = [
-        c for c in pre_filtered
-        if c["composite_score"] >= _SHORTLIST_MIN_COMPOSITE_SCORE
-    ][:max_fetches + 4]  # take a few extra in case URL resolution fails for some
-
-    # Let ALL candidates with URLs through to the fetch stage - including
-    # Maps/aggregator URLs. The aggregator-follow path in _fetch_one_for_shortlist
-    # extracts the official URL from the page and re-fetches.
-    fetch_candidates = [c for c in above_threshold if c.get("url")][:max_fetches]
-
-    if not fetch_candidates:
-        scored_count = len(pre_filtered)
-        return ToolResult(
-            success=False,
-            error=(
-                f"No candidates passed filter: {scored_count} scored, 0 above threshold "
-                f"(min composite score {_SHORTLIST_MIN_COMPOSITE_SCORE}) with a valid URL."
-            ),
-        )
-
-    # Parallel fetch.
-    await emit_progress(context,f"Fetching {len(fetch_candidates)} competitor pages in parallel…")
-    fetched = await asyncio.gather(
-        *(_fetch_one_for_shortlist(c) for c in fetch_candidates),
-        return_exceptions=False,
-    )
-
-    # Partition by status.
-    verified = [c for c in fetched if c.get("fetch_status") == "ok"]
-    aggregator_drops = [c for c in fetched if c.get("fetch_status") == "aggregator"]
-    fetch_fails = [c for c in fetched if c.get("fetch_status") == "failed"]
-
-    logger.info(
-        "shortlist_competitors: scored=%d classified=%d fetched=%d dropped=%d "
-        "(aggregator=%d fetch_fail=%d) specific_geo=%s "
-        "signals=(fmt=%d buyer=%d geo=%d price=%d)",
-        len(pre_filtered), len(classifications), len(fetched),
-        len(aggregator_drops) + len(fetch_fails),
-        len(aggregator_drops), len(fetch_fails),
-        specific_geo,
-        sum(1 for c in pre_filtered if c.get("format_match")),
-        sum(1 for c in pre_filtered if c.get("buyer_profile_match")),
-        sum(1 for c in pre_filtered if c.get("geo_match")),
-        sum(1 for c in pre_filtered if c.get("price_match")),
-    )
-
-    # Stash verified list for downstream visibility.
-    research_state["verified_competitors"] = verified
-
-    # Build evidence block.
-    if not verified:
-        lines = [
-            "## Shortlist Competitors - ALL FETCHES FAILED OR WERE AGGREGATORS",
-            "",
-            f"Scored {len(pre_filtered)} candidates, fetched top {len(fetched)}, "
-            f"kept 0. ({len(aggregator_drops)} were aggregators, {len(fetch_fails)} failed).",
-            "",
-            "Write the final JSON with an empty competitors array and a note in `notes` "
-            "explaining that no competitors could be verified.",
-        ]
-        return ToolResult(
-            success=True,
-            data={"verified": verified, "dropped": {"aggregator": aggregator_drops, "fetch_fail": fetch_fails}},
-            summary="\n".join(lines),
-        )
-
-    lines: list[str] = [
-        f"## Verified Competitors ({len(verified)})",
-        "",
-        f"Scored {len(pre_filtered)} candidates; fetched top {len(fetched)}; "
-        f"kept {len(verified)} after dropping {len(aggregator_drops)} aggregators "
-        f"and {len(fetch_fails)} fetch failures.",
-        "",
-    ]
-    for c in verified:
-        lines.append(f"### {c['name']}")
-        if c.get("url"):
-            lines.append(f"URL: {c['url']}")
-        fmt = bool(c.get("format_match"))
-        buyer = bool(c.get("buyer_profile_match"))
-        geo = bool(c.get("geo_match"))
-        price = bool(c.get("price_match"))
-        # Segment hint. For geo-bound businesses (specific road/neighborhood),
-        # location is the dominant signal - any verified competitor on the same
-        # road is head-to-head, regardless of format or price-tier misses from
-        # the classifier. For non-geo-bound businesses (SaaS, D2C), require
-        # format or buyer match alongside geo for DIRECT.
-        same_pool = fmt or buyer
-        if specific_geo:
-            if geo:
-                segment_hint = "DIRECT"
-            elif same_pool:
-                segment_hint = "ADJACENT"
+def _log_candidate_table(candidates: list[dict[str, Any]], picked_ids: set[str],
+                         fetched: list[dict[str, Any]],
+                         already_verified: set[str]) -> None:
+    """Shadow table (CP-6): one structured line per fetch_candidates call
+    capturing every pool candidate's facts, whether the AGENT picked it, and
+    its outcome - the divergence/eval feedstock for hand-labeling agent picks.
+    ``host`` is the SEARCH-derived host (pre-GBP; a displaced one is read back
+    from ``search_url``). Every drop keeps its distinct reason - a host-dedup
+    duplicate must not be labeled like a not-picked skip."""
+    status_by_cid = {c.get("cid"): c.get("fetch_status") for c in fetched}
+    rows = []
+    for c in candidates:
+        cid = c["cid"]
+        outcome = status_by_cid.get(cid)
+        if outcome is None:
+            # Marker checks are gated on THIS call's picks - pool dicts keep
+            # markers from earlier calls, and a stale one must not relabel a
+            # merely not-picked candidate.
+            if cid in already_verified:
+                outcome = "verified_earlier"
+            elif cid in picked_ids and c.get("dropped_dup_host"):
+                outcome = "dup_host"
+            elif cid in picked_ids and c.get("no_url"):
+                outcome = "no_url"
             else:
-                segment_hint = "ALTERNATIVE"
-        else:
-            if geo and same_pool:
-                segment_hint = "DIRECT"
-            elif geo or same_pool:
-                segment_hint = "ADJACENT"
-            else:
-                segment_hint = "ALTERNATIVE"
-        lines.append(
-            f"SEGMENT: {segment_hint}  "
-            f"(format={'yes' if fmt else 'no'} "
-            f"buyer={'yes' if buyer else 'no'} "
-            f"geo={'yes' if geo else 'no'} "
-            f"price={'yes' if price else 'no'})"
-        )
-        if c.get("summary"):
-            lines.append(f"Snippet: {c['summary']}")
-        ans = (c.get("fetch_answer") or "").strip()
-        if ans.upper().startswith("TYPE: BRAND"):
-            ans = ans[len("TYPE: BRAND"):].lstrip(":\n ").strip()
-        if ans:
-            lines.append("")
-            lines.append(f"Answer: {ans}")
-        lines.append("")
-
-    if fetch_fails or aggregator_drops:
-        lines.append("---")
-        lines.append("")
-        if fetch_fails:
-            lines.append(f"Dropped due to fetch failure ({len(fetch_fails)}): " +
-                         ", ".join(c["name"] for c in fetch_fails))
-        if aggregator_drops:
-            lines.append(f"Dropped as aggregator ({len(aggregator_drops)}): " +
-                         ", ".join(c["name"] for c in aggregator_drops))
-
-    return ToolResult(
-        success=True,
-        data={"verified": verified, "dropped": {"aggregator": aggregator_drops, "fetch_fail": fetch_fails}},
-        summary="\n".join(lines),
-    )
+                outcome = "not_picked"
+        rows.append({
+            "cid": c["cid"], "name": c["name"],
+            "host": host_of(c.get("search_url")) or c.get("host") or "",
+            "seen_in": len(c.get("seen_in") or []),
+            "agg": bool(c.get("is_aggregator")),
+            "picked": c["cid"] in picked_ids,
+            "outcome": outcome,
+        })
+    logger.info("shortlist_candidate_table: %s", json.dumps(rows, ensure_ascii=False))
 
 
-shortlist_competitors = ToolDefinition(
-    name="shortlist_competitors",
+# ─── Tool definitions ───────────────────────────────────────────────────────
+
+extract_candidates = ToolDefinition(
+    name="extract_candidates",
     description=(
-        "After at least 5 web_search calls, score all surfaced candidates "
-        "deterministically (frequency + domain + format/geo/price match via a "
-        "batched classifier), filter aggregators, and fetch the top 6-8 brand "
-        "pages in parallel. Drops candidates whose fetch fails or returns an "
-        "aggregator page. Returns a structured evidence block you can transcribe "
-        "into the final JSON. Call this ONCE after your web_search queries."
+        "After your web_search queries, call this ONCE. It pools every search "
+        "hit, dedupes by site/name, filters out the client's own business, and "
+        "returns a fact table: ID, name, host, cross-search frequency, "
+        "aggregator flag. No judgment happens here - YOU judge each candidate "
+        "against the search content you already read, then call "
+        "fetch_candidates with the chosen IDs."
     ),
-    display_name="Shortlist Competitors",
+    display_name="Extract Candidates",
+    parameters=[],
+    execute=_extract_candidates,
+)
+
+
+fetch_candidates = ToolDefinition(
+    name="fetch_candidates",
+    description=(
+        "Verify and fetch the candidates you picked (by ID from "
+        "extract_candidates). Resolves official URLs via Google Business "
+        "lookup, dedupes hosts, fetches each page in parallel (following "
+        "aggregator pages to the underlying brand site), and returns ID-keyed "
+        "verified evidence. Pick the 6-8 strongest IDs (max 12); candidates "
+        "whose fetch fails or that turn out to be aggregators are reported "
+        "dropped. Already-verified IDs are skipped, never re-fetched."
+    ),
+    display_name="Fetch Candidates",
     parameters=[
         ToolParameter(
-            name="max_fetches",
-            type="integer",
-            description="Max number of candidate pages to fetch (default 8, max 12).",
-            required=False,
+            name="ids",
+            type="array",
+            description="Candidate IDs to verify, e.g. [\"C1\", \"C4\", \"C7\"].",
+            required=True,
+            items={"type": "string"},
         ),
     ],
-    execute=_shortlist_competitors,
+    execute=_fetch_candidates,
 )

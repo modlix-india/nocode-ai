@@ -6,7 +6,7 @@ analysis fields. Latest-launch-wins per URL - no history (yet).
 
 Reuses:
 - `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
-- `app.agents.adzump._shared.build_ds_headers` (auth headers from tool context)
+- `app.agents.adzump._shared.storage_headers` (auth headers for storage calls)
 """
 
 from __future__ import annotations
@@ -22,8 +22,16 @@ from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_meta as _platform_is_meta,
 )
+from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.models.product import Image, Logo, check_product
-from app.agents.adzump._shared import build_ds_headers, primary_screenshot_url
+from app.agents.adzump._shared import (
+    STORAGE_CREATE as CREATE,
+    STORAGE_READ_PAGE as READ_PAGE,
+    STORAGE_UPDATE as UPDATE,
+    extract_storage_records as _extract_records,
+    primary_screenshot_url,
+    storage_headers,
+)
 from app.agents.appbuilder.tools._shared import get_saas_client
 
 logger = logging.getLogger(__name__)
@@ -32,13 +40,10 @@ STORAGE_NAME = "AISuggestedData"
 APP_CODE = "marketingai"
 SCHEMA_VERSION = 1
 
-READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
-CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
-UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
-
-
-def _normalize_url(url: str) -> str:
+def normalize_business_url(url: str) -> str:
     """Canonicalize a business URL for storage keys and lookups.
+    Public: creative_intelligence stamps this exact form onto shared library
+    records (``Competitor.business_urls``) so they join back to ``businessUrl``.
 
     - Force ``https`` scheme so the same business doesn't end up with two
       records keyed under ``http://`` and ``https://``.
@@ -60,36 +65,10 @@ def _storage_headers(ctx: dict) -> dict[str, str]:
     """Auth headers for storage calls. AppCode pinned to ``marketingai``
     because the storage collection is appCode-scoped - clientCode stays
     from the user's session (privacy boundary)."""
-    h = build_ds_headers(ctx)
-    h["AppCode"] = APP_CODE
-    h["Content-Type"] = "application/json"
-    return h
+    return storage_headers(ctx, APP_CODE)
 
 
 # ── Reads ─────────────────────────────────────────────────────────────────
-
-
-def _extract_records(raw: Any) -> list[dict]:
-    """Mirror ds's StorageResponse.content unwrap: gateway wraps the storage
-    result in two `result` levels, then either has `content` (paged) or
-    returns records directly. Tolerates both."""
-    if raw is None:
-        return []
-    data = raw
-    if isinstance(data, list) and data:
-        data = data[0]
-    # 2-level unwrap of the known `result.result` envelope
-    for _ in range(2):
-        if isinstance(data, dict) and "result" in data:
-            data = data["result"]
-        else:
-            break
-    if data is None:
-        return []
-    if isinstance(data, dict) and "content" in data:
-        content = data["content"]
-        return content if isinstance(content, list) else [content]
-    return data if isinstance(data, list) else [data]
 
 
 async def get_by_url(url: str, ctx: dict) -> dict | None:
@@ -100,7 +79,7 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
         "storageName": STORAGE_NAME,
         "appCode": APP_CODE,
         "clientCode": ctx.get("client_code", ""),
-        "filter": {"field": "businessUrl", "value": _normalize_url(url)},
+        "filter": {"field": "businessUrl", "value": normalize_business_url(url)},
     }
     result = await get_saas_client().post(
         READ_PAGE, headers=_storage_headers(ctx), json=payload,
@@ -262,7 +241,7 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
     images = assets.get("images") or []
 
     return {
-        "businessUrl": _normalize_url(url),
+        "businessUrl": normalize_business_url(url),
 
         # ── Analysis fields (mirror ds-v1 schema so its downstream APIs
         #    keep working when reading rows nocode-ai writes) ──
@@ -271,6 +250,17 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
         "finalSummary": summary,
         "businessType": product.get("business_type", ""),
         "businessScale": product.get("business_scale", "national"),
+        # ── Product category (Stage A, taxonomy.py) - the yardstick the
+        #    creative-relevance gate judges every competitor ad against ──
+        "productCategory": product.get("product_category", ""),
+        "productSubcategory": product.get("product_subcategory", ""),
+        "productMarket": product.get("product_market", ""),
+        "productOfferingStage": product.get("product_offering_stage", ""),
+        "productCategorySource": product.get("product_category_source", ""),
+        "productCategoryConfidence": float(
+            product.get("product_category_confidence") or 0.0),
+        "taxonomyVersion": product.get("taxonomy_version", ""),
+        "productCategoryOverride": product.get("product_category_override", ""),
         # legacy ds-v1 shape: object with area_location / product_location /
         # product_coordinates. ds chatv2 confirm_location and business_service
         # both read from this dict.
@@ -358,8 +348,12 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
                 # (analysis having run voids a prior decline; clear_competitor_decline
                 # handles the realistic paths, this keeps the durable record honest
                 # even if a stale flag survives an un-instrumented path).
-                "declined": (spec.get("competitive_analysis_declined") == "true"
-                             and session_ctx.get("competitor_analysis") is None),
+                # Migration-aware read: enum spec and legacy-marker spec answer
+                # identically; the ds JSON shape is unchanged (a plain bool).
+                "declined": (
+                    offer_state(spec, "competitive_analysis") is OfferState.DECLINED
+                    and session_ctx.get("competitor_analysis") is None
+                ),
             },
             # Persist target areas so they survive session restarts. The
             # per-platform keys are the ds-side contract - projected from
@@ -463,6 +457,14 @@ def _record_to_business(record: dict) -> dict:
         "product_name": d.get("productName") or d.get("businessName", ""),
         "business_type": d.get("businessType", ""),
         "business_scale": d.get("businessScale", "national"),
+        "product_category": d.get("productCategory", ""),
+        "product_subcategory": d.get("productSubcategory", ""),
+        "product_market": d.get("productMarket", ""),
+        "product_offering_stage": d.get("productOfferingStage", ""),
+        "product_category_source": d.get("productCategorySource", ""),
+        "product_category_confidence": float(d.get("productCategoryConfidence") or 0.0),
+        "taxonomy_version": d.get("taxonomyVersion", ""),
+        "product_category_override": d.get("productCategoryOverride", ""),
         "summary": d.get("summary", ""),
         "place": place,
         "unique_features": d.get("uniqueFeatures") or [],
@@ -513,7 +515,7 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
             "summary": d.get("summary", ""),
         })
         # place already carries restored coords+country (_record_to_business).
-        # Restore spec.location so _next_action skips a fresh confirm_location.
+        # Restore spec.location so the location step skips a fresh confirm_location.
         stored_address = ((d.get("campaign") or {}).get("location") or {}).get("address") or ""
         if stored_address:
             session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)

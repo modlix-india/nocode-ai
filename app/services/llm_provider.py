@@ -342,7 +342,26 @@ class LLMProvider(ABC):
             - usage: Token usage info
         """
         pass
-    
+
+    async def create_structured_completion(
+        self,
+        system_prompt: str,
+        payload_json: str,
+        output_schema: Dict[str, Any],
+        model_tier: str = "fast",
+        max_tokens: int = 2048,
+    ) -> Dict[str, Any]:
+        """Single-turn completion constrained to a JSON schema.
+
+        Returns {"parsed": dict, "usage": {...}, "model": str}. Implemented for
+        Anthropic (output_config json_schema) and OpenAI (Responses text
+        format); other providers raise until they grow schema support. Feature
+        code must call this through services.structured_call, never directly -
+        that seam owns retry + usage logging.
+        """
+        raise NotImplementedError(
+            f"{self.name} does not support structured completions")
+
     @abstractmethod
     def supports_vision(self) -> bool:
         """Whether this provider supports vision/image inputs"""
@@ -550,7 +569,55 @@ class AnthropicProvider(LLMProvider):
             "model": model,
             "stop_reason": response.stop_reason
         }
-    
+
+    async def create_structured_completion(
+        self,
+        system_prompt: str,
+        payload_json: str,
+        output_schema: Dict[str, Any],
+        model_tier: str = "fast",
+        max_tokens: int = 2048,
+    ) -> Dict[str, Any]:
+        """Schema-constrained single turn via output_config json_schema."""
+        import json as json_lib
+        model = self.get_model(model_tier)
+        response = await asyncio.to_thread(
+            self.client.messages.create,
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": payload_json}],
+            output_config={
+                "format": {"type": "json_schema", "schema": output_schema},
+            },
+        )
+        parsed: Dict[str, Any] | None = None
+        for block in response.content:
+            if getattr(block, "type", None) != "text":
+                continue
+            block_parsed = getattr(block, "parsed_output", None)
+            if isinstance(block_parsed, dict):
+                parsed = block_parsed
+                break
+            text = getattr(block, "text", "") or ""
+            if text:
+                parsed = json_lib.loads(text)
+                break
+        if parsed is None:
+            # Truncation/refusal must look like a failure (so the caller's
+            # retry fires), never like a valid-but-empty answer.
+            raise ValueError(
+                f"no structured output in response (stop_reason="
+                f"{response.stop_reason})")
+        return {
+            "parsed": parsed,
+            "usage": {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            },
+            "model": model,
+        }
+
     async def create_completion_with_tools(
         self,
         system_prompt: Any,
@@ -855,7 +922,17 @@ class OpenAIProvider(LLMProvider):
         from openai import OpenAI
         from app.config import settings
 
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        import httpx as _httpx
+        # Explicit timeouts: the SDK default (600s/attempt x retries) let one
+        # stalled vision call wedge a whole creatives batch for 12+ minutes
+        # (live 2026-09-08). read=180s applies BETWEEN stream chunks too, so a
+        # stalled stream breaks instead of hanging; the SDK's own retries then
+        # re-attempt the call.
+        self.client = OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=_httpx.Timeout(180.0, connect=10.0, pool=30.0),
+            max_retries=2,
+        )
         self.settings = settings
         self._models = {
             "fast": settings.OPENAI_MODEL_FAST,
@@ -1038,6 +1115,39 @@ class OpenAIProvider(LLMProvider):
             "stop_reason": "end_turn",
         }
 
+    async def create_structured_completion(
+        self,
+        system_prompt: str,
+        payload_json: str,
+        output_schema: Dict[str, Any],
+        model_tier: str = "fast",
+        max_tokens: int = 2048,
+    ) -> Dict[str, Any]:
+        """Schema-constrained single turn via Responses API text format."""
+        import json as json_lib
+        model = self.get_model(model_tier)
+        response = await asyncio.to_thread(
+            self.client.responses.create,
+            model=model,
+            instructions=system_prompt,
+            input=[{"role": "user", "content": payload_json}],
+            max_output_tokens=max_tokens,
+            store=False,
+            text={"format": {"type": "json_schema", "name": "structured_output",
+                             "schema": output_schema, "strict": True}},
+        )
+        if not response.output_text:
+            # Truncation/refusal must fail loudly, not parse as {}.
+            raise ValueError("no structured output in response")
+        return {
+            "parsed": json_lib.loads(response.output_text),
+            "usage": {
+                "input_tokens": getattr(response.usage, 'input_tokens', 0),
+                "output_tokens": getattr(response.usage, 'output_tokens', 0),
+            },
+            "model": model,
+        }
+
     async def create_completion_with_tools(
         self, system_prompt: Any, messages: List[Dict[str, Any]],
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
@@ -1106,10 +1216,18 @@ class OpenAIProvider(LLMProvider):
                 kwargs["reasoning"] = reasoning_config
             if extra_request_kwargs:
                 kwargs.update(extra_request_kwargs)
-            stream = self.client.responses.create(**kwargs)
-            for event in stream:
-                queue.put_nowait(event)
-            queue.put_nowait(_sentinel)
+            try:
+                stream = self.client.responses.create(**kwargs)
+                for event in stream:
+                    queue.put_nowait(event)
+            except Exception as e:
+                # Same contract as the DeepSeek worker: a create() failure
+                # (e.g. 400 on a bad image) must reach the consumer, not die
+                # in the executor future while `await queue.get()` hangs
+                # forever (live 2026-09-10).
+                queue.put_nowait(_StreamError(e))
+            finally:
+                queue.put_nowait(_sentinel)
 
         asyncio.get_event_loop().run_in_executor(None, _run_stream)
 
@@ -1123,6 +1241,8 @@ class OpenAIProvider(LLMProvider):
             event = await queue.get()
             if event is _sentinel:
                 break
+            if isinstance(event, _StreamError):
+                raise event.exc
 
             etype = getattr(event, 'type', '')
 
@@ -1224,10 +1344,11 @@ class OpenAIProvider(LLMProvider):
 
 
 class _StreamError:
-    """Queue-passable wrapper for exceptions raised inside the streaming
-    worker thread of `DeepSeekProvider.stream_completion_with_tools` (and
-    MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
-    leaves the consumer's `await queue.get()` hung forever.
+    """Queue-passable wrapper for exceptions raised inside a streaming
+    worker thread (`OpenAIProvider` Responses and
+    `DeepSeekProvider.stream_completion_with_tools`, including MiniMax which
+    inherits it). Without this, a TLS drop, 5xx, or 400 leaves the
+    consumer's `await queue.get()` hung forever.
     """
 
     __slots__ = ("exc",)
