@@ -248,6 +248,14 @@ class Competitor(BaseModel):
 
     creatives: list[Creative] = Field(default_factory=list)
 
+    # Names the ad search has ACTUALLY run under. The search is name-driven but
+    # the record key is a domain, and a multi-project parent domain must accrete
+    # per-project searches - a cache hit for an uncovered name re-searches just
+    # that name and merges (live 2026-09-11: the puravankara.com record built
+    # under 'Puravankara The Sound of Water' was served, junk ads and all, to
+    # 'Purva Sparkling Springs' without any search ever running for it).
+    searched_names: list[str] = Field(default_factory=list, alias="searchedNames")
+
     # Normalized businessUrls (AISuggestedData keys) of the products whose
     # research surfaced this competitor - how the creatives page groups the
     # shared library by product. Grows by union, never replaced.

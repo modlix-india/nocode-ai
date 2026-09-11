@@ -23,6 +23,8 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timezone
+
+import httpx
 from typing import Awaitable, Callable
 
 from app.config import settings
@@ -134,44 +136,64 @@ async def creatives_for(
     before the ONE store write."""
     if not key:
         return None
-    fetched, prior = await _fetch_stage(
+    fetched, prior, searched = await _fetch_stage(
         key=key, names=[name], ctx=ctx, force=force, source=source)
     if fetched is None:
         if prior:
             await _stamp_business_url(prior, ctx)
         return prior
     return await _process_stage(key=key, name=name, ctx=ctx,
-                                fetched=fetched, prior=prior, enrich=enrich)
+                                fetched=fetched, prior=prior, enrich=enrich,
+                                searched_names=searched)
 
 
 async def _fetch_stage(
     *, key: str, names: list[str], ctx: dict, force: bool,
     source: AdIntelligenceSource | None,
-) -> tuple[SourceFetch | None, Competitor | None]:
+) -> tuple[SourceFetch | None, Competitor | None, list[str]]:
     """The rate-limited half: cache check + source fetch. Returns
-    ``(fetched, prior)`` - when ``fetched`` is None, ``prior`` IS the answer
-    (cache hit, stale-serve on failure, or kept-prior on empty fetch).
+    ``(fetched, prior, searched_names)`` - when ``fetched`` is None, ``prior``
+    IS the answer (cache hit, stale-serve on failure, or kept-prior on empty
+    fetch); ``searched_names`` is what the resulting record should claim was
+    searched (union on an augment, replacement on a full refresh - a refresh
+    discards other names' ads, so it must discard their claims too).
 
     ``names`` - every DISTINCT entry name sharing this key. The ad search is
     name-driven, so a shared domain searches once per name and merges (live
     2026-09-10: 'Purva Symphony' wrongly shared cityville.in and its single
     search returned zero ads for Valmark Cityville, which never got searched
-    under its own name). Dedup downstream collapses any overlap."""
+    under its own name). Dedup downstream collapses any overlap.
+
+    A FRESH record only satisfies names it was actually searched under: an
+    uncovered name searches just itself and merges with the stored creatives
+    (live 2026-09-11: 'Purva Sparkling Springs' resolved to puravankara.com and
+    was served the record built under 'Puravankara The Sound of Water' - a
+    multi-project parent domain must accrete searches, never let the first
+    project own the key for a whole TTL)."""
     src = source or _default_source()
 
     record = await store.get_competitor(key, ctx)
+    to_search = list(names)
+    augment = False
     if record and not force and not store.is_stale(record):
-        logger.info("creative_intelligence: cache hit key=%s", key)
-        return None, record
+        to_search = _uncovered_names(record, names)
+        if not to_search:
+            logger.info("creative_intelligence: cache hit key=%s", key)
+            return None, record, []
+        augment = True
+        logger.info("creative_intelligence: fresh record, unsearched name(s) "
+                    "key=%s missing=%s", key, to_search)
 
-    why = "forced" if force else ("stale" if record else "miss")
+    why = ("augment" if augment
+           else "forced" if force else ("stale" if record else "miss"))
     logger.info("creative_intelligence: fetching key=%s reason=%s names=%d",
-                key, why, len(names))
+                key, why, len(to_search))
     # A name-scoped key is not a host - advertiser attribution then runs on
     # name match alone (domain-link matching needs a real domain).
     search_domain = "" if key.startswith("name:") else key
     fetched: SourceFetch | None = None
-    for name in names:
+    searched_ok: list[str] = []
+    for name in to_search:
         try:
             got = await src.fetch(domain=search_domain, name=name,
                                   country=_campaign_country(ctx))
@@ -183,6 +205,7 @@ async def _fetch_stage(
                            "name=%r: %s: %s",
                            key, name, type(e).__name__, str(e)[:200])
             continue
+        searched_ok.append(name)
         if fetched is None:
             fetched = got
         else:
@@ -192,7 +215,14 @@ async def _fetch_stage(
             fetched.logo_url = fetched.logo_url or got.logo_url
             fetched.platform_ids = fetched.platform_ids or got.platform_ids
     if fetched is None:  # every name's fetch failed
-        return None, record  # serve stale if we have it; else None
+        return None, record, []  # serve stale if we have it; else None
+
+    if augment:
+        # Union: the stored creatives (other names' finds) re-enter the ingest
+        # alongside the new name's; dedup collapses overlap, the gate re-judges
+        # everything, and the record's claims grow to cover the new name.
+        fetched.creatives.extend(record.creatives)
+        return fetched, record, _merged_names(record.searched_names, searched_ok)
 
     if not fetched.creatives and record and record.creatives:
         # A transiently-empty search result must not destroy a good record
@@ -200,14 +230,30 @@ async def _fetch_stage(
         # and the stored essences would be lost). Serve the prior record.
         logger.warning("creative_intelligence: empty fetch, keeping prior record "
                        "key=%s (%d creatives)", key, len(record.creatives))
-        return None, record
+        return None, record, []
 
-    return fetched, record
+    return fetched, record, searched_ok
+
+
+def _uncovered_names(record: Competitor, names: list[str]) -> list[str]:
+    """The requested names this record has never been searched under.
+    Legacy records predate ``searchedNames`` - their display name stands in
+    as the one name they were built under."""
+    seen = {n.lower() for n in record.searched_names}
+    if not seen and record.name:
+        seen = {record.name.lower()}
+    return [n for n in names if n and n.lower() not in seen]
+
+
+def _merged_names(prior: list[str], new: list[str]) -> list[str]:
+    seen = {n.lower() for n in prior}
+    return list(prior) + [n for n in new if n.lower() not in seen]
 
 
 async def _process_stage(
     *, key: str, name: str, ctx: dict, fetched: SourceFetch,
     prior: Competitor | None, enrich: EnrichCreatives | None,
+    searched_names: list[str] | None = None,
 ) -> Competitor:
     """The unmetered half: rehost, dedup, VERIFY, essence, store. Safe to
     overlap with other competitors' fetches - nothing here touches the vendor
@@ -222,6 +268,9 @@ async def _process_stage(
         platform_ids=fetched.platform_ids,
         creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],
         business_urls=_merged_business_urls(prior, ctx),
+        # What this record's creatives can answer for (computed by the fetch
+        # stage: union on an augment, this fetch's names on a full refresh).
+        searched_names=searched_names if searched_names is not None else [name],
         last_fetched_at=datetime.now(timezone.utc).isoformat(),
     )
     binaries = await _attach_binaries(competitor, ctx)
@@ -454,7 +503,8 @@ async def creatives_for_all(
                            type(e).__name__, str(e)[:120])
 
     async def _process_and_deliver(key: str, name: str, fetched: SourceFetch,
-                                   prior: Competitor | None) -> None:
+                                   prior: Competitor | None,
+                                   searched: list[str]) -> None:
         try:
             # Backstop deadline over the whole unmetered half (rehost + dedup
             # + essence + store): one wedged competitor must never hold the
@@ -462,7 +512,8 @@ async def creatives_for_all(
             # spinner - open forever.
             record = await asyncio.wait_for(
                 _process_stage(key=key, name=name, ctx=ctx,
-                               fetched=fetched, prior=prior, enrich=enrich),
+                               fetched=fetched, prior=prior, enrich=enrich,
+                               searched_names=searched),
                 timeout=_PROCESS_TIMEOUT_SECONDS,
             )
         except asyncio.TimeoutError:
@@ -494,7 +545,7 @@ async def creatives_for_all(
     for key, names in key_names.items():
         await _stage(key, names[0], "searching the ad library…")
         try:
-            fetched, prior = await _fetch_stage(
+            fetched, prior, searched = await _fetch_stage(
                 key=key, names=names, ctx=ctx, force=force, source=source)
         except Exception as e:
             # e.g. a stored record that no longer validates - skip, don't abort.
@@ -510,7 +561,7 @@ async def creatives_for_all(
         await _stage(key, names[0],
                      f"{len(fetched.creatives)} ads found - saving…")
         tasks.append(asyncio.create_task(
-            _process_and_deliver(key, names[0], fetched, prior)))
+            _process_and_deliver(key, names[0], fetched, prior, searched)))
 
     if tasks:
         await asyncio.gather(*tasks)  # each task handles its own failure
@@ -535,13 +586,17 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
     jobs: list[tuple] = []
     video_jobs: list = []
     for c in competitor.creatives:
+        # Already-rehosted creatives (prior-record entries re-entering via a
+        # name-augment) are skipped: their vendor URLs are expired, and the
+        # asset already lives in our store (essence recovers bytes from it
+        # via _backfill_stored_bytes).
         if c.media_type != "video" and c.source_asset_url:
-            # image / carousel / collection: the asset itself is an image
-            jobs.append((c, c.source_asset_url, False))
+            if not c.file_url:  # image / carousel / collection: the asset is an image
+                jobs.append((c, c.source_asset_url, False))
             continue
-        if c.poster_source_url:  # video still
+        if c.poster_source_url and not c.poster_url:  # video still
             jobs.append((c, c.poster_source_url, True))
-        if c.media_type == "video" and c.source_asset_url:
+        if c.media_type == "video" and c.source_asset_url and not c.file_url:
             video_jobs.append(c)
     jobs = jobs[:MAX_BINARIES_PER_COMPETITOR]
     video_jobs = video_jobs[:MAX_VIDEOS_PER_COMPETITOR]
@@ -624,6 +679,48 @@ def _carry_forward_essence(prior: Competitor | None, competitor: Competitor) -> 
                     carried, len(competitor.creatives), competitor.competitor_key)
 
 
+async def _backfill_stored_bytes(
+    competitor: Competitor, binaries: dict[str, tuple[bytes, str]],
+) -> None:
+    """Recover image bytes for essence-less creatives that weren't rehosted
+    this ingest, from their own served asset (video: the poster still) - the
+    same public path verification already trusts. Fills ``binaries`` in place;
+    failures only log."""
+    from app.agents.adzump.creative_intelligence.verify import _served_url
+
+    todo: list[tuple[str, str]] = []  # (content_hash, path)
+    for c in competitor.creatives:
+        if c.essence is not None or not c.content_hash or c.content_hash in binaries:
+            continue
+        path = c.poster_url if c.media_type == "video" else c.file_url
+        if path:
+            todo.append((c.content_hash, path))
+    if not todo:
+        return
+
+    sem = asyncio.Semaphore(MAX_CONCURRENT_VERIFICATIONS)
+
+    async def _one(content_hash: str, path: str) -> None:
+        async with sem:
+            try:
+                async with httpx.AsyncClient(timeout=20.0,
+                                             follow_redirects=True) as client:
+                    resp = await client.get(_served_url(path))
+                if resp.status_code == 200 and resp.content:
+                    binaries[content_hash] = (
+                        resp.content,
+                        resp.headers.get("content-type") or "image/jpeg")
+            except Exception as e:
+                logger.warning("creative_intelligence: stored-bytes backfill "
+                               "failed path=%s: %s: %s",
+                               path[:80], type(e).__name__, str(e)[:120])
+
+    await asyncio.gather(*(_one(h, p) for h, p in todo))
+    logger.info("creative_intelligence: stored-bytes backfill %d/%d key=%s",
+                sum(1 for h, _ in todo if h in binaries), len(todo),
+                competitor.competitor_key)
+
+
 async def _enrich_essence(
     competitor: Competitor,
     binaries: dict[str, tuple[bytes, str]],
@@ -637,6 +734,11 @@ async def _enrich_essence(
     re-attempts."""
     if enrich is None:
         return
+    # Prior-record creatives re-entering an ingest (name-augment, taxonomy
+    # bump) have no fresh vendor bytes - their own rehosted asset is the
+    # source. Best effort: a creative whose bytes can't be recovered stays
+    # essence=None and the gate rejects it fail-closed (dropped[], honest).
+    await _backfill_stored_bytes(competitor, binaries)
     pending = [
         CreativeImage(creative=c, data=binaries[c.content_hash][0],
                       content_type=binaries[c.content_hash][1])

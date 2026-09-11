@@ -102,12 +102,13 @@ class LibraryTests(unittest.TestCase):
 
         with mock.patch.object(library.store, "get_competitor",
                                new=mock.AsyncMock(return_value=None)):
-            fetched, prior = asyncio.run(library._fetch_stage(
+            fetched, prior, searched = asyncio.run(library._fetch_stage(
                 key="cityville.in", names=["Purva Symphony", "Valmark Cityville"],
                 ctx={}, force=False, source=RecordingSource()))
         self.assertEqual(calls, ["Purva Symphony", "Valmark Cityville"])
         self.assertEqual(len(fetched.creatives), 2)
         self.assertIsNone(prior)
+        self.assertEqual(searched, ["Purva Symphony", "Valmark Cityville"])
 
     def test_all_failed_validation_is_error_not_empty(self):
         # Rule 7: a pipeline failure must never be disguised as "this
@@ -160,7 +161,7 @@ class LibraryTests(unittest.TestCase):
             async def fetch_one_bad(*, key, names, ctx, force, source):
                 if key == "bad.com":
                     raise RuntimeError("poisoned record")
-                return None, _record(age_days=1)  # cache hit
+                return None, _record(age_days=1), []  # cache hit
             with mock.patch.object(library, "_fetch_stage", new=fetch_one_bad):
                 results = asyncio.run(library.creatives_for_all(
                     [CompetitorProfile(name="Bad", url="https://bad.com"),
@@ -327,8 +328,9 @@ class LibraryTests(unittest.TestCase):
 
             async def stage(*, key, names, ctx, force, source):
                 if key == "cached.com":
-                    return None, _record(age_days=1)  # cache hit
-                return SourceFetch(creatives=[_ad("a1")], resolved_name=names[0]), None
+                    return None, _record(age_days=1), []  # cache hit
+                return (SourceFetch(creatives=[_ad("a1")], resolved_name=names[0]),
+                        None, list(names))
 
             with mock.patch.object(library, "_fetch_stage", new=stage), \
                  mock.patch.object(library.store, "get_competitor",
@@ -422,6 +424,81 @@ class LibraryTests(unittest.TestCase):
                                enrich=HungEnrich())
         self.assertEqual(record.creatives[0].creative_id, "a1")
         self.assertIsNone(record.creatives[0].essence)  # shipped, essence-less
+
+    def test_fresh_record_only_answers_for_searched_names(self):
+        """A cache hit is name-aware (live 2026-09-11: 'Purva Sparkling
+        Springs' resolved to puravankara.com and was served the record built
+        under 'Puravankara The Sound of Water' - no search ever ran for it).
+        An uncovered name searches just itself and MERGES with the stored
+        creatives; covered names stay pure cache hits."""
+        def _sound_of_water_record(age_days=1) -> Competitor:
+            rec = _record(age_days=age_days, creatives=[
+                Creative(creative_id="junk", content_hash="junk",
+                         file_url="https://files/junk.jpg",
+                         essence=Essence(angle="stored",
+                                         taxonomy_version=taxonomy.TAXONOMY_VERSION))])
+            rec.name = "Puravankara The Sound of Water"
+            rec.searched_names = ["Puravankara The Sound of Water"]
+            return rec
+
+        with self.subTest("covered name (legacy record: display name) -> pure hit"):
+            legacy = _record(age_days=1)  # name="Nike", no searchedNames
+            src = FakeSource(creatives=[_ad("new")])
+            rec = self._run(stored=legacy, source=src)
+            self.assertEqual(src.calls, 0)
+        with self.subTest("uncovered name searches itself and merges"):
+            src = FakeSource(creatives=[_ad("pss1")])
+            rec = self._run(stored=_sound_of_water_record(), source=src)
+            self.assertEqual(src.calls, 1)  # only the missing name searched
+            self.assertEqual({c.creative_id for c in rec.creatives},
+                             {"pss1", "junk"})  # union, not replacement
+            self.assertEqual(rec.searched_names,
+                             ["Puravankara The Sound of Water", "Nike"])
+            self.assertEqual(rec.creatives[-1].essence.angle, "stored")
+            library.store.upsert_competitor.assert_awaited()
+        with self.subTest("second visit under the merged name is a pure hit"):
+            merged = _sound_of_water_record()
+            merged.searched_names.append("Nike")
+            src = FakeSource(creatives=[_ad("pss1")])
+            self._run(stored=merged, source=src)
+            self.assertEqual(src.calls, 0)
+        with self.subTest("essence-less prior creative re-classifies from its own asset"):
+            # no fresh vendor bytes on an augment - the rehosted file is the
+            # source (video would use its poster). Backfill feeds the enrich.
+            stored = _sound_of_water_record()
+            stored.creatives[0].essence = None
+
+            import httpx
+
+            def handler(request: httpx.Request) -> httpx.Response:
+                return httpx.Response(200, content=b"IMG-junk",
+                                      headers={"content-type": "image/jpeg"})
+
+            real_client = httpx.AsyncClient
+
+            def make_client(**kw):
+                kw.pop("transport", None)
+                return real_client(transport=httpx.MockTransport(handler), **kw)
+
+            enrich = FakeEnrich(essences={"junk": Essence(angle="recovered")})
+            with mock.patch.object(library.httpx, "AsyncClient", make_client):
+                rec = self._run(stored=stored, enrich=enrich,
+                                source=FakeSource(creatives=[_ad("pss1")]))
+            self.assertIn("junk", enrich.calls[0])
+            by_id = {c.creative_id: c for c in rec.creatives}
+            self.assertEqual(by_id["junk"].essence.angle, "recovered")
+        with self.subTest("failed augment search serves the stored record"):
+            from app.agents.adzump.creative_intelligence.sources.adlibrary import (
+                AdLibraryError as Err)
+            rec = self._run(stored=_sound_of_water_record(),
+                            source=FakeSource(exc=Err("boom")))
+            self.assertEqual([c.creative_id for c in rec.creatives], ["junk"])
+        with self.subTest("full stale refresh RESETS the name claims"):
+            # a refresh discards other names' ads - keeping their claims would
+            # serve name B the post-refresh record without B ever re-searching.
+            src = FakeSource(creatives=[_ad("fresh")])
+            rec = self._run(stored=_sound_of_water_record(age_days=99), source=src)
+            self.assertEqual(rec.searched_names, ["Nike"])
 
     def test_relevance_gate(self):
         """Stage C acceptance rows (spec 2026-09-11): only ads whose category
