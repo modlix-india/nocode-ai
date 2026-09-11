@@ -86,6 +86,19 @@ class Product(BaseModel):
     unique_features: list[str] = Field(default_factory=list)
     products_services: list[str] = Field(default_factory=list)
 
+    # ── Category classification (Stage A, creative_intelligence/taxonomy.py) -
+    #    the relevance gate's yardstick for competitor creatives. Derived ONCE
+    #    per record from the profile text above; the override wins and is the
+    #    correction path when derivation got it wrong. ──
+    product_category: str = ""          # taxonomy enum value
+    product_subcategory: str = ""
+    product_market: str = ""            # free text from place; city-token matched
+    product_offering_stage: str = ""    # pre_launch | under_construction | ...
+    product_category_source: str = ""   # which signal decided it (audit)
+    product_category_confidence: float = 0.0
+    taxonomy_version: str = ""          # vintage; a bump triggers re-derivation
+    product_category_override: str = ""  # manual, skips Stage A entirely
+
     # ── Scrape state ──
     primary_url: str = ""
     # In scrape order; the primary screenshot is derived (_shared.primary_screenshot_url)

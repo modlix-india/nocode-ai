@@ -18,6 +18,13 @@ from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+from app.agents.adzump.creative_intelligence.taxonomy import (
+    AdvertiserRole,
+    Category,
+    CategoryMethod,
+    OfferingStage,
+)
+
 MediaType = Literal["image", "video", "carousel", "collection"]
 FetchStatus = Literal["ok", "empty", "error"]
 
@@ -67,6 +74,10 @@ _LENIENT_ESSENCE_ENUMS: dict[str, tuple[str, ...]] = {
         (Proof, ("proof",)),
         (MediaFormat, ("media_format", "mediaFormat")),
         (VisualStyle, ("visual_style", "visualStyle")),
+        (Category, ("category",)),
+        (OfferingStage, ("offering_stage", "offeringStage")),
+        (AdvertiserRole, ("advertiser_role", "advertiserRole")),
+        (CategoryMethod, ("category_method", "categoryMethod")),
     )
     for key in keys
 }
@@ -117,6 +128,23 @@ class Essence(BaseModel):
 
     # ── What is it ──
     subject: str = ""                                            # product / person / scene shown
+
+    # ── Classification: what the ad is SELLING - the relevance gate's input
+    #    (taxonomy.gate_creative). "unknown" NEVER passes the gate - fail closed. ──
+    category: Category = "unknown"
+    subcategory: str = ""                                        # finer free-text split, "" if none
+    market: str = ""                                             # "City / Locality", "" if not determinable
+    offering_stage: OfferingStage = Field(default="unknown", alias="offeringStage")
+    advertised_project: str = Field(default="", alias="advertisedProject")   # what the ad actually sells
+    # broker/aggregator = the project belongs to a DIFFERENT developer; kept
+    # (still category-relevant), flagged so the UI can filter or label it.
+    advertiser_role: AdvertiserRole = Field(default="unknown", alias="advertiserRole")
+    category_confidence: float = Field(default=0.0, alias="categoryConfidence")
+    category_evidence: str = Field(default="", alias="categoryEvidence")     # the quote that decided it
+    category_method: CategoryMethod = Field(default="", alias="categoryMethod")
+    # Stamped by the ingest (taxonomy.TAXONOMY_VERSION); a version bump makes
+    # carry-forward skip this essence so the next ingest re-classifies it.
+    taxonomy_version: str = Field(default="", alias="taxonomyVersion")
 
     # ── Visual reference: what the image agent reproduces ──
     media_format: MediaFormat = Field(default="other", alias="mediaFormat")
@@ -231,6 +259,10 @@ class Competitor(BaseModel):
     # Why fetch_status is "error" - a pipeline failure must never be disguised
     # as "this competitor has no ads".
     fetch_error: str = Field(default="", alias="fetchError")
+    # Why fetch_status is "empty" when ads WERE discovered but none survived
+    # the relevance gate (e.g. "category_mismatch") - a relevance problem must
+    # never be disguised as "this competitor runs no ads".
+    empty_reason: str = Field(default="", alias="emptyReason")
     # Diagnostic trail of creatives removed by verification or the repair
     # sweep: {creativeId, fileUrl, reason, droppedAt}. Bounded by the writer.
     dropped: list[dict[str, Any]] = Field(default_factory=list)

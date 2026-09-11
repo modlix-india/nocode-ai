@@ -140,6 +140,7 @@ def _essence_enrich(context: dict, spans: _CompetitorSpans):
             },
             status_tuid=tuid,
             insight_agent_id=agent_id,
+            competitor_name=name,
         )
 
     return _enrich

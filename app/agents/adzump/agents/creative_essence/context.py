@@ -22,6 +22,11 @@ from app.agents.adzump.creative_intelligence.models import (
     Proof,
     VisualStyle,
 )
+from app.agents.adzump.creative_intelligence.taxonomy import (
+    AdvertiserRole,
+    Category,
+    OfferingStage,
+)
 
 
 def _enum(literal) -> str:
@@ -51,6 +56,36 @@ on-image headline when there is no copy). Verbatim, <= 120 chars.
 WHAT IS IT:
 - subject: what is physically shown (product / person / scene), one phrase.
 
+CLASSIFICATION - what the ad is SELLING. This drives an accept/reject \
+relevance gate, so classify the AD itself (image + on-image text + copy + \
+landing URL path), NEVER the advertiser's name or domain alone:
+- category: {_enum(Category)}.
+  Disambiguation rules:
+  - "BHK", "flats", "apartments", "society", "possession" -> residential_apartment
+  - "villa", "row house", "townhouse" -> residential_villa
+  - "plot", "plotted development", "sites", "JDA" -> residential_plot
+  - "office", "workspace", "carpet area", "seat" -> the commercial_* branch
+  - a bare price + "gated" + amenities -> residential, not commercial
+  - a premium/luxury residential ad from a DIFFERENT developer is still \
+residential_apartment - developer identity is NOT a category signal
+  - a stock/lifestyle image with no property content and no property copy \
+-> unknown with low confidence, NEVER a guess
+  - not real estate at all (auto, FMCG, travel, finance...) -> other_industry
+  - market commentary / advertorial with no product being sold -> other_real_estate
+  - classify copy in ANY language - never mark unknown just for language.
+- subcategory: a finer split within the category when one exists \
+(e.g. "luxury 3BHK"), else "".
+- market: "City / Locality" the ad targets, read from the image/copy - \
+"" when not determinable, never guessed.
+- offering_stage: {_enum(OfferingStage)}.
+- advertised_project: the project/brand name the ad is ACTUALLY selling, verbatim.
+- advertiser_role: {_enum(AdvertiserRole)} - 'broker' or 'aggregator' when the \
+advertised project clearly belongs to a different developer than the \
+competitor named in the input.
+- category_confidence: 0..1, your confidence in `category`.
+- category_evidence: the short quote/field that decided the category (<= 80 chars).
+- category_method: ocr | copy | vision | landing | combined - which signal decided it.
+
 VISUAL REFERENCE - what an image generator would reproduce:
 - media_format: {_enum(MediaFormat)}.
 - visual_style: {_enum(VisualStyle)}.
@@ -77,6 +112,11 @@ one verdict per input image, in input order:
      "hook_text": "Lakeside living from 1.2Cr", "awareness_stage": "solution_aware",
      "copy_framework": "none", "emotional_angle": "status", "offer": "none",
      "proof": "none", "subject": "aerial shot of villas by a lake",
+     "category": "residential_villa", "subcategory": "lakefront villas",
+     "market": "Bangalore / Whitefield", "offering_stage": "pre_launch",
+     "advertised_project": "Lakeside Villas", "advertiser_role": "developer",
+     "category_confidence": 0.93, "category_evidence": "OCR: LAKESIDE VILLAS",
+     "category_method": "combined",
      "media_format": "static_image", "visual_style": "lifestyle",
      "layout": "full-bleed photo, headline bottom-left",
      "ocr_text": "LAKESIDE VILLAS | Book a visit", "colors": ["teal", "white"]}}

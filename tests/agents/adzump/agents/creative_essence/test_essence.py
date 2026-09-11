@@ -89,6 +89,11 @@ class DeterministicSeamTests(unittest.TestCase):
             # forced 12 sequential single-image calls) - the batch PARSES.
             ("wrong enum coerces",
              '{"verdicts": [{"idx": 0, "hook_type": "clickbait"}]}', "other"),
+            # Same leniency for the classification enums: an invented category
+            # coerces to "unknown" - which the gate then rejects fail-closed.
+            ("wrong category coerces to unknown",
+             '{"verdicts": [{"idx": 0, "category": "real_estate_stuff"}]}',
+             "other"),
         ]:
             with self.subTest(parse=name):
                 batch = _parse_batch(text)
@@ -112,14 +117,32 @@ class DeterministicSeamTests(unittest.TestCase):
             self.assertEqual((essence.angle, essence.hook_type), ("a", "urgency"))
             self.assertNotIn("idx", essence.model_dump())
             self.assertEqual(essence.model_dump(by_alias=True)["hookType"], "urgency")
+        with self.subTest("classification fields ride the verdict into the store shape"):
+            verdict = _parse_batch(
+                '{"verdicts": [{"idx": 0, "category": "residential_villa",'
+                ' "market": "Bangalore / Whitefield", "offering_stage": "pre_launch",'
+                ' "advertised_project": "Lakeside Villas",'
+                ' "advertiser_role": "broker", "category_confidence": 0.93,'
+                ' "category_evidence": "OCR: LAKESIDE VILLAS",'
+                ' "category_method": "combined"}]}').verdicts[0]
+            stored = verdict.to_essence().model_dump(by_alias=True)
+            self.assertEqual(
+                (stored["category"], stored["advertiserRole"],
+                 stored["categoryConfidence"], stored["offeringStage"]),
+                ("residential_villa", "broker", 0.93, "pre_launch"))
         with self.subTest("message: one block per image, in order, with copy metadata"):
             text, blocks = _build_essence_message([
-                _ci("aaa", headline="Lakeside villas", cta="Book now"),
+                _ci("aaa", headline="Lakeside villas", cta="Book now",
+                    landing_url="https://rival.in/villas"),
                 _ci("bbb", media_type="video"),
-            ])
+            ], competitor_name="Prestige Tranquility")
             self.assertEqual(len(blocks), 2)
-            for expected in ("[Image 0]", "'Lakeside villas'", "'Book now'", "[Image 1]",
-                             "video ad - this is its poster still", "(no ad copy captured)"):
+            for expected in ("[Image 0]", "'Lakeside villas'", "'Book now'",
+                             "'https://rival.in/villas'", "[Image 1]",
+                             "video ad - this is its poster still",
+                             "(no ad copy captured)",
+                             "'Prestige Tranquility'",  # advertiser_role reference
+                             "never as a category signal"):
                 self.assertIn(expected, text)
             for block in blocks:
                 self.assertEqual((block["type"], block["source"]["type"]), ("image", "base64"))
@@ -151,7 +174,7 @@ class _StubbedAnalyst(EssenceAnalyst):
         self.batches = list(batches)
         self.calls: list[list[str]] = []
 
-    async def _run_once(self, chunk, stream, auth, parent_session_context):
+    async def _run_once(self, chunk, stream, auth, parent_session_context, competitor_name=""):
         self.calls.append([ci.creative.content_hash for ci in chunk])
         return self.batches.pop(0), 100, 10
 
@@ -198,7 +221,7 @@ class ExtractTests(unittest.IsolatedAsyncioTestCase):
                     self.in_flight = 0
                     self.max_in_flight = 0
 
-                async def _run_once(self, chunk, stream, auth, parent_session_context):
+                async def _run_once(self, chunk, stream, auth, parent_session_context, competitor_name=""):
                     self.in_flight += 1
                     self.max_in_flight = max(self.max_in_flight, self.in_flight)
                     await asyncio.sleep(0.01)

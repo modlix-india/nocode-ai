@@ -27,7 +27,7 @@ from typing import Awaitable, Callable
 
 from app.config import settings
 from app.agents.adzump import _uploads
-from app.agents.adzump.creative_intelligence import store
+from app.agents.adzump.creative_intelligence import store, taxonomy
 from app.agents.adzump.models import CompetitorProfile
 from app.agents.adzump.creative_intelligence.dedup import dedupe
 from app.agents.adzump.creative_intelligence.enrich import CreativeImage, EnrichCreatives
@@ -58,10 +58,6 @@ MAX_BINARIES_PER_COMPETITOR = MAX_CREATIVES_PER_COMPETITOR
 # Video files are orders of magnitude bigger than stills - rehost only the
 # first few per competitor (the craft carousel renders 12 creatives total).
 MAX_VIDEOS_PER_COMPETITOR = 6
-# Vision (essence) is spent only on creatives with recent market presence - an
-# ad neither active nor seen within this window is stale inspiration and stays
-# essence=None (stored + rendered all the same).
-ESSENCE_RECENCY_DAYS = 30
 # Hang deadlines (live 2026-09-08: one hung vision call wedged the batch
 # gather - the fetch tool, its turn, and the user's spinner sat open 12+
 # minutes). Enrich covers the essence LLM calls (a full per-creative fallback
@@ -237,16 +233,39 @@ async def _process_stage(
     # it can be written; failures are dropped with a diagnostic entry.
     competitor.creatives, drop_entries, drop_reasons = await _verify_creatives(
         competitor.creatives)
-    competitor.dropped = (drop_entries
-                          + (prior.dropped if prior else []))[:MAX_DROPPED_ENTRIES]
+    verified = len(competitor.creatives)
 
-    # Rule 7: the status must not lie. Everything-failed is a PIPELINE
-    # failure, never "this competitor has no ads".
+    _carry_forward_essence(prior, competitor)
+    await _enrich_essence(competitor, binaries, enrich)
+
+    # Stage C (taxonomy.py): only ads whose category matches the product's may
+    # be written - a same-market competitor can absolutely run an ad for
+    # something else. Gate OFF (logged) when the product can't be classified
+    # or no classifier ran (enrich=None): never reject against a missing
+    # yardstick.
+    gate_reasons: dict[str, int] = {}
+    gate = _product_gate(ctx) if enrich is not None else None
+    if gate:
+        competitor.creatives, gate_drops, gate_reasons = _gate_creatives(
+            competitor.creatives, *gate)
+        drop_entries += gate_drops
+
+    competitor.dropped = _dedupe_dropped(
+        drop_entries + (prior.dropped if prior else []))[:MAX_DROPPED_ENTRIES]
+
+    # Rule 7: the status must not lie. Everything-failed-verification is a
+    # PIPELINE failure; everything-gated-out is a RELEVANCE outcome ("empty" +
+    # emptyReason, dropped[] kept). Neither is ever disguised as "this
+    # competitor has no ads at all".
     if competitor.creatives:
         competitor.fetch_status = "ok"
         competitor.fetch_error = ""
+        competitor.empty_reason = ""
     elif discovered == 0:
         competitor.fetch_status = "empty"
+    elif verified and gate_reasons:
+        competitor.fetch_status = "empty"
+        competitor.empty_reason = max(gate_reasons, key=gate_reasons.get)
     else:
         competitor.fetch_status = "error"
         competitor.fetch_error = (
@@ -255,14 +274,12 @@ async def _process_stage(
 
     logger.info(
         "creative_intelligence: ingest key=%s discovered=%d rehosted=%d "
-        "verified=%d written=%d dropped=%s",
-        key, discovered, rehosted, len(competitor.creatives),
-        len(competitor.creatives),
+        "verified=%d written=%d dropped=%s gated=%s",
+        key, discovered, rehosted, verified, len(competitor.creatives),
         (dict(sorted(drop_reasons.items())) or "{}"),
+        (dict(sorted(gate_reasons.items())) or "{}"),
     )
 
-    _carry_forward_essence(prior, competitor)
-    await _enrich_essence(competitor, binaries, enrich)
     await store.upsert_competitor(competitor, ctx)
     return competitor
 
@@ -298,6 +315,66 @@ async def _verify_creatives(
     order = {id(c): i for i, c in enumerate(creatives)}
     kept.sort(key=lambda c: order[id(c)])
     return kept, drop_entries, reasons
+
+
+def _product_gate(ctx: dict) -> tuple[str, str] | None:
+    """The Stage-C yardstick ``(category, market)`` from the session's product,
+    or None when there is no product or Stage A can't place it in the taxonomy
+    (an unknown yardstick would reject the whole library - gate off, loudly)."""
+    product = (ctx.get("session_context") or {}).get("product_data") or {}
+    if not product:
+        return None
+    category = taxonomy.ensure_product_classified(product)
+    if category in ("", "unknown"):
+        logger.warning(
+            "creative_intelligence: relevance gate OFF - product category "
+            "unknown (businessType=%r)", (product.get("business_type") or "")[:80])
+        return None
+    return category, product.get("product_market", "")
+
+
+def _gate_creatives(
+    creatives: list[Creative], product_category: str, product_market: str,
+) -> tuple[list[Creative], list[dict], dict[str, int]]:
+    """Stage C: fail-closed relevance gate over classified creatives.
+    Returns (accepted, dropped_diagnostics, reason_counts) - a rejection is
+    never silent, and a broker/aggregator ad is KEPT (category-relevant),
+    only flagged via its essence.advertiser_role."""
+    kept: list[Creative] = []
+    drops: list[dict] = []
+    reasons: dict[str, int] = {}
+    for c in creatives:
+        ok, reason = taxonomy.gate_creative(product_category, product_market,
+                                            c.essence)
+        if ok:
+            kept.append(c)
+            continue
+        reasons[reason] = reasons.get(reason, 0) + 1
+        drops.append({
+            "creativeId": c.creative_id,
+            "fileUrl": c.file_url,
+            "reason": reason,
+            "category": c.essence.category if c.essence else "unknown",
+            "categoryConfidence": (c.essence.category_confidence
+                                   if c.essence else 0.0),
+            "droppedAt": datetime.now(timezone.utc).isoformat(),
+        })
+    return kept, drops, reasons
+
+
+def _dedupe_dropped(entries: list[dict]) -> list[dict]:
+    """One dropped[] entry per creativeId (first wins - new entries precede the
+    prior record's), so re-running a fetch never duplicates the trail."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for entry in entries:
+        cid = entry.get("creativeId") or ""
+        if cid in seen:
+            continue
+        if cid:
+            seen.add(cid)
+        out.append(entry)
+    return out
 
 
 def _merged_business_urls(prior: Competitor | None, ctx: dict) -> list[str]:
@@ -523,30 +600,18 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
     return binaries
 
 
-def _recently_active(c: Creative) -> bool:
-    """Essence eligibility: active now, or last seen within the recency window.
-    No parseable ``last_seen`` means no recency evidence - not eligible."""
-    if c.is_active:
-        return True
-    if not c.last_seen:
-        return False
-    try:
-        seen = datetime.fromisoformat(c.last_seen)
-    except ValueError:
-        return False
-    if seen.tzinfo is None:
-        seen = seen.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - seen).days <= ESSENCE_RECENCY_DAYS
-
-
 def _carry_forward_essence(prior: Competitor | None, competitor: Competitor) -> None:
     """The essence cache: a refetch re-lists mostly the same images, and essence
     is content-addressed - copy it from the prior stored record by content_hash
-    so the vision pass only ever sees genuinely new creatives."""
+    so the vision pass only ever sees genuinely new creatives. Version-checked:
+    an essence classified under an older taxonomy is NOT carried, so a
+    TAXONOMY_VERSION bump re-classifies existing records on their next ingest."""
     if prior is None:
         return
     known = {c.content_hash: c.essence
-             for c in prior.creatives if c.content_hash and c.essence}
+             for c in prior.creatives
+             if c.content_hash and c.essence
+             and c.essence.taxonomy_version == taxonomy.TAXONOMY_VERSION}
     if not known:
         return
     carried = 0
@@ -564,16 +629,19 @@ async def _enrich_essence(
     binaries: dict[str, tuple[bytes, str]],
     enrich: EnrichCreatives | None,
 ) -> None:
-    """Tier-3: typed essence for the deduped survivors that still lack it.
-    Injected hook - the domain never constructs it. Never culls; a failure
-    leaves essence None and the next real ingest re-attempts."""
+    """Tier-3: typed essence for EVERY deduped survivor that still lacks it -
+    the relevance gate needs a category on each one, so there is no recency
+    filter (deepseek vision made the full pass cheap). Injected hook - the
+    domain never constructs it. Never culls directly; a failure leaves essence
+    None, which the gate then rejects fail-closed and the next real ingest
+    re-attempts."""
     if enrich is None:
         return
     pending = [
         CreativeImage(creative=c, data=binaries[c.content_hash][0],
                       content_type=binaries[c.content_hash][1])
         for c in competitor.creatives
-        if c.essence is None and c.content_hash in binaries and _recently_active(c)
+        if c.essence is None and c.content_hash in binaries
     ]
     if not pending:
         return
@@ -598,5 +666,8 @@ async def _enrich_essence(
     for c in competitor.creatives:
         if c.essence is None and c.content_hash in essences:
             c.essence = essences[c.content_hash]
+            # The vintage the classification was made under - carry-forward
+            # and the gate both key off it.
+            c.essence.taxonomy_version = taxonomy.TAXONOMY_VERSION
     logger.info("creative_intelligence: essence added %d/%d key=%s",
                 len(essences), len(pending), competitor.competitor_key)

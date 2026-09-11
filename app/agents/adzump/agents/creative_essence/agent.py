@@ -105,6 +105,7 @@ class EssenceAnalyst(BaseAgent):
         parent_session_context: dict | None = None,
         status_tuid: str = "",
         insight_agent_id: str = "",
+        competitor_name: str = "",
     ) -> dict[str, Essence]:
         """Extract essence for every unique content_hash in ``images``.
 
@@ -164,7 +165,7 @@ class EssenceAnalyst(BaseAgent):
                 if stream.is_cancelled:
                     return got, t_in, t_out
                 batch, i, o = await self._run_once(
-                    chunk, stream, auth, parent_session_context)
+                    chunk, stream, auth, parent_session_context, competitor_name)
                 t_in += i
                 t_out += o
                 if batch is None and len(chunk) > 1:
@@ -175,7 +176,8 @@ class EssenceAnalyst(BaseAgent):
                         if stream.is_cancelled:
                             break
                         single, i, o = await self._run_once(
-                            [ci], stream, auth, parent_session_context)
+                            [ci], stream, auth, parent_session_context,
+                            competitor_name)
                         t_in += i
                         t_out += o
                         _collect(single, [ci], got)
@@ -225,6 +227,7 @@ class EssenceAnalyst(BaseAgent):
         stream: AgentEventStream,
         auth: AuthContext,
         parent_session_context: dict | None,
+        competitor_name: str = "",
     ) -> tuple[EssenceBatch | None, int, int]:
         """One LLM call over one chunk. Fresh session per call (a reused
         session would replay the previous chunk's messages into the next).
@@ -240,7 +243,7 @@ class EssenceAnalyst(BaseAgent):
         # CPU-bound (PIL decode/shrink + base64 per image) - off the event loop
         # so a 12-image chunk doesn't stall SSE keepalives.
         user_message, image_blocks = await asyncio.to_thread(
-            _build_essence_message, chunk)
+            _build_essence_message, chunk, competitor_name)
         try:
             await self.run(
                 user_message=user_message,
@@ -305,15 +308,22 @@ def _collect(
 
 def _build_essence_message(
     chunk: list[CreativeImage],
+    competitor_name: str = "",
 ) -> tuple[str, list[dict]]:
     """User-message text + image blocks, text-first / images-after in the same
     index order (the ``session.append_user_message`` contract VisionAnalyst
-    uses). Each entry carries the ad copy - hook_text / copy_framework / offer
-    read from the copy, not the pixels."""
+    uses). Each entry carries the ad copy + landing URL - hook_text /
+    copy_framework / offer / classification read them alongside the pixels.
+    ``competitor_name`` is the advertiser the ads were collected under - the
+    advertiser_role reference (a different developer's project = broker)."""
     lines = [
         f"Extract the essence of each of the {len(chunk)} competitor ad "
         f"creatives below, in order - one verdict per image.",
     ]
+    if competitor_name:
+        lines.append(f"These ads were collected while researching the "
+                     f"competitor {competitor_name!r} - use that name only "
+                     f"for advertiser_role, never as a category signal.")
     blocks: list[dict] = []
     for idx, ci in enumerate(chunk):
         c = ci.creative
@@ -324,6 +334,8 @@ def _build_essence_message(
             copy_bits.append(f"primary_text={c.primary_text[:400]!r}")
         if c.cta:
             copy_bits.append(f"cta={c.cta[:60]!r}")
+        if c.landing_url:
+            copy_bits.append(f"landing_url={c.landing_url[:160]!r}")
         meta = " ".join(copy_bits) or "(no ad copy captured)"
         note = " (video ad - this is its poster still)" if c.media_type == "video" else ""
         lines.append(f"[Image {idx}] media_type={c.media_type}{note} {meta}")

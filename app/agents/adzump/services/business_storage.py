@@ -40,8 +40,10 @@ STORAGE_NAME = "AISuggestedData"
 APP_CODE = "marketingai"
 SCHEMA_VERSION = 1
 
-def _normalize_url(url: str) -> str:
+def normalize_business_url(url: str) -> str:
     """Canonicalize a business URL for storage keys and lookups.
+    Public: creative_intelligence stamps this exact form onto shared library
+    records (``Competitor.business_urls``) so they join back to ``businessUrl``.
 
     - Force ``https`` scheme so the same business doesn't end up with two
       records keyed under ``http://`` and ``https://``.
@@ -77,7 +79,7 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
         "storageName": STORAGE_NAME,
         "appCode": APP_CODE,
         "clientCode": ctx.get("client_code", ""),
-        "filter": {"field": "businessUrl", "value": _normalize_url(url)},
+        "filter": {"field": "businessUrl", "value": normalize_business_url(url)},
     }
     result = await get_saas_client().post(
         READ_PAGE, headers=_storage_headers(ctx), json=payload,
@@ -239,7 +241,7 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
     images = assets.get("images") or []
 
     return {
-        "businessUrl": _normalize_url(url),
+        "businessUrl": normalize_business_url(url),
 
         # ── Analysis fields (mirror ds-v1 schema so its downstream APIs
         #    keep working when reading rows nocode-ai writes) ──
@@ -248,6 +250,17 @@ def _build_full_record(session_ctx: dict, url: str, chat_session_id: str = "") -
         "finalSummary": summary,
         "businessType": product.get("business_type", ""),
         "businessScale": product.get("business_scale", "national"),
+        # ── Product category (Stage A, taxonomy.py) - the yardstick the
+        #    creative-relevance gate judges every competitor ad against ──
+        "productCategory": product.get("product_category", ""),
+        "productSubcategory": product.get("product_subcategory", ""),
+        "productMarket": product.get("product_market", ""),
+        "productOfferingStage": product.get("product_offering_stage", ""),
+        "productCategorySource": product.get("product_category_source", ""),
+        "productCategoryConfidence": float(
+            product.get("product_category_confidence") or 0.0),
+        "taxonomyVersion": product.get("taxonomy_version", ""),
+        "productCategoryOverride": product.get("product_category_override", ""),
         # legacy ds-v1 shape: object with area_location / product_location /
         # product_coordinates. ds chatv2 confirm_location and business_service
         # both read from this dict.
@@ -444,6 +457,14 @@ def _record_to_business(record: dict) -> dict:
         "product_name": d.get("productName") or d.get("businessName", ""),
         "business_type": d.get("businessType", ""),
         "business_scale": d.get("businessScale", "national"),
+        "product_category": d.get("productCategory", ""),
+        "product_subcategory": d.get("productSubcategory", ""),
+        "product_market": d.get("productMarket", ""),
+        "product_offering_stage": d.get("productOfferingStage", ""),
+        "product_category_source": d.get("productCategorySource", ""),
+        "product_category_confidence": float(d.get("productCategoryConfidence") or 0.0),
+        "taxonomy_version": d.get("taxonomyVersion", ""),
+        "product_category_override": d.get("productCategoryOverride", ""),
         "summary": d.get("summary", ""),
         "place": place,
         "unique_features": d.get("uniqueFeatures") or [],

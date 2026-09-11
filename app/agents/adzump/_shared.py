@@ -74,7 +74,7 @@ def short_url(url: str, max_len: int = 55) -> str:
     - Hard-caps length, end-truncates with ``…``.
 
     Display-only - never persist this form. Stored URLs always use the full
-    URL (see business_storage._normalize_url for the storage-canonical form).
+    URL (see business_storage.normalize_business_url for the storage-canonical form).
     """
     from urllib.parse import urlparse
     if not url:
@@ -105,8 +105,8 @@ def clean_input_url(raw) -> str | None:
     Trims whitespace, defaults the scheme to ``https://`` if missing,
     and returns ``None`` when the input is empty or whitespace-only.
     Leaves explicit ``http://`` alone - caller decides whether to keep
-    or force-upgrade to https (see business_storage._normalize_url for
-    the storage-canonicalization concern).
+    or force-upgrade to https (see business_storage.normalize_business_url
+    for the storage-canonicalization concern).
     """
     url = (raw or "").strip()
     if not url:

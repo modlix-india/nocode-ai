@@ -12,7 +12,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
-from app.agents.adzump.creative_intelligence import library
+from app.agents.adzump.creative_intelligence import library, taxonomy
 from app.agents.adzump.creative_intelligence.models import Competitor, Creative, Essence
 from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibraryError
 from app.agents.adzump.creative_intelligence.sources.base import SourceFetch
@@ -56,8 +56,7 @@ def _record(*, age_days: int, creatives=None, business_urls=None) -> Competitor:
 
 def _ad(creative_id: str, media_type: str = "image", *,
         last_seen_days_ago: int = 1, **fields) -> Creative:
-    """A fetched creative; recently-seen by default so it clears the essence
-    recency gate (which has its own dedicated test)."""
+    """A fetched creative, recently-seen by default."""
     fields.setdefault("last_seen", (
         datetime.now(timezone.utc) - timedelta(days=last_seen_days_ago)).isoformat())
     return Creative(creative_id=creative_id, media_type=media_type,
@@ -243,7 +242,9 @@ class LibraryTests(unittest.TestCase):
             self.assertEqual(written.creatives[0].essence.angle, "lakeside living")
         with self.subTest("cached essence carries forward and skips vision"):
             stale = _record(age_days=99, creatives=[
-                Creative(creative_id="old", content_hash="a1", essence=Essence(angle="cached"))])
+                Creative(creative_id="old", content_hash="a1",
+                         essence=Essence(angle="cached",
+                                         taxonomy_version=taxonomy.TAXONOMY_VERSION))])
             enrich = FakeEnrich(essences={"b2": Essence(angle="fresh")})
             rec = self._run(stored=stale, enrich=enrich,
                             source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
@@ -251,6 +252,20 @@ class LibraryTests(unittest.TestCase):
             by_id = {c.creative_id: c for c in rec.creatives}
             self.assertEqual((by_id["a1"].essence.angle, by_id["b2"].essence.angle),
                              ("cached", "fresh"))
+            # fresh classifications are stamped with the current vintage
+            self.assertEqual(by_id["b2"].essence.taxonomy_version,
+                             taxonomy.TAXONOMY_VERSION)
+        with self.subTest("stale-taxonomy essence is NOT carried - re-classified"):
+            # acceptance 11: a TAXONOMY_VERSION bump re-runs classification on
+            # existing records at their next real ingest.
+            stale = _record(age_days=99, creatives=[
+                Creative(creative_id="old", content_hash="a1",
+                         essence=Essence(angle="cached", taxonomy_version="0"))])
+            enrich = FakeEnrich(essences={"a1": Essence(angle="reclassified")})
+            rec = self._run(stored=stale, enrich=enrich,
+                            source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual(enrich.calls, [["a1"]])
+            self.assertEqual(rec.creatives[0].essence.angle, "reclassified")
         with self.subTest("carousel is rehosted, hashed, and essenced like an image"):
             enrich = FakeEnrich(essences={"c9": Essence(angle="grid of rooms")})
             rec = self._run(stored=None, enrich=enrich,
@@ -289,24 +304,19 @@ class LibraryTests(unittest.TestCase):
                 self._run(stored=stored, source=source, enrich=enrich)
                 self.assertEqual(enrich.calls, [])
 
-    def test_essence_recency_gate(self):
-        """Vision is spent only on recently-active creatives: active now, or
-        last seen within ESSENCE_RECENCY_DAYS. Stale/undated ads are still
-        stored and rendered - they just stay essence=None."""
+    def test_every_survivor_is_classified(self):
+        """No recency filter on the essence pass: the relevance gate needs a
+        category on EVERY stored creative, so stale and undated ads are
+        classified too (the old 30-day recency gate is gone)."""
         enrich = FakeEnrich()
         rec = self._run(stored=None, enrich=enrich, source=FakeSource(creatives=[
             _ad("recent", last_seen_days_ago=5),
-            _ad("edge", last_seen_days_ago=library.ESSENCE_RECENCY_DAYS),
             _ad("stale", last_seen_days_ago=120),
-            _ad("active-no-date", is_active=True, last_seen=""),
             _ad("undated", last_seen=""),
-            _ad("garbage-date", last_seen="not-a-timestamp"),
         ]))
-        self.assertEqual(enrich.calls, [["active-no-date", "edge", "recent"]])
-        # the ineligible ones survive the ingest, just without essence
+        self.assertEqual(enrich.calls, [["recent", "stale", "undated"]])
         self.assertEqual({c.creative_id for c in rec.creatives},
-                         {"recent", "edge", "stale", "active-no-date",
-                          "undated", "garbage-date"})
+                         {"recent", "stale", "undated"})
 
     def test_streaming_and_pipelining(self):
         with self.subTest("on_resolved fires per competitor, cache hits included"):
@@ -412,6 +422,110 @@ class LibraryTests(unittest.TestCase):
                                enrich=HungEnrich())
         self.assertEqual(record.creatives[0].creative_id, "a1")
         self.assertIsNone(record.creatives[0].essence)  # shipped, essence-less
+
+    def test_relevance_gate(self):
+        """Stage C acceptance rows (spec 2026-09-11): only ads whose category
+        matches the product's are written; rejections land in dropped[] and an
+        all-rejected fetch is empty+emptyReason, never 'runs no ads'."""
+        apartment_ctx = {"session_context": {"product_data": {
+            "business_type": "Pre-launch high-rise apartments, Whitefield Bangalore",
+            "place": {"address": "Whitefield, Bangalore, Karnataka"},
+        }}}
+
+        def classified(essences: dict[str, Essence]) -> FakeEnrich:
+            return FakeEnrich(essences=essences)
+
+        def apartment(conf=0.9, **kw) -> Essence:
+            kw.setdefault("category", "residential_apartment")
+            kw.setdefault("category_confidence", conf)
+            return Essence(**kw)
+
+        with self.subTest("same category, different developer -> ACCEPTED"):
+            rec = self._run(stored=None, ctx=apartment_ctx,
+                            enrich=classified({"a1": apartment()}),
+                            source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual(rec.fetch_status, "ok")
+            self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
+        rejection_rows = [
+            ("office ad", Essence(category="commercial_office",
+                                  category_confidence=0.95), "category_mismatch"),
+            ("plot ad (different branch)",
+             Essence(category="residential_plot", category_confidence=0.95),
+             "category_mismatch"),
+            ("auto/FMCG ad", Essence(category="other_industry",
+                                     category_confidence=0.9), "non_real_estate"),
+            ("dog photo, no copy", Essence(category="unknown",
+                                           category_confidence=0.2), "unknown_category"),
+            ("right category, low confidence", apartment(conf=0.5), "low_confidence"),
+            ("right category, wrong city",
+             apartment(market="Mumbai / Andheri"), "market_mismatch"),
+            ("essence never produced (fail closed)", None, "unknown_category"),
+        ]
+        for label, essence, want_reason in rejection_rows:
+            with self.subTest(label):
+                enrich = classified({"a1": essence} if essence else {})
+                rec = self._run(stored=None, ctx=apartment_ctx, enrich=enrich,
+                                source=FakeSource(creatives=[_ad("a1")]))
+                self.assertEqual(rec.creatives, [])
+                self.assertEqual(rec.fetch_status, "empty")
+                self.assertEqual(rec.empty_reason, want_reason)
+                self.assertEqual(rec.dropped[0]["reason"], want_reason)
+        with self.subTest("alias city (Bengaluru) still matches"):
+            rec = self._run(stored=None, ctx=apartment_ctx,
+                            enrich=classified(
+                                {"a1": apartment(market="Bengaluru / Whitefield")}),
+                            source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual(rec.fetch_status, "ok")
+        with self.subTest("mixed batch: apartments kept, office rejected"):
+            rec = self._run(stored=None, ctx=apartment_ctx,
+                            enrich=classified({
+                                "a1": apartment(),
+                                "b2": Essence(category="commercial_office",
+                                              category_confidence=0.9),
+                                "c3": apartment(),
+                            }),
+                            source=FakeSource(creatives=[_ad("a1"), _ad("b2"),
+                                                         _ad("c3")]))
+            self.assertEqual({c.creative_id for c in rec.creatives}, {"a1", "c3"})
+            self.assertEqual(rec.fetch_status, "ok")
+            self.assertEqual(rec.empty_reason, "")
+            self.assertEqual([d["creativeId"] for d in rec.dropped], ["b2"])
+        with self.subTest("broker ad is KEPT, only flagged"):
+            rec = self._run(stored=None, ctx=apartment_ctx,
+                            enrich=classified(
+                                {"a1": apartment(advertiser_role="broker")}),
+                            source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual(rec.creatives[0].essence.advertiser_role, "broker")
+        with self.subTest("override yardstick (villa) gates without Stage A"):
+            ctx = {"session_context": {"product_data": {
+                "business_type": "Pre-launch high-rise apartments",
+                "product_category_override": "residential_villa",
+            }}}
+            rec = self._run(stored=None, ctx=ctx,
+                            enrich=classified({
+                                "a1": Essence(category="residential_villa",
+                                              category_confidence=0.9),
+                                "b2": apartment(),
+                            }),
+                            source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
+            self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
+        with self.subTest("unclassifiable product -> gate OFF, nothing rejected"):
+            ctx = {"session_context": {"product_data": {
+                "business_type": "artisanal candles"}}}
+            rec = self._run(stored=None, ctx=ctx, enrich=classified({}),
+                            source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
+        with self.subTest("re-run never duplicates dropped[] entries"):
+            enrich = classified({"a1": Essence(category="commercial_office",
+                                               category_confidence=0.9)})
+            first = self._run(stored=None, ctx=apartment_ctx, enrich=enrich,
+                              source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual([d["creativeId"] for d in first.dropped], ["a1"])
+            first.last_fetched_at = (  # age it so the second run refetches
+                datetime.now(timezone.utc) - timedelta(days=99)).isoformat()
+            second = self._run(stored=first, ctx=apartment_ctx, enrich=enrich,
+                               source=FakeSource(creatives=[_ad("a1")]))
+            self.assertEqual([d["creativeId"] for d in second.dropped], ["a1"])
 
     def test_hung_processing_drops_one_competitor_not_the_batch(self):
         class HungEnrich:
