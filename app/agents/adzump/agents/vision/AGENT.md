@@ -25,7 +25,7 @@ product_assets.py (scrape)                tools/asset_manage.py (upload)
         │                                          │
         ▼                                          ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│  VisionAnalyst (BaseAgent, tools=[], max_turns=1, gpt-4o-mini)    │
+│  VisionAnalyst (BaseAgent, tools=[], max_turns=1, deepseek)       │
 │  TWO singleton instances - the system prompt can't be swapped per │
 │  run, so each mode is its own configured instance:                │
 │    · vision_select  (build_select_context)  → AssetSelection      │
@@ -54,8 +54,8 @@ cross-agent extraction).
 
 | Constant | Value | Why |
 |---|---|---|
-| `VISION_MODEL_OVERRIDE` | `openai:gpt-4o-mini` | cost parity with the direct call it replaced (~20x cheaper than Sonnet for the same task); a DeepSeek bench is pending (the essence analyst already moved) |
-| `VISION_MAX_TOKENS` | `600` | output is one small JSON object |
+| `VISION_MODEL_OVERRIDE` | `deepseek:deepseek-v4-flash-vision-exp` | 2026-09-11 bench (`scripts/bench_vision.py`, report in `logs/bench_vision_report.md`): gpt-4o-mini picked an ET-award laurel graphic as the hero image; deepseek grounded every pick, read the cobrand logo lockup, labeled all candidates with unused-reasons, ~20x cheaper vision input. Trade-off: ~2.7x slower on a 21-candidate site, on the user-visible scrape path |
+| `VISION_MAX_TOKENS` | `6000` | the reasoning stream shares the output budget - 2000 truncated mid-reasoning and the unfinished JSON parsed as EMPTY picks (a silent decline into the upload path) |
 | `VISION_MAX_TURNS` | `1` | single shot, no tools |
 
 ## select-subset: how a pick works

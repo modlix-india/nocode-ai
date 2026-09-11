@@ -6,7 +6,7 @@ extracts each one's typed ``Essence`` (strategy / subject / visual reference).
 It never culls a creative - dedup is deterministic, vision only adds.
 
 Family shape: a VisionAnalyst clone (``agents/vision/agent.py``) - tools=[],
-max_turns=1, gpt-4o-mini, silent sub-stream, fenced-JSON -> pydantic. The
+max_turns=1, silent sub-stream, fenced-JSON -> pydantic. The
 launcher owns ``pre_emit_agent_started``; this agent emits ``agent_finished``
 with aggregated usage. Lives OUTSIDE ``creative_intelligence/`` and is injected
 into the library's ingest by the tool, so the domain stays model-free.
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 # text not on the image, reads on-image prices/OCR verbatim, ~20x cheaper
 # vision input, and streams reasoning for the observability card. Trade-off:
 # ~4x slower per batch - acceptable for a background enrich. VisionAnalyst
-# (logo/creative picks) stays on gpt-4o-mini pending its own bench.
+# followed after its own bench (2026-09-11, scripts/bench_vision.py).
 ESSENCE_PROVIDER = "deepseek"
 ESSENCE_MODEL_TIER = "deepseek-v4-flash-vision-exp"
 ESSENCE_MODEL_OVERRIDE = "deepseek:deepseek-v4-flash-vision-exp"

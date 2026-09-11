@@ -240,7 +240,7 @@ async def select_product_assets(
     _stage("llm_input_meta", n=len(available), meta=meta_json[:1200])
 
     # Vision pick runs through VisionAnalyst (single-shot BaseAgent that
-    # wraps the gpt-4o-mini call). The agent handles message construction,
+    # wraps the vision-model call). The agent handles message construction,
     # Anthropic→OpenAI image-block conversion, JSON parsing, and resolve
     # internally - the caller still owns the safety net + bytes dict.
     if context.get("auth") is None:

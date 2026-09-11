@@ -67,7 +67,7 @@ Hard caps: at most 3 logos. Use empty list/string/0 when there's no signal - do 
 
 
 def _load_select_prompt() -> str:
-    """Read the gpt-4o-mini select prompt + append the JSON contract."""
+    """Read the vision select prompt + append the JSON contract."""
     base = _SELECT_PROMPT_PATH.read_text(encoding="utf-8")
     return base + _JSON_OUTPUT_CONTRACT
 
