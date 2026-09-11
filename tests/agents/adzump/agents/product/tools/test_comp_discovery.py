@@ -227,6 +227,28 @@ class FetchCandidatesTests(unittest.TestCase):
         self.assertIn("NOTHING VERIFIED", result.summary)
         self.assertIn("ONCE more with different IDs", result.summary)
 
+    def test_no_new_evidence_steers_to_final_json(self):
+        """A re-call that adds nothing (re-cited verified IDs, or replacements
+        that all dropped) must CLOSE the pipeline, not invite another round -
+        with thinking on, one such loop burned a 115s deliberation turn (live
+        2026-09-11). The steer fires only when a verified base exists; a
+        first-call washout keeps the recoverable NOTHING VERIFIED path."""
+        context = self._prepared_context()
+        self._run(["C1"], context)
+        for label, ids, status in [
+            ("all cited IDs already verified", ["C1"], "ok"),
+            ("replacement picks all failed", ["C2"], "failed"),
+        ]:
+            with self.subTest(label):
+                result = self._run(ids, context, fetch_status=status)
+                self.assertTrue(result.success)
+                self.assertIn("NO NEW EVIDENCE", result.summary)
+                self.assertIn("do NOT call fetch_candidates again", result.summary)
+                self.assertNotIn("ONCE more", result.summary)
+        # the accumulated evidence base is untouched by the steered calls
+        verified = context["session_context"]["_research_state"]["verified_competitors"]
+        self.assertEqual([c["cid"] for c in verified], ["C1"])
+
 
 class AttachUrlOptionsTests(unittest.TestCase):
     """The researcher owns URL judgment: code gathers per-candidate vetted

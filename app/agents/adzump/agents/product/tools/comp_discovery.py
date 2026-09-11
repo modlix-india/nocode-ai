@@ -375,6 +375,30 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
                     total_verified: int) -> list[str]:
     """ID-keyed evidence for the agent's final judgment - no segment hints,
     no match booleans: the agent re-judges each entry on the fetched content."""
+    if not verified and total_verified:
+        # A cautious re-call that added nothing (re-cited verified IDs, or
+        # replacements that all dropped) must not invite another round: with
+        # thinking on, one such loop burned a 115s deliberation turn (live
+        # 2026-09-11) re-confirming evidence it already held.
+        drops = []
+        if skipped_verified:
+            drops.append(f"{', '.join(skipped_verified)} already verified "
+                         "earlier - that evidence is unchanged and still valid")
+        if aggregator_drops:
+            drops.append(f"{len(aggregator_drops)} aggregator page(s) dropped")
+        if fetch_fails:
+            drops.append(f"{len(fetch_fails)} fetch failure(s)")
+        return [
+            "## Fetch Candidates - NO NEW EVIDENCE",
+            "",
+            "This call verified nothing new"
+            + (f" ({'; '.join(drops)})" if drops else "") + ".",
+            "",
+            f"Your {total_verified} previously verified competitor(s) are the "
+            "complete evidence base - further calls only re-confirm it. Write "
+            "the final JSON NOW, citing the existing IDs; do NOT call "
+            "fetch_candidates again.",
+        ]
     if not verified and not skipped_verified:
         return [
             "## Fetch Candidates - NOTHING VERIFIED",
