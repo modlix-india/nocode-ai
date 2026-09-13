@@ -1172,6 +1172,58 @@ async def test_nothing_is_pushed_by_default(monkeypatch):
     assert await lore_context.big_picture(_FakeSession()) == ""
 
 
+# ── the pushes read the app the session is actually building ─────────────
+#
+# Session FIN_25374506: the chat opened from the sitezump product with no
+# app_code, the agent went on to build `websmith`, and the automatic pushes
+# kept briefing it on sitezump — an app the client cannot even edit. The cause
+# was a private copy of the app lookup in context.py that had never learned
+# about the focus app, while the lore TOOLS and the write path used the shared
+# resolver. One resolver now, so all three agree.
+
+
+@pytest.mark.asyncio
+async def test_pushes_follow_the_focus_app_not_the_one_the_chat_opened_with(monkeypatch):
+    from app.services.lore import context as lore_context
+    from app.core.session import FOCUS_APP_KEY
+
+    asked: list[str] = []
+
+    async def _scope_for(auth, app_code):
+        asked.append(app_code)
+        return _scope(client=auth.client_code, chain=(auth.client_code,), app=app_code)
+
+    async def _brief(scope, **kw):
+        return {"entry_count": 1, "markdown": f"- knowledge about {scope.app_code}"}
+
+    monkeypatch.setattr(lore_context.access, "resolve_scope", _scope_for)
+    monkeypatch.setattr(lore_context.retrieval, "brief", _brief)
+
+    session = _FakeSession(app="sitezump")
+    session.context[FOCUS_APP_KEY] = "websmith"
+
+    out = await lore_context.small_picture(session, "page:home")
+    assert asked == ["websmith"]
+    assert "websmith" in out and "sitezump" not in out
+
+
+@pytest.mark.asyncio
+async def test_pushes_say_nothing_when_the_session_has_no_app(monkeypatch):
+    """No app in context means no default, so there is nothing to brief on."""
+    from app.services.lore import context as lore_context
+
+    async def _boom(*a, **kw):
+        raise AssertionError("resolved a scope for a session with no app")
+
+    monkeypatch.setattr(lore_context.access, "resolve_scope", _boom)
+
+    session = _FakeSession(app="sitezump")
+    session.context.pop("app_code")       # the request named no app
+    session.auth.app_code = "sitezump"    # only the access app knows the product
+    assert await lore_context.small_picture(session, "page:home") == ""
+    assert await lore_context.big_picture(session) == ""
+
+
 # ── search says what it did NOT match ────────────────────────────────────
 
 
