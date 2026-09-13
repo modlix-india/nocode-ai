@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.session import AuthContext, BaseSession
+from app.core.session import AuthContext, BaseSession, session_app_code
 from app.core.tools.base import ToolResult
 from app.agents.appbuilder.tools._shared import (
     FOCUS_APP_KEY,
@@ -213,8 +213,9 @@ def test_the_crm_session_replayed():
     # The call that used to 404. It now lands in crm without the argument.
     ctx = agent.build_tool_context(s)
     assert resolve_app_code({"page_name": "leads"}, ctx) == "crm"
-    # And the prompt agrees with the dispatcher.
-    assert agent._effective_app_code(s) == "crm"
+    # And the prompt agrees with the dispatcher: one resolver, not a copy
+    # of the lookup per caller.
+    assert session_app_code(s) == "crm"
 
 
 def test_build_tool_context_carries_focus_and_seen_apps():
@@ -227,9 +228,8 @@ def test_build_tool_context_carries_focus_and_seen_apps():
     assert ctx["app_code"] == "appbuilder"
 
 
-def test_effective_app_code_before_any_write_is_the_request_app():
-    agent, s = _agent(), _session("marketingai")
-    assert agent._effective_app_code(s) == "marketingai"
+def test_app_code_before_any_write_is_the_request_app():
+    assert session_app_code(_session("marketingai")) == "marketingai"
 
 
 # ── 4. the cross-app hint on a genuine miss ──────────────────────────────────
@@ -595,3 +595,69 @@ def test_first_turn_of_a_session_keeps_the_focus():
     s.context[FOCUS_APP_KEY] = "crm"
     s._clear_focus_on_app_switch(None)
     assert s.context[FOCUS_APP_KEY] == "crm"
+
+
+# ── 7. the product you run the assistant FROM is not the app you build in ────
+#
+# Session FIN_25374506 (2026-09-13). The chat opened from the sitezump product
+# with no `app_code` in the body, so `AuthContext.app_code` fell back to the
+# `appCode` header — the product itself. Every resolver then answered
+# "sitezump": the prompt said `- App: sitezump`, the pre-flight grounding
+# fetched sitezump's pages, and lore briefed the agent on sitezump. The user's
+# third message was "No I want you to create a new app, why do you think I want
+# to make change in sitezump?". FIN holds `EDIT_ACCESS = 0` on sitezump, so the
+# agent had been pointed at an app the client cannot even edit.
+
+
+def _app_less_session(access_app: str = "sitezump") -> BaseSession:
+    """A chat opened from a product with no app named in the request body."""
+    s = BaseSession(agent_name="appbuilder")
+    s.session_id = "FIN_test"
+    s.auth = AuthContext(
+        token="t", client_code="FIN", client_id=2, user_id=224,
+        app_code="", access_app_code=access_app,
+    )
+    return s
+
+
+def test_no_app_in_the_request_means_no_app():
+    assert session_app_code(_app_less_session()) == ""
+
+
+def test_the_access_app_is_never_the_app():
+    """Even reached through the attribute the old fallback used."""
+    s = _app_less_session()
+    s.auth.access_app_code = "sitezump"
+    assert session_app_code(s) == ""
+    assert resolve_app_code({}, _agent().build_tool_context(s)) == ""
+
+
+def test_an_explicitly_named_product_app_still_works():
+    """Working ON sitezump is legitimate; it just has to be asked for."""
+    s = _app_less_session()
+    s.context["app_code"] = "sitezump"
+    assert session_app_code(s) == "sitezump"
+
+
+@pytest.mark.asyncio
+async def test_the_prompt_says_no_app_rather_than_naming_the_product():
+    out = await _agent().build_dynamic_context(_app_less_session())
+    assert "sitezump" not in out
+    # And it tells the model what to do about it, rather than leaving a blank.
+    assert "none yet" in out
+    assert "Ask which app to work in" in out
+
+
+@pytest.mark.asyncio
+async def test_grounding_fetches_nothing_without_an_app():
+    """It used to fetch the product's own definition and 30 of its page names."""
+    agent, s = _agent(), _app_less_session()
+    fetched: list[str] = []
+
+    async def fake_fetch(_session, app_code):
+        fetched.append(app_code)
+        return {"appCode": app_code}, [f"{app_code}Page"]
+
+    agent._fetch_grounding = fake_fetch
+    assert await agent._build_preflight_grounding(s) == ""
+    assert fetched == []
