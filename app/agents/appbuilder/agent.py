@@ -14,7 +14,7 @@ import re
 from typing import Any
 
 from app.core.agent import BaseAgent
-from app.core.session import BaseSession
+from app.core.session import BaseSession, session_app_code
 from app.core.context import BaseContext
 from app.core.tools.draft_registry import (
     DraftEntry,
@@ -242,22 +242,6 @@ class AppBuilderAgent(BaseAgent):
             return tool.to_anthropic_tool()
         return super()._tool_to_advertised_schema(tool)
 
-    @staticmethod
-    def _effective_app_code(session: BaseSession) -> str:
-        """The app this session is working in, as the tools see it.
-
-        Mirrors `tools._shared.resolve_app_code` for a call that passes no
-        explicit `app_code`: focus app first, then the app the request opened
-        with. Everything the agent *tells the model* about the current app has
-        to agree with where the tools will actually write, or the prompt and the
-        dispatcher disagree — which is precisely the failure this fixes.
-        """
-        focus = (session.context.get(FOCUS_APP_KEY) or "").strip()
-        if focus:
-            return focus
-        request_app = session.context.get("app_code") or ""
-        return request_app or (session.auth.app_code if session.auth else "")
-
     def note_tool_outcome(
         self,
         tool_name: str,
@@ -467,9 +451,7 @@ class AppBuilderAgent(BaseAgent):
         if not session.context.get("draft_mode"):
             return False
 
-        app_code = session.context.get("app_code") or (
-            session.auth.app_code if session.auth else ""
-        )
+        app_code = session_app_code(session)
         if not app_code:
             return False
 
@@ -527,11 +509,21 @@ class AppBuilderAgent(BaseAgent):
         parts: list[str] = []
 
         if session.auth:
-            app_code = self._effective_app_code(session)
+            app_code = session_app_code(session)
+            # No app means no app. The assistant is reached FROM a product
+            # (appbuilder, sitezump); that product is not the app being built,
+            # and naming it here had the agent open conversations by proposing
+            # changes to a SYSTEM-owned product the client cannot edit.
+            app_line = app_code or (
+                "none yet. This conversation was not opened against an app. Ask "
+                "which app to work in, or create one, before any tool call that "
+                "takes an `app_code`. Do NOT assume the app hosting this "
+                "assistant is the app to work in."
+            )
             parts.append(
                 f"Current session:\n"
                 f"- Client: {session.auth.client_code}\n"
-                f"- App: {app_code}\n"
+                f"- App: {app_line}\n"
             )
 
         editor = self._build_editor_context(session)
@@ -661,9 +653,7 @@ class AppBuilderAgent(BaseAgent):
         if not session.context.get("draft_mode"):
             return ""
 
-        app_code = session.context.get("app_code") or (
-            session.auth.app_code if session.auth else ""
-        )
+        app_code = session_app_code(session)
         if not app_code:
             return ""
 
@@ -875,7 +865,7 @@ class AppBuilderAgent(BaseAgent):
         """
         if not session.auth:
             return ""
-        app_code = self._effective_app_code(session)
+        app_code = session_app_code(session)
         if not app_code:
             return ""
         # Keyed by app, not just present/absent. The block names the app and

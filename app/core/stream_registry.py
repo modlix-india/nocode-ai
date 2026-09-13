@@ -1,8 +1,9 @@
 """Reach a running SSE stream from a later HTTP request.
 
-`AgentEventStream` already knows how to be cancelled and how to resolve a pending
-tool confirmation, but both are in-process calls and the caller arrives on a
-separate request. This module is the address book that connects the two.
+`AgentEventStream` already knows how to be cancelled, how to resolve a pending
+tool confirmation and how to take a message sent mid-run, but all three are
+in-process calls and the caller arrives on a separate request. This module is
+the address book that connects the two.
 
 The complication is that production runs gunicorn with four uvicorn workers
 (see Dockerfile), and the POST that answers a confirmation lands on whichever
@@ -63,6 +64,12 @@ def _apply(session_id: str, action: str, payload: dict[str, Any]) -> bool:
         else:
             stream.cancel()
         return True
+
+    if action == "steer":
+        # Queued, not applied: only the agent loop can fold the text into the
+        # conversation, and only at a turn boundary. It acknowledges by emitting
+        # a `steer` event of its own, which is what the client actually waits on.
+        return bool(stream.push_steer(payload.get("message") or "", payload.get("steer_id") or ""))
 
     if action == "confirm":
         confirmation_id = payload.get("confirmation_id")

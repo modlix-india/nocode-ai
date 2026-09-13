@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import AsyncIterator, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -65,6 +66,15 @@ class ConfirmRequest(BaseModel):
 class AttachRequest(BaseModel):
     """Request body for rejoining a run already in progress."""
     session_id: str
+
+
+class SteerRequest(BaseModel):
+    """Request body for sending a message into a run that is still working."""
+    session_id: str
+    message: str
+    # Minted by the client so the bubble it draws optimistically and the
+    # `steer` event that later confirms the message carry the same id.
+    steer_id: str = ""
 
 
 def create_common_routes(router: APIRouter, agent_name: str) -> None:
@@ -211,6 +221,59 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
         return {
             "stopped": delivered == "local",
             "delivery": delivered,
+            "session_id": body.session_id,
+        }
+
+    @router.post("/steer")
+    async def steer_session(
+        body: SteerRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Send a message into a run that is still working.
+
+        The alternative the client has otherwise is POST /chat, which answers
+        409 while a run is live: two agents on one session corrupt each other's
+        history. This queues the text on the run instead, and the agent folds it
+        into the conversation at its next turn boundary.
+
+        Queued is not delivered. The honest acknowledgement is the `steer` event
+        the agent emits once the text has actually reached the model, which
+        reaches every attached client and the replay buffer; a client that never
+        sees one before `done` should hand the text back to its input box.
+        """
+        message = (body.message or "").strip()
+        if not message:
+            raise HTTPException(status_code=400, detail="message is required")
+
+        await _assert_session_owner(body.session_id, auth)
+
+        # Asked before signalling, because the signal cannot answer it: with
+        # Redis on, a publish to siblings reports "broadcast" whether or not
+        # anyone is there, so a session whose run ended hours ago would take
+        # the message and drop it. 404 is what tells the client to send this
+        # as an ordinary message instead.
+        if not await run_manager.is_run_live(body.session_id):
+            raise HTTPException(
+                status_code=404, detail="No run in progress for this session"
+            )
+
+        steer_id = body.steer_id or f"steer_{uuid.uuid4().hex[:12]}"
+        delivered = await stream_registry.signal(
+            body.session_id,
+            "steer",
+            {"message": message, "steer_id": steer_id},
+        )
+        if delivered == "missing":
+            raise HTTPException(
+                status_code=404, detail="No run in progress for this session"
+            )
+        return {
+            # Only a local hit proves a live run actually took this. A broadcast
+            # went out to siblings and may have found nobody; the `steer` event
+            # is what settles it either way.
+            "queued": delivered == "local",
+            "delivery": delivered,
+            "steer_id": steer_id,
             "session_id": body.session_id,
         }
 
