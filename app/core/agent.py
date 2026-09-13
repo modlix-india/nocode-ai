@@ -381,6 +381,13 @@ class BaseAgent:
                 await event_stream.emit_text("\n\n[Stopped by user.]")
                 break
 
+            # Steering. Anything the user sent while the last turn was running
+            # joins the conversation here, before the next call is built, so
+            # the model reads it as part of the request rather than after it.
+            user_message = self._with_steer(
+                user_message, await self._fold_in_steers(session, event_stream),
+            )
+
             turn += 1
             request_id = f"{session.session_id}_{uuid.uuid4().hex[:8]}"
 
@@ -462,6 +469,22 @@ class BaseAgent:
             session.append_assistant_message(content_blocks, reasoning_content)
 
             if stop_reason != "tool_use" or not tool_use_blocks:
+                # The model believes it is finished. A message that arrived
+                # while it was writing re-opens the turn instead of waiting for
+                # the next one: the tail is an assistant message here, so the
+                # steer becomes a user message of its own and the loop goes
+                # round again. This is what makes steering work on the answer
+                # itself ("no, not that page"), not just between tool calls.
+                # Cancellation is checked BEFORE folding, not after: folding
+                # emits the applied acknowledgement, and a run that is stopping
+                # will never send the text to the model. Left queued, it is
+                # reported unapplied below and the client gets it back.
+                if event_stream.is_cancelled:
+                    break
+                steered = await self._fold_in_steers(session, event_stream)
+                if steered:
+                    user_message = self._with_steer(user_message, steered)
+                    continue
                 break
 
             if event_stream.is_cancelled:
@@ -639,6 +662,13 @@ class BaseAgent:
                 f"\n\n[Reached maximum of {self.max_turns} tool-use turns. "
                 "Please continue the conversation to proceed.]"
             )
+
+        # A steer still queued here never reached the model: the run was stopped,
+        # or it ended at an elicitation that is waiting on the user. Say so,
+        # rather than letting the message disappear having been accepted. The
+        # client hands the text back to its input box on an unapplied steer.
+        for steer in event_stream.drain_steers():
+            await event_stream.emit_steer(steer["id"], steer["text"], applied=False)
 
         # Persist the turn summary, tool call log, and context. Cap the summary
         # well under the ASSISTANT_SUMMARY column width (TEXT, ~64KB): a verbose
@@ -1577,6 +1607,46 @@ class BaseAgent:
             last["content"] = [block]
         out[-1] = last
         return out
+
+    async def _fold_in_steers(
+        self, session: BaseSession, event_stream: AgentEventStream,
+    ) -> str:
+        """Fold messages the user sent mid-run into the conversation.
+
+        Called at turn boundaries only: the model is between calls there, so
+        history can be appended to without racing the stream it is reading.
+        Everything queued goes in as ONE injection, however many arrived, so a
+        fast typist cannot stack three text blocks onto one tool_result message.
+        Each still gets its own `steer` event, which is both the client's
+        acknowledgement and the bubble it draws.
+
+        Returns the folded text so the caller can add it to what is persisted as
+        this turn's instruction; "" when nothing was queued.
+        """
+        pending = event_stream.drain_steers()
+        if not pending:
+            return ""
+
+        text = "\n\n".join(s["text"] for s in pending)
+        session.append_user_text(text)
+        logger.info(
+            "Steer: folded %d mid-run message(s) into session %s",
+            len(pending), session.session_id,
+        )
+        for steer in pending:
+            await event_stream.emit_steer(steer["id"], steer["text"], applied=True)
+        return text
+
+    @staticmethod
+    def _with_steer(user_message: str, steered: str) -> str:
+        """This turn's instruction as it will be persisted, steers included.
+
+        Without this the saved transcript shows only what the user opened with,
+        so a reload of a steered turn quietly loses half of what was asked.
+        """
+        if not steered:
+            return user_message
+        return f"{user_message}\n\n{steered}" if user_message else steered
 
     async def _apply_pre_call(self, session: BaseSession, turn: int) -> list[dict[str, Any]]:
         """Pre-call phase — build the decorated message list for this turn's LLM

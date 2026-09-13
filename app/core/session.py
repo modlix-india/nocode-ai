@@ -331,6 +331,36 @@ class BaseSession:
         else:
             self.messages.append({"role": "user", "content": text})
 
+    def append_user_text(self, text: str) -> None:
+        """Add user text to the conversation mid-turn, merging where it must.
+
+        Used for steering (see `AgentEventStream.push_steer`), which arrives at
+        a turn boundary where the tail message is usually the tool_result one.
+        A second consecutive user message there is rejected by the provider,
+        so the text becomes another block INSIDE that message; only when the
+        tail is an assistant message (the model finished and the user is
+        re-opening the turn) does a message of its own make sense.
+
+        Unlike the per-turn reminder, which decorates a per-call copy, this is
+        a real user utterance and belongs in the history permanently.
+        """
+        if not text:
+            return
+
+        block = {"type": "text", "text": text}
+        tail = self.messages[-1] if self.messages else None
+        if not tail or tail.get("role") != "user":
+            self.messages.append({"role": "user", "content": [block]})
+            return
+
+        content = tail.get("content")
+        if isinstance(content, list):
+            tail["content"] = [*content, block]
+        elif isinstance(content, str):
+            tail["content"] = ([{"type": "text", "text": content}] if content else []) + [block]
+        else:
+            tail["content"] = [block]
+
     def append_assistant_message(
         self,
         content_blocks: list[dict[str, Any]],

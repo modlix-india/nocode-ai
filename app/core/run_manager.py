@@ -563,7 +563,8 @@ async def start_run(
     )
     _runs[session.session_id] = run
 
-    # Control signals (/stop, /confirm) address the stream, wherever they land.
+    # Control signals (/stop, /confirm, /steer) address the stream, wherever
+    # they land.
     stream_registry.register(session.session_id, stream)
 
     await run.publish_start()
