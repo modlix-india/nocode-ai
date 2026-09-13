@@ -271,3 +271,108 @@ async def test_a_dropped_subscriber_is_not_left_in_the_fan_out():
     assert run._subscribers == set()
 
     agent.gate.set()
+
+
+@pytest.mark.asyncio
+async def test_steer_reaches_a_live_run():
+    """The point of the endpoint: a message sent while a run is going gets
+    onto that run's queue, where the agent loop picks it up at its next turn
+    boundary. POST /chat cannot do this; it answers 409."""
+    agent = GatedAgent()
+    app = build_app(agent)
+    await call(app, "POST", "/agent/chat", drop_after=1)
+
+    status, text = await call(
+        app, "POST", "/agent/steer",
+        {"session_id": "s1", "message": "make it blue", "steer_id": "s-1"},
+    )
+    assert status == 200
+    body = json.loads(text)
+    assert body["queued"] is True
+    assert body["delivery"] == "local"
+    assert body["steer_id"] == "s-1"
+
+    run = run_manager.get_local_run("s1")
+    assert run.stream.drain_steers() == [{"id": "s-1", "text": "make it blue"}]
+
+    agent.gate.set()
+
+
+@pytest.mark.asyncio
+async def test_steer_mints_an_id_when_the_client_sends_none():
+    agent = GatedAgent()
+    app = build_app(agent)
+    await call(app, "POST", "/agent/chat", drop_after=1)
+
+    status, text = await call(
+        app, "POST", "/agent/steer", {"session_id": "s1", "message": "hi"},
+    )
+    assert status == 200
+    minted = json.loads(text)["steer_id"]
+    assert minted.startswith("steer_")
+    assert run_manager.get_local_run("s1").stream.drain_steers()[0]["id"] == minted
+
+    agent.gate.set()
+
+
+@pytest.mark.asyncio
+async def test_steer_on_a_finished_run_is_a_404():
+    """Not a 200 that quietly drops it. With Redis on, `signal` reports
+    "broadcast" for a session nobody is serving, so liveness is checked
+    first: 404 is what tells the client to send this as an ordinary
+    message instead of showing a bubble nothing will ever answer."""
+    agent = GatedAgent()
+    app = build_app(agent)
+    await call(app, "POST", "/agent/chat", drop_after=1)
+    agent.gate.set()
+    await asyncio.wait_for(run_manager.get_local_run("s1")._pump_task, timeout=2)
+
+    status, text = await call(
+        app, "POST", "/agent/steer", {"session_id": "s1", "message": "too late"},
+    )
+    assert status == 404
+    assert "No run in progress" in text
+
+
+@pytest.mark.asyncio
+async def test_steer_with_no_run_at_all_is_a_404():
+    status, _ = await call(
+        build_app(GatedAgent()), "POST", "/agent/steer",
+        {"session_id": "s1", "message": "hello"},
+    )
+    assert status == 404
+
+
+@pytest.mark.asyncio
+async def test_steer_needs_something_to_say():
+    agent = GatedAgent()
+    app = build_app(agent)
+    await call(app, "POST", "/agent/chat", drop_after=1)
+
+    status, text = await call(
+        app, "POST", "/agent/steer", {"session_id": "s1", "message": "   "},
+    )
+    assert status == 400
+    assert "message is required" in text
+
+    agent.gate.set()
+
+
+@pytest.mark.asyncio
+async def test_steer_into_someone_elses_session_is_refused(monkeypatch):
+    """A session id is guessable enough that skipping the owner check would
+    let anyone put words into someone else's conversation."""
+    agent = GatedAgent()
+    app = build_app(agent)
+    await call(app, "POST", "/agent/chat", drop_after=1)
+
+    monkeypatch.setattr(
+        "app.core.base_router.get_session_manager", lambda: FakeSessionManager("someone-else")
+    )
+    status, _ = await call(
+        app, "POST", "/agent/steer", {"session_id": "s1", "message": "mine now"},
+    )
+    assert status == 403
+    assert run_manager.get_local_run("s1").stream.has_steers is False
+
+    agent.gate.set()

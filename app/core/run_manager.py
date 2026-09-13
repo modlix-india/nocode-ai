@@ -528,6 +528,23 @@ def get_local_run(session_id: str) -> AgentRun | None:
     return run
 
 
+async def is_run_live(session_id: str) -> bool:
+    """Is an agent still working on this session, on any worker?
+
+    Needed because a control signal cannot answer this on its own: with Redis
+    on, `stream_registry.signal` publishes to siblings and reports "broadcast"
+    whether or not anybody is there to hear it, so a session whose run ended
+    long ago looks exactly like one being served by another worker. A caller
+    that must not accept work nothing will do (POST /steer) asks here first.
+    """
+    run = get_local_run(session_id)
+    if run is not None:
+        return run.is_running
+
+    meta = await _read_remote_meta(session_id)
+    return bool(meta and meta.get("status") == "running")
+
+
 async def start_run(
     agent,
     message: str,

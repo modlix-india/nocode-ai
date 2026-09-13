@@ -246,6 +246,17 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             raise HTTPException(status_code=400, detail="message is required")
 
         await _assert_session_owner(body.session_id, auth)
+
+        # Asked before signalling, because the signal cannot answer it: with
+        # Redis on, a publish to siblings reports "broadcast" whether or not
+        # anyone is there, so a session whose run ended hours ago would take
+        # the message and drop it. 404 is what tells the client to send this
+        # as an ordinary message instead.
+        if not await run_manager.is_run_live(body.session_id):
+            raise HTTPException(
+                status_code=404, detail="No run in progress for this session"
+            )
+
         steer_id = body.steer_id or f"steer_{uuid.uuid4().hex[:12]}"
         delivered = await stream_registry.signal(
             body.session_id,
@@ -253,8 +264,6 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             {"message": message, "steer_id": steer_id},
         )
         if delivered == "missing":
-            # Nothing is running on any worker, so there is nothing to steer.
-            # The client sends this one as an ordinary message instead.
             raise HTTPException(
                 status_code=404, detail="No run in progress for this session"
             )

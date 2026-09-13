@@ -47,6 +47,9 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
     agent = AdzumpAgent.get_instance()
 
     session = BaseSession(agent_name="adzump")
+    # A product assistant works in the app hosting it, and says so: the shared
+    # resolver has no default for exactly this reason (see app_code_from_context).
+    session.context["app_code"] = auth.access_app_code
     await session.get_or_create(body.session_id, auth)
 
     if not body.session_id:

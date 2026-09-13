@@ -156,6 +156,30 @@ class WithSteerTests(unittest.TestCase):
         self.assertEqual(BaseAgent._with_steer("build it", ""), "build it")
 
 
+class TurnUpsertKeepsTheInstructionCurrentTests(unittest.TestCase):
+    """Found live (2026-09-13): a steered turn saved the original message only.
+
+    The row is created by the first incremental save, before any steer has
+    arrived, and the upsert's ON DUPLICATE KEY UPDATE list did not include
+    USER_INSTRUCTION. Nothing had ever changed it mid-turn before steering
+    existed, so the omission was invisible. Source-level, because the
+    statement only runs against a live MySQL.
+    """
+
+    def test_user_instruction_is_in_the_update_list(self):
+        import inspect
+
+        from app.services.context_manager import ContextManager
+
+        source = inspect.getsource(ContextManager.upsert_turn)
+        update_clause = source.split("ON DUPLICATE KEY UPDATE", 1)
+        self.assertEqual(len(update_clause), 2, "upsert_turn no longer upserts")
+        self.assertIn("USER_INSTRUCTION = COALESCE(", update_clause[1])
+        # NULLIF guards the other direction: a later write with nothing in it
+        # must not erase what is already saved.
+        self.assertIn("NULLIF(VALUES(USER_INSTRUCTION), '')", update_clause[1])
+
+
 # ── The loop ────────────────────────────────────────────────────────
 
 

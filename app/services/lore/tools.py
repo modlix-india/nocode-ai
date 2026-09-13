@@ -60,14 +60,10 @@ def _tenant(context: dict[str, Any]) -> tuple[str, str, str | None]:
     elif headers.get("clientCode"):
         client_code = headers["clientCode"]
     # Follows the session's focus app: lore recorded while building `crm` is
-    # knowledge about `crm`, even in a session opened from appbuilder.
-    from app.core.session import FOCUS_APP_KEY
-    app_code = (
-        (context.get(FOCUS_APP_KEY) or "").strip()
-        or context.get("app_code")
-        or (getattr(auth, "app_code", "") if auth else "")
-        or ""
-    )
+    # knowledge about `crm`, even in a session opened from appbuilder. One
+    # resolver, shared with the write path and the prompt, so all three agree.
+    from app.core.session import app_code_from_context
+    app_code = app_code_from_context(context)
     if not client_code or not app_code:
         return client_code, app_code, (
             "Missing tenant context: lore is scoped per (client, app), and this "

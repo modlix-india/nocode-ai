@@ -157,6 +157,20 @@ class ContextManager:
                             MODEL, INPUT_TOKENS_USED
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE
+                            -- The instruction is updated, not just written
+                            -- once: a turn can be steered (see
+                            -- AgentEventStream.push_steer), and the row is
+                            -- created by the first incremental save, before
+                            -- any steer has arrived. Leaving it out meant the
+                            -- saved transcript showed only what the user
+                            -- opened with while the model had answered
+                            -- something else. NULLIF guards the other
+                            -- direction: a later write with nothing in it
+                            -- must not erase what is already there.
+                            USER_INSTRUCTION = COALESCE(
+                                NULLIF(VALUES(USER_INSTRUCTION), ''),
+                                USER_INSTRUCTION
+                            ),
                             ASSISTANT_SUMMARY = VALUES(ASSISTANT_SUMMARY),
                             TOOL_CALLS_JSON = VALUES(TOOL_CALLS_JSON),
                             MODEL = VALUES(MODEL),

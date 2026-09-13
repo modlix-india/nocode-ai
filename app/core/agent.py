@@ -1695,9 +1695,10 @@ class BaseAgent:
         """
         if not session.auth:
             return ""
+        app_code = session_app_code(session)
         return (
             f"Client: {session.auth.client_code}\n"
-            f"App: {session.auth.app_code}\n"
+            f"App: {app_code or 'none selected yet'}\n"
         )
 
     # ── pre-call hook · per turn, before each LLM call → message tail ──
@@ -2024,7 +2025,10 @@ class BaseAgent:
         if session.auth:
             ctx["headers"] = session.auth.to_headers()
             ctx["client_code"] = session.auth.client_code
-            ctx["app_code"] = session.auth.app_code
+            # The app being worked in, by the one resolver. Never the access
+            # app: a tool that omits `app_code` must not silently write into
+            # the product the user is running the assistant from.
+            ctx["app_code"] = session_app_code(session)
             if session.auth.path_prefix:
                 ctx["path_prefix"] = session.auth.path_prefix
         return ctx

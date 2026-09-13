@@ -26,7 +26,7 @@ import re
 from typing import Any
 
 from app.config import settings
-from app.config import settings
+from app.core.session import session_app_code
 from app.services.lore import access, retrieval
 from app.services.lore.models import BRIEF_ORDER
 from app.services.lore.access import LoreAccessError
@@ -70,13 +70,20 @@ def _enabled() -> bool:
 
 
 def _identity(session: Any) -> tuple[str, str] | None:
-    """(client_code, app_code) for a session, or None when it has no tenant."""
+    """(client_code, app_code) for a session, or None when it has no tenant.
+
+    The app comes from `session_app_code`, the same resolver the lore TOOLS and
+    the write path use. It had its own copy of the lookup once, and the copy
+    drifted: it missed the focus app, so a session that opened in one app and
+    went on to build another kept being briefed about the first. In one real
+    session that meant a landing page being built in `websmith` was briefed with
+    `sitezump`'s home-page lore, from a product the client cannot even edit.
+    """
     auth = getattr(session, "auth", None)
     if not auth:
         return None
     client_code = getattr(auth, "client_code", "") or ""
-    ctx = getattr(session, "context", None) or {}
-    app_code = ctx.get("app_code") or getattr(auth, "app_code", "") or ""
+    app_code = session_app_code(session)
     if not client_code or not app_code:
         return None
     return client_code, app_code

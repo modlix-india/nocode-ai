@@ -130,6 +130,10 @@ async def chat(
     agent = LeadZumpAgent.get_instance()
 
     session = BaseSession(agent_name="leadzump")
+    # This assistant's app IS the app hosting it (the gate above admits nothing
+    # else), so it says so rather than relying on a default: `app_code_from_context`
+    # has none, because for a builder the hosting product is not the app being built.
+    session.context["app_code"] = auth.access_app_code
     await session.get_or_create(body.session_id, auth)
 
     if not body.session_id:
