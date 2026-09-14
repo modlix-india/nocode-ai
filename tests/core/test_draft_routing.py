@@ -22,21 +22,34 @@ from __future__ import annotations
 import pytest
 
 from app.core.tools import draft_registry as drafts
-from app.core.tools.draft_registry import DraftEntry, DraftRegistry, open_drafts
+from app.core.tools.draft_registry import (
+    DraftEntry,
+    DraftRegistry,
+    DraftScope,
+    open_drafts,
+)
 from app.core.tools.http_client import SaasClient
 
 
 @pytest.fixture(autouse=True)
 def _no_drafting():
     """Default off, so a test that forgets to opt in gets the old behaviour."""
-    token = drafts.drafting.set(False)
+    token = drafts.drafting.set(DraftScope.LIVE)
     yield
     drafts.drafting.reset(token)
 
 
 @pytest.fixture
 def drafting_on():
-    token = drafts.drafting.set(True)
+    token = drafts.drafting.set(DraftScope.DRAFT)
+    yield
+    drafts.drafting.reset(token)
+
+
+@pytest.fixture
+def page_only_on():
+    """A turn that drafts what the page looks like and nothing else."""
+    token = drafts.drafting.set(DraftScope.PAGE_ONLY_DRAFT)
     yield
     drafts.drafting.reset(token)
 
@@ -233,6 +246,85 @@ async def test_reading_a_sub_resource_is_never_refused(monkeypatch, drafting_on)
     r = await client.get("/api/ui/pages/p1/events/onClick")
     assert r.success is True
     assert len(sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_acting_on_the_draft_itself_is_never_refused(monkeypatch, drafting_on):
+    """Discarding or publishing a draft is a write TO the draft, not around it.
+
+    The refusal guard used to read `DELETE /pages/{id}/draft` as a partial live
+    write and block it, which meant `discard_page_draft` failed in exactly the
+    turns that could have a draft to discard.
+    """
+    client, sent = _recording_client(monkeypatch)
+    for method, path in (
+        ("delete", "/api/ui/pages/p1/draft"),
+        ("post", "/api/ui/pages/p1/publish"),
+        ("post", "/api/ui/pages/p1/fork"),
+    ):
+        r = await getattr(client, method)(path)
+        assert r.success is True, path
+    assert len(sent) == 3
+
+
+# ── Page-only drafting ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_page_only_drafts_what_the_page_looks_like(monkeypatch, page_only_on):
+    client, sent = _recording_client(monkeypatch)
+    for path in ("/api/ui/pages/p1", "/api/ui/styles/s1", "/api/ui/themes/t1"):
+        await client.put(path, json={"id": "x"})
+    assert [s["params"] for s in sent] == [{"draft": "true"}] * 3
+
+
+@pytest.mark.asyncio
+async def test_page_only_writes_everything_else_live(monkeypatch, page_only_on):
+    """The change is real and immediate; the prompt block is what warns the user."""
+    client, sent = _recording_client(monkeypatch)
+    for path in (
+        "/api/core/storages/s1",
+        "/api/core/connections/c1",
+        "/api/ui/functions/f1",
+        "/api/ui/schemas/sc1",
+        "/api/ui/uripaths/u1",
+    ):
+        await client.put(path, json={"id": "x"})
+    assert [s["params"] for s in sent] == [None] * 5
+
+
+@pytest.mark.asyncio
+async def test_a_partial_write_to_a_live_kind_is_not_refused(monkeypatch, page_only_on):
+    """A function's steps are going live anyway here, so blocking them buys nothing."""
+    client, sent = _recording_client(monkeypatch)
+    r = await client.patch("/api/ui/functions/f1/steps", json={"steps": {}})
+    assert r.success is True
+    assert len(sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_partial_page_write_is_still_refused_when_page_only(
+    monkeypatch, page_only_on,
+):
+    client, sent = _recording_client(monkeypatch)
+    r = await client.patch("/api/ui/pages/p1/components/btn", json={})
+    assert r.success is False
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_an_open_storage_is_browser_held_when_the_turn_is_page_only(
+    monkeypatch, page_only_on,
+):
+    """No server draft for it here, so the browser is the only place to review it."""
+    client, sent = _recording_client(monkeypatch)
+    token = open_drafts.set(_registry("storage", "s1", "orders"))
+    try:
+        r = await client.put("/api/core/storages/s1", json={"id": "s1", "name": "orders"})
+    finally:
+        open_drafts.reset(token)
+    assert r.success is True
+    assert sent == [], "it must be held, not written"
 
 
 @pytest.mark.asyncio
