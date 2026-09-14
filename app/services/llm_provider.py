@@ -6,7 +6,7 @@ LLM Provider abstraction for supporting multiple LLM backends.
 Supports:
 - Anthropic (Claude): claude-haiku-4-5, claude-sonnet-4
 - OpenAI (GPT): gpt-4o-mini, gpt-4o
-- DeepSeek: deepseek-chat (V3)
+- DeepSeek: deepseek-flash (V4.1-Flash)
 
 Usage:
     from app.services.llm_provider import get_llm_provider
@@ -1236,11 +1236,18 @@ class _StreamError:
         self.exc = exc
 
 
-# DeepSeek model ids that accept image input. The text-only chat models
-# (deepseek-v4-pro / deepseek-v4-flash) reject `image_url` content parts, so
-# vision cannot be a class-wide flag on DeepSeekProvider the way it is on
-# MiniMax — it has to be decided per configured model.
+# DeepSeek model ids that accept image input. `deepseek-v4-pro` is text-only and
+# rejects `image_url` content parts, so vision cannot be a class-wide flag on
+# DeepSeekProvider the way it is on MiniMax — it has to be decided per model.
+#
+# The two legacy flash ids are still listed because DeepSeek still accepts them
+# and now serves both from `deepseek-flash`, which has vision. Leaving
+# `deepseek-v4-flash` out would have this report no vision for a model that in
+# fact has it, and silently reroute screenshots through a Gemini description
+# nobody needs to pay for.
 _DEEPSEEK_VISION_MODELS: frozenset[str] = frozenset({
+    "deepseek-flash",
+    "deepseek-v4-flash",
     "deepseek-v4-flash-vision-exp",
 })
 
@@ -1276,7 +1283,7 @@ def appbuilder_vision_capable() -> bool:
     the tool result (native vision) and paying Gemini to describe it in text.
     Resolves capability from the model, not just the provider name, so a
     vision-capable model on an otherwise text-only provider
-    (``deepseek-v4-flash-vision-exp``) gets the native path.
+    (``deepseek-flash``) gets the native path.
 
     Settings-only by design — no provider is constructed, because callers
     include module-level tool-registry filtering that runs before the config
@@ -1494,7 +1501,7 @@ class DeepSeekProvider(LLMProvider):
         Overrides the base class attribute with a per-model check: the
         text-only V4 chat models reject the `image_url` parts that
         `_append_user_list_content` emits, while
-        ``deepseek-v4-flash-vision-exp`` reads them natively. Keyed on the
+        ``deepseek-flash`` reads them natively. Keyed on the
         tier the agent actually runs (``AGENT_MODEL_TIER``).
         """
         tier = getattr(self.settings, "AGENT_MODEL_TIER", "balanced") or "balanced"

@@ -16,12 +16,13 @@ import pytest
 
 from app.agents.appbuilder.tools.modlix import _draft_surface as ds
 from app.core.tools.base import ToolResult
+from app.core.tools.draft_registry import DraftScope
 
 
 @pytest.fixture(autouse=True)
 def _clean_support_cache():
     ds.reset_support_cache()
-    token = ds.draft_mode.set(False)
+    token = ds.draft_mode.set(DraftScope.LIVE)
     yield
     ds.draft_mode.reset(token)
     ds.reset_support_cache()
@@ -77,16 +78,59 @@ async def test_the_probe_runs_once_per_app():
 
 @pytest.mark.asyncio
 async def test_wanting_drafts_is_not_enough_to_get_them():
-    ds.draft_mode.set(True)
+    ds.draft_mode.set(DraftScope.DRAFT)
     c = _Client(get=ToolResult(success=True, data="<html>"))
-    assert ds.wanted() is True
+    assert ds.wanted() is DraftScope.DRAFT
     assert await ds.active(c, {}, "app1") is False
 
 
 @pytest.mark.asyncio
 async def test_support_alone_is_not_enough_either():
     c = _Client(get=ToolResult(success=True, data={}))
-    assert await ds.active(c, {}, "app1") is False  # draft_mode is off
+    assert await ds.active(c, {}, "app1") is False  # draft_mode is LIVE
+
+
+# ── The scope, per kind ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_full_draft_turn_drafts_every_draftable_kind():
+    ds.draft_mode.set(DraftScope.DRAFT)
+    c = _Client(get=ToolResult(success=True, data={}))
+    for kind in ("page", "style", "theme", "storage", "function", "schema"):
+        assert await ds.active(c, {}, "app1", kind) is True, kind
+
+
+@pytest.mark.asyncio
+async def test_a_page_only_turn_drafts_what_the_page_looks_like():
+    """SiteZump publishes one page at a time and has no pending bar for the rest.
+
+    A drafted storage there would sit unpublished with nothing able to ship it,
+    so it has to go live instead -- and the agent has to be told, which is what
+    the prompt block does.
+    """
+    ds.draft_mode.set(DraftScope.PAGE_ONLY_DRAFT)
+    c = _Client(get=ToolResult(success=True, data={}))
+    for kind in ("page", "style", "theme"):
+        assert await ds.active(c, {}, "app1", kind) is True, kind
+    for kind in ("storage", "function", "schema", "connection", "uripath"):
+        assert await ds.active(c, {}, "app1", kind) is False, kind
+
+
+@pytest.mark.asyncio
+async def test_a_live_turn_drafts_nothing():
+    ds.draft_mode.set(DraftScope.LIVE)
+    c = _Client(get=ToolResult(success=True, data={}))
+    for kind in ("page", "style", "storage"):
+        assert await ds.active(c, {}, "app1", kind) is False, kind
+
+
+@pytest.mark.asyncio
+async def test_a_security_kind_never_drafts_however_wide_the_scope():
+    ds.draft_mode.set(DraftScope.DRAFT)
+    c = _Client(get=ToolResult(success=True, data={}))
+    for kind in ("profile", "role", "user", "client"):
+        assert await ds.active(c, {}, "app1", kind) is False, kind
 
 
 # ── The flag on the wire ─────────────────────────────────────────────────────

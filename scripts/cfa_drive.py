@@ -421,9 +421,17 @@ class _ChatBody:
     session_id: str | None = None
     app_user: dict[str, Any] | None = None
     model: str | None = None
+    # Explicit, because the server defaults to DRAFT and reads anything it does
+    # not recognise as DRAFT too. A scenario run wants to inspect what it built
+    # on the live surface, not on a draft nobody publishes.
+    draft_mode: str = "LIVE"
 
     def to_json(self) -> dict[str, Any]:
-        out: dict[str, Any] = {"message": self.message, "app_code": self.app_code}
+        out: dict[str, Any] = {
+            "message": self.message,
+            "app_code": self.app_code,
+            "draft_mode": self.draft_mode,
+        }
         if self.session_id:
             out["session_id"] = self.session_id
         if self.app_user:

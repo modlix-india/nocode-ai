@@ -17,11 +17,14 @@ from app.core.agent import BaseAgent
 from app.core.session import BaseSession, session_app_code
 from app.core.context import BaseContext
 from app.core.tools.draft_registry import (
+    PAGE_ONLY_KINDS,
     DraftEntry,
     DraftRegistry,
+    DraftScope,
     drafting,
-    is_draftable,
+    drafts_kind,
     open_drafts,
+    to_scope,
 )
 from app.agents.appbuilder.tools.modlix._draft_surface import draft_mode
 from app.agents.appbuilder.tools._shared import (
@@ -396,7 +399,7 @@ class AppBuilderAgent(BaseAgent):
         still built, because it is also how a write that really happened gets
         reported back.
         """
-        draft_token = draft_mode.set(bool(session.context.get("draft_mode")))
+        draft_token = draft_mode.set(to_scope(session.context.get("draft_mode")))
         declared = getattr(session, "open_drafts", None)
         # Built even when the caller declares nothing, because it carries the
         # event stream as well as the held objects. A turn with nothing declared
@@ -435,39 +438,43 @@ class AppBuilderAgent(BaseAgent):
             open_drafts.reset(token)
             draft_mode.reset(draft_token)
 
-    async def _drafting_now(self, session: BaseSession) -> bool:
+    async def _drafting_now(self, session: BaseSession) -> DraftScope:
         """Settle once, before any tool runs, where this turn's writes go.
 
-        Every write in the turn reads this, so it cannot be decided per call:
-        two tools disagreeing would put half a change in the draft and half of
-        it live. Deciding it here also means the probe happens once instead of
-        on every save.
+        Every write in the turn reads this, so the SCOPE cannot be decided per
+        call: two tools disagreeing would put half a change in the draft and half
+        of it live. What the scope permits is then read per kind, which is a
+        different thing -- "pages are held, storages are not" is one decision
+        applied consistently, not two tools disagreeing. Deciding it here also
+        means the probe happens once instead of on every save.
 
         Never assumed. `?draft=true` is an ordinary query parameter, and a
         deployment that predates the draft surface neither rejects nor honours
         it: Spring drops what it does not know and performs an ordinary live
-        update. So the answer is no unless the deployment is asked and answers.
+        update. So the answer is LIVE unless the deployment is asked and answers.
         """
-        if not session.context.get("draft_mode"):
-            return False
+        scope = to_scope(session.context.get("draft_mode"))
+        if scope is DraftScope.LIVE:
+            return DraftScope.LIVE
 
         app_code = session_app_code(session)
         if not app_code:
-            return False
+            return DraftScope.LIVE
 
         from app.agents.appbuilder.tools.modlix import _draft_surface as ds
         from app.core.tools.http_client import SaasClient
         from app.config import settings
 
         try:
-            return await ds.supported(
+            ok = await ds.supported(
                 SaasClient(settings.GATEWAY_URL),
                 self._draft_probe_headers(session),
                 app_code,
             )
         except Exception:  # noqa: BLE001 - a probe must never take the turn down
             logger.warning("draft support probe failed, writes stay live", exc_info=True)
-            return False
+            return DraftScope.LIVE
+        return scope if ok else DraftScope.LIVE
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         """Extend BaseAgent's context with appbuilder-specific fields.
@@ -650,7 +657,8 @@ class AppBuilderAgent(BaseAgent):
         renders LIVE, or it screenshots its own change, sees the old page, and
         starts debugging a problem that does not exist. That happened.
         """
-        if not session.context.get("draft_mode"):
+        scope = to_scope(session.context.get("draft_mode"))
+        if scope is DraftScope.LIVE:
             return ""
 
         app_code = session_app_code(session)
@@ -668,6 +676,27 @@ class AppBuilderAgent(BaseAgent):
             # is worse than saying nothing, because the user would then look for
             # a draft that does not exist and trust that live is untouched.
             return ""
+
+        if scope is DraftScope.PAGE_ONLY_DRAFT:
+            held = ", ".join(sorted(PAGE_ONLY_KINDS))
+            return (
+                f"In this app only these go to the DRAFT surface: {held}. They are "
+                "real and saved, but only visible on the draft surface until someone "
+                "publishes them.\n"
+                "- EVERYTHING ELSE GOES LIVE THE MOMENT YOU WRITE IT. A storage, "
+                "connection, schema, function, template or notification edit is "
+                "immediately in front of real users. Say so before you make one, and "
+                "do not describe it afterwards as waiting for review.\n"
+                "- Tell the user their page changes are ready for review, and give "
+                "them the draft link from `get_draft_link`.\n"
+                "- To LOOK at a drafted change, screenshot the draft host from "
+                "`get_draft_link`. The ordinary page URL renders the live app and "
+                "will not show your work, so a screenshot of it proves nothing.\n"
+                "- Never publish because you finished. `publish_app` needs the user "
+                "to ask for it.\n"
+                "- Creating an object is never drafted; a new page exists immediately. "
+                "Only edits to existing definitions are held back."
+            )
 
         return (
             "Your definition edits in this app go to its DRAFT surface, not live. "
@@ -724,7 +753,7 @@ class AppBuilderAgent(BaseAgent):
         # which one their change got. An object the server will draft is written
         # there and the tab refetches it; one it will not is kept in the browser
         # and waits for a Save that only the user can press.
-        to_draft = [d for d in declared if drafting.get() and is_draftable(_kind_of(d))]
+        to_draft = [d for d in declared if drafts_kind(_kind_of(d))]
         to_browser = [d for d in declared if d not in to_draft]
         dirty_drafted = [d for d in to_draft if d.get("dirty")]
 
