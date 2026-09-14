@@ -63,6 +63,12 @@ def main() -> int:
     ap.add_argument("--session", default=None, help="explicit session_id to resume")
     ap.add_argument("--new", action="store_true", help="ignore saved session, start fresh")
     ap.add_argument("--url", default=DEFAULT_URL)
+    ap.add_argument(
+        "--draft-mode",
+        default="LIVE",
+        choices=["LIVE", "DRAFT", "PAGE_ONLY_DRAFT"],
+        help="where the agent's definition edits land (default: LIVE)",
+    )
     ap.add_argument("--read-timeout", type=float, default=240.0)
     ap.add_argument(
         "--forwarded-host", default="appbuilder.local.modlix.com",
@@ -94,6 +100,10 @@ def main() -> int:
         "session_id": session_id,
         "app_code": args.app,
         "auto_confirm": True,
+        # Explicit, because the server defaults to DRAFT and reads anything it
+        # does not recognise as DRAFT too. A clone run is judged by what the
+        # live app looks like afterwards, so its writes have to land there.
+        "draft_mode": args.draft_mode,
     }
 
     transcript = TRANSCRIPT_FILE.open("a", encoding="utf-8")

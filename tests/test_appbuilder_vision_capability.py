@@ -1,8 +1,8 @@
 """Vision-capability resolution for the AppBuilder's configured model.
 
 The AppBuilder runs on DeepSeek, where vision is a per-MODEL property rather
-than a per-provider one: `deepseek-v4-flash-vision-exp` accepts image input,
-`deepseek-v4-pro` / `deepseek-v4-flash` reject it. Everything downstream keys
+than a per-provider one: `deepseek-flash` accepts image input and
+`deepseek-v4-pro` rejects it. Everything downstream keys
 off this one answer — whether screenshots ride along as image parts, and
 whether the Gemini-describe fallback is wired up — so a wrong answer either
 sends images to a model that 400s on them or silently pays Gemini to describe
@@ -22,6 +22,11 @@ from app.services.llm_provider import (
 )
 
 
+# The one DeepSeek model that still rejects image parts. Named once so the
+# tests below say WHY they expect no vision rather than repeating an id.
+TEXT_ONLY = "deepseek-v4-pro"
+
+
 @pytest.fixture(autouse=True)
 def _reset_provider_cache():
     """`get_llm_provider` caches per provider name, so a test that rebinds a
@@ -30,19 +35,33 @@ def _reset_provider_cache():
     reset_provider()
 
 
-def _use_deepseek(monkeypatch, model: str, tier: str = "balanced") -> None:
+def _use_deepseek(
+    monkeypatch, model: str, tier: str = "balanced", fast_model: str = TEXT_ONLY,
+) -> None:
+    """Pin BOTH tiers, never just one.
+
+    Pinning only `balanced` left the fast tier reading whatever production was
+    configured to, so the tier test below passed for a while on the accident
+    that the shipped fast model happened to be text-only. It is not any more --
+    both tiers now name `deepseek-flash` -- and a test should not depend on
+    that either way.
+    """
     monkeypatch.setattr(settings, "APPBUILDER_PROVIDER", "deepseek")
     monkeypatch.setattr(settings, "AGENT_MODEL_TIER", tier)
     monkeypatch.setattr(settings, "DEEPSEEK_MODEL_BALANCED", model)
+    monkeypatch.setattr(settings, "DEEPSEEK_MODEL_FAST", fast_model)
     reset_provider()
 
 
 @pytest.mark.parametrize(
     ("model", "expected"),
     [
+        ("deepseek-flash", True),
+        # Both legacy ids are retired and now served by `deepseek-flash`, which
+        # has vision -- so the one that used to be text-only reads as capable.
         ("deepseek-v4-flash-vision-exp", True),
+        ("deepseek-v4-flash", True),
         ("deepseek-v4-pro", False),
-        ("deepseek-v4-flash", False),
         ("some-future-deepseek-model", False),  # unknown ids must not opt in
     ],
 )
@@ -51,7 +70,7 @@ def test_deepseek_vision_is_decided_per_model(monkeypatch, model: str, expected:
     assert appbuilder_vision_capable() is expected
 
 
-@pytest.mark.parametrize("model", ["deepseek-v4-flash-vision-exp", "deepseek-v4-pro"])
+@pytest.mark.parametrize("model", ["deepseek-flash", "deepseek-v4-pro"])
 def test_provider_flag_agrees_with_module_helper(monkeypatch, model: str) -> None:
     """`DeepSeekProvider.supports_image_in_tool_result` drives the message
     converter; `appbuilder_vision_capable()` drives tool registration and
@@ -65,14 +84,21 @@ def test_provider_flag_agrees_with_module_helper(monkeypatch, model: str) -> Non
 def test_vision_follows_the_tier_the_agent_actually_runs(monkeypatch) -> None:
     """Capability must be read off AGENT_MODEL_TIER, not off "balanced".
 
-    With the vision model on `balanced`, an agent pinned to `fast` is running
-    text-only DeepSeek and must not be handed images.
+    With a vision model on `balanced` and a text-only one on `fast`, an agent
+    pinned to `fast` must not be handed images.
+
+    Shipped config now names `deepseek-flash` on BOTH tiers, so this reads off
+    pinned values rather than the defaults -- the property under test is that
+    capability follows AGENT_MODEL_TIER, not which model happens to be on it.
     """
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp", tier="balanced")
+    _use_deepseek(monkeypatch, "deepseek-flash", tier="balanced")
     assert appbuilder_vision_capable() is True
 
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp", tier="fast")
-    assert appbuilder_vision_capable() is False  # -> deepseek-v4-flash
+    _use_deepseek(monkeypatch, "deepseek-flash", tier="fast")
+    assert appbuilder_vision_capable() is False  # -> fast is TEXT_ONLY
+
+    _use_deepseek(monkeypatch, TEXT_ONLY, tier="fast", fast_model="deepseek-flash")
+    assert appbuilder_vision_capable() is True
 
 
 @pytest.mark.parametrize(
