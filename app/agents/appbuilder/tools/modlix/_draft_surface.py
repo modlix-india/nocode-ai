@@ -35,15 +35,28 @@ import logging
 from contextvars import ContextVar
 from typing import Any
 
+from app.core.tools.draft_registry import (
+    DRAFTABLE_KINDS,
+    PAGE_ONLY_KINDS,
+    DraftScope,
+    drafting,
+    drafts_kind,
+    to_scope,
+)
+
 logger = logging.getLogger(__name__)
 
 PUBLISH_API = "/api/ui/publish/app"
 DRAFT_URL_API = "/api/security/clienturls/draft"
 
-# True when the caller asked for this turn's definition writes to be drafted.
-# Set by the agent from the chat request; absent everywhere else, so no existing
-# caller changes behaviour by upgrading.
-draft_mode: ContextVar[bool] = ContextVar("draft_mode", default=False)
+# What the caller asked for this turn: LIVE, DRAFT, or PAGE_ONLY_DRAFT. Set by
+# the agent from the chat request.
+#
+# Defaults to DRAFT, so a caller that says nothing gets a change it can look at
+# before anyone else sees it. That is only safe because nothing is drafted until
+# `supported()` has confirmed the deployment honours the flag -- on a stale
+# backend this whole module folds back to writing live.
+draft_mode: ContextVar[DraftScope] = ContextVar("draft_mode", default=DraftScope.DRAFT)
 
 # appCode -> does this deployment honour ?draft=true. Process-local and never
 # expired: whether a running backend has the routes cannot change without a
@@ -51,9 +64,19 @@ draft_mode: ContextVar[bool] = ContextVar("draft_mode", default=False)
 _supported: dict[str, bool] = {}
 
 
-def wanted() -> bool:
-    """Did the caller ask for drafting this turn? Says nothing about support."""
-    return bool(draft_mode.get())
+def wanted() -> DraftScope:
+    """What did the caller ask for this turn? Says nothing about support."""
+    return to_scope(draft_mode.get())
+
+
+def wants_kind(kind: str) -> bool:
+    """Did the caller ask for THIS kind to be drafted? Ignores support."""
+    scope = wanted()
+    if scope is DraftScope.LIVE:
+        return False
+    if scope is DraftScope.PAGE_ONLY_DRAFT:
+        return kind in PAGE_ONLY_KINDS
+    return kind in DRAFTABLE_KINDS
 
 
 async def supported(client: Any, headers: dict[str, str], app_code: str) -> bool:
@@ -86,19 +109,23 @@ async def supported(client: Any, headers: dict[str, str], app_code: str) -> bool
     return ok
 
 
-async def active(client: Any, headers: dict[str, str], app_code: str) -> bool:
-    """Should this turn's definition writes carry `?draft=true`?
+async def active(
+    client: Any, headers: dict[str, str], app_code: str, kind: str = "page",
+) -> bool:
+    """Should a write to `kind` carry `?draft=true` this turn?
 
     Reads the decision the agent already made for the turn when there is one,
     so a tool and the HTTP choke point can never disagree about where a write
     went. Falls back to deciding for itself, which is what a headless caller and
     the tests get.
-    """
-    from app.core.tools import draft_registry as core_drafts
 
-    if core_drafts.drafting.get():
-        return True
-    return wanted() and await supported(client, headers, app_code)
+    `kind` defaults to "page" because every caller of this is page work; a tool
+    that edits something else has to say so, and gets the right answer under
+    PAGE_ONLY_DRAFT instead of the page's answer.
+    """
+    if drafting.get() is not DraftScope.LIVE:
+        return drafts_kind(kind)
+    return wants_kind(kind) and await supported(client, headers, app_code)
 
 
 def params_with_draft(params: dict[str, Any] | None, on: bool) -> dict[str, Any] | None:

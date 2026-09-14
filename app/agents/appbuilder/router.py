@@ -10,7 +10,7 @@ import logging
 from typing import Any, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.base_auth import require_auth_context
 from app.core.base_router import (
@@ -20,6 +20,7 @@ from app.core.base_router import (
     stream_agent_response,
 )
 from app.core.session import BaseSession, AuthContext
+from app.core.tools.draft_registry import DraftScope, to_scope
 from app.services.session_manager import get_session_manager
 from app.services.security import ALLOWED_AI_APPS
 
@@ -118,12 +119,21 @@ class ChatRequest(BaseModel):
     # normally. A caller that sends nothing (the plain chat page) gets exactly the
     # behaviour it always had.
     open_drafts: Optional[List[OpenDraft]] = None
-    # Send definition writes to the app's draft surface instead of live, so the
-    # user gets a reviewable copy and the agent can screenshot its own work.
-    # Off by default: turning it on silently would change where every existing
-    # caller's edits land, and the agent degrades to live writes anyway on a
-    # deployment that has no draft surface.
-    draft_mode: bool = False
+    # How much of this turn's definition writes go to the app's draft surface
+    # instead of live, so the user gets a reviewable copy and the agent can
+    # screenshot its own work. One of LIVE, DRAFT, PAGE_ONLY_DRAFT.
+    #
+    # Defaults to DRAFT, and anything unrecognised also reads as DRAFT, so live
+    # writing has to be asked for by name. A caller that gets the spelling wrong
+    # ends up with work it can review and publish, which is recoverable; the
+    # other default hands it a live change it never agreed to. The agent degrades
+    # to live writes anyway on a deployment that has no draft surface.
+    draft_mode: DraftScope = DraftScope.DRAFT
+
+    @field_validator("draft_mode", mode="before")
+    @classmethod
+    def _coerce_draft_mode(cls, v: Any) -> DraftScope:
+        return to_scope(v)
 
 
 class TemplateAiRequest(BaseModel):
@@ -262,7 +272,8 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
         session.context["app_code"] = body.app_code
     if body.editor_context:
         session.context["editor_context"] = body.editor_context
-    session.context["draft_mode"] = body.draft_mode
+    # The plain string, not the enum: session.context is persisted to CONTEXT_JSON.
+    session.context["draft_mode"] = body.draft_mode.value
     if body.open_drafts:
         # Kept as plain dicts on the session so the agent can build the registry
         # when it has the event stream in hand. The documents themselves never go

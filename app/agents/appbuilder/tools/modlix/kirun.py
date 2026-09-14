@@ -30,6 +30,7 @@ from typing import Any
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 from . import _conventions as c
+from . import _draft_surface as drafts
 from . import _kirun_dsl as kirun_dsl
 from . import _kirun_layout as kirun_layout
 from . import _page_ops as p_ops
@@ -1090,12 +1091,27 @@ async def _patch_function_steps(
     fn: dict[str, Any], steps_to_merge: dict[str, Any],
     message: str, is_server: bool, context: dict[str, Any],
 ) -> tuple[bool, str]:
-    """Patch steps on a function. UI uses surgical PATCH; server uses full-doc PUT."""
+    """Patch steps on a function.
+
+    UI normally uses the surgical PATCH, which preserves the layout of every step
+    it does not name. That route writes PART of the stored document and has no
+    draft counterpart, so while this turn drafts functions it would publish the
+    change the moment it was written while everything else waited for review --
+    and the choke point in `SaasClient` refuses it outright for exactly that
+    reason. When drafting, fall back to the same whole-document merge the server
+    branch already does, which the draft surface does understand.
+    """
     client, headers = _client_and_headers(context)
     fn_id = fn.get("id")
     if not fn_id:
         return False, "function has no id"
-    if is_server:
+
+    kind = "serverfunction" if is_server else "function"
+    whole_doc = is_server or await drafts.active(
+        client, headers, fn.get("appCode") or "", kind,
+    )
+
+    if whole_doc:
         merged = dict(fn)
         defn = dict(merged.get("definition") or {})
         steps = dict(defn.get("steps") or {})
@@ -1103,7 +1119,8 @@ async def _patch_function_steps(
         defn["steps"] = steps
         merged["definition"] = defn
         merged["message"] = message
-        r = await client.put(f"{_CORE_FN_API}/{fn_id}", headers=headers, json=merged)
+        api = _CORE_FN_API if is_server else _UI_FN_API
+        r = await client.put(f"{api}/{fn_id}", headers=headers, json=merged)
     else:
         body = {
             "steps": steps_to_merge,

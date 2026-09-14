@@ -22,7 +22,7 @@ from app.core.session import BaseSession
 from app.services.billing import weighted_tokens
 from app.services.llm_provider import _openai_compatible_usage
 
-MODEL = "deepseek-v4-flash-vision-exp"
+MODEL = "deepseek-flash"
 
 
 class FakeUsage:
