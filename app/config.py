@@ -134,15 +134,31 @@ class Settings(BaseSettings):
     # ── Headless browser pool (app/services/browser_pool) ──────────────
     # Chromium is shared per worker process and handed out as contexts, so a
     # render costs a ~216 MB renderer instead of a ~595 MB browser tree.
-    # These are PER WORKER; gunicorn runs four, so multiply by four when
-    # sizing against host RAM.
+    #
+    # SIZING. Every number here is PER GUNICORN WORKER, and we run four, so the
+    # cluster ceiling is 4x what you read. A conversation is pinned to the
+    # worker that accepted its SSE stream and holds at most one tab per app, so
+    # N concurrent users spread over 4 workers means roughly N/4 sessions per
+    # worker -- but the kernel balances accepts loosely, so assume a worker can
+    # land noticeably more than its share.
+    #
+    # Rough budget: a tab is ~216 MB, a browser adds ~379 MB of fixed overhead
+    # while it is alive, and browsers close after BROWSER_IDLE_TTL_SECONDS with
+    # no tabs. Defaults below are sized for ~15 concurrent dev users:
+    # 5 sessions x 4 workers = 20 tabs of headroom against 15 users, and
+    # 8 contexts x 4 workers = 32 tabs as the absolute ceiling (~6.9 GB, which
+    # 15 users cannot actually reach; the realistic peak is ~15 tabs, ~3.2 GB).
+    # If dev regularly runs hotter than this, the answer is not bigger numbers
+    # on a box with no mem_limit -- it is Chromium as its own service with one
+    # pool shared across workers.
     #
     # Live contexts allowed at once. Each one with a page open is a renderer
-    # process. Callers past the cap queue rather than spawn.
-    BROWSER_MAX_CONTEXTS: int = 6
+    # process. Callers past the cap QUEUE (up to the timeout below) rather than
+    # spawn, so this is the hard memory bound.
+    BROWSER_MAX_CONTEXTS: int = 8
     # How long a caller waits for a free context before failing with a clear
     # error. Longer than the slowest render so a busy burst queues instead of
-    # erroring, short enough that a deadlock surfaces.
+    # erroring, short enough that a stuck pool surfaces.
     BROWSER_ACQUIRE_TIMEOUT_SECONDS: int = 120
     # Close a browser once it has held zero contexts for this long. Keeps a
     # burst of renders on one browser without leaving Chromium resident on a
@@ -154,10 +170,12 @@ class Settings(BaseSettings):
     # Idle TTL for a persistent drive_page session (its context + tab). This
     # is the backstop; the primary release is the agent run ending.
     BROWSER_SESSION_IDLE_TTL_SECONDS: int = 600
-    # Concurrent drive_page sessions per worker. Deliberately below
-    # BROWSER_MAX_CONTEXTS so long-lived sessions can never starve one-shot
-    # screenshots of a permit. Oldest idle session is closed past the cap.
-    BROWSER_MAX_SESSIONS: int = 3
+    # Concurrent drive_page sessions per worker, kept below BROWSER_MAX_CONTEXTS
+    # so long-lived sessions leave room for one-shot screenshots. This is a soft
+    # cap: past it we reclaim finished and idle sessions, but never a live
+    # conversation's tab, so a busy worker goes slightly over rather than
+    # destroying someone's logged-in session (see _make_room_for_session).
+    BROWSER_MAX_SESSIONS: int = 5
 
     # ── Lore ───────────────────────────────────────────────────────────
     # Curated, growing knowledge about each application (app/services/lore).
