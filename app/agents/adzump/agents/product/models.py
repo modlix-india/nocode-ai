@@ -135,7 +135,7 @@ class ScrapeTimings(BaseModel):
     free of the inner browser-semaphore queue wait; never report raw work_s.
     """
     sem_wait_ms: float | None = None         # blocked on the cap-3 _browser_semaphore (pre-acquire)
-    launch_ms: float | None = None           # playwright start + chromium launch + new_page + listener wiring
+    launch_ms: float | None = None           # browser-pool context acquire + new_page + listener wiring (a cold pool also pays the chromium launch)
     goto_ms: float | None = None             # page.goto(domcontentloaded)
     networkidle_ms: float | None = None      # top-level networkidle settle (<=5s)
     cloudflare_ms: float | None = None       # challenge wait (<=6s; ~0 when not detected)

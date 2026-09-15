@@ -120,6 +120,17 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
 
+    # 6. Browser pool maintenance. Chromium is shared per worker and handed out
+    # as contexts; this timer reaps idle drive_page sessions and then closes
+    # browsers left with no contexts. It has to run on a timer rather than
+    # inside a tool call: a worker whose conversation ended stops making calls,
+    # which is exactly how it used to strand browsers for hours.
+    try:
+        from app.services import browser_pool
+        browser_pool.start_maintenance()
+    except Exception:
+        logger.exception("Failed to start browser pool maintenance")
+
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
     logger.info("=" * 60)
@@ -152,9 +163,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing LeadZump SaasClient: {e}")
 
-    # Close persistent Playwright sessions. The idle reaper only runs inside a
-    # tool call, so a worker that stops taking calls (redeploy, restart, OOM)
-    # would otherwise orphan its Chromium children indefinitely.
+    # Close persistent Playwright sessions, then tear the pool down. A worker
+    # that exits (redeploy, restart, OOM kill) would otherwise orphan its
+    # Chromium children: nothing outside this process reaps them.
     try:
         from app.agents.appbuilder.tools.modlix.visuals_browser import (
             close_all_browser_sessions,
@@ -164,6 +175,14 @@ async def lifespan(app: FastAPI):
             logger.info(f"Closed {closed} browser session(s)")
     except Exception as e:
         logger.error(f"Error closing browser sessions: {e}")
+
+    try:
+        from app.services import browser_pool
+        browsers = await browser_pool.close_all()
+        if browsers:
+            logger.info(f"Closed {browsers} shared browser(s)")
+    except Exception as e:
+        logger.error(f"Error closing browser pool: {e}")
 
 
     from app.core.stream_registry import stop_subscriber
