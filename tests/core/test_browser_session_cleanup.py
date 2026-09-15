@@ -125,24 +125,130 @@ async def test_close_sessions_for_run_ignores_an_empty_id():
 
 
 @pytest.mark.asyncio
-async def test_session_cap_closes_the_least_recently_used():
-    """Sessions stay strictly below the pool's context cap, so a conversation
-    holding tabs can never starve a one-shot screenshot of a permit."""
+async def test_session_cap_reclaims_a_finished_run_first(monkeypatch):
+    """Past the cap we take back tabs nobody is waiting on."""
     import time as _t
     from app.config import settings
     log = []
-    original = settings.BROWSER_MAX_SESSIONS
-    settings.BROWSER_MAX_SESSIONS = 2
-    try:
-        old, recent = _session("old", log), _session("recent", log)
-        old.last_used = _t.monotonic() - 500
-        recent.last_used = _t.monotonic()
-        vb._sessions.update({"old": old, "recent": recent})
-        await vb._enforce_session_cap()
-        assert set(vb._sessions) == {"recent"}
-        assert old.context.closed is True
-    finally:
-        settings.BROWSER_MAX_SESSIONS = original
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 2)
+    monkeypatch.setattr(vb, "_run_is_live", lambda run: run == "live-run")
+
+    done, live = _session("done", log), _session("live", log)
+    done.owner_run, live.owner_run = "dead-run", "live-run"
+    done.last_used = live.last_used = _t.monotonic()
+    vb._sessions.update({"done": done, "live": live})
+
+    await vb._make_room_for_session()
+    assert set(vb._sessions) == {"live"}
+    assert done.context.closed is True
+
+
+@pytest.mark.asyncio
+async def test_session_cap_never_evicts_another_live_conversation(monkeypatch):
+    """The multi-user case, and the reason plain LRU was wrong.
+
+    Four people share a worker (gunicorn runs four for any number of users).
+    One of them is waiting on an LLM turn, so their session looks idle. Closing
+    it would drop their cookies, their logged-in end-user identity and their
+    scroll position, and their next drive_page would silently get a blank
+    anonymous tab. Going one over the soft cap is the cheaper mistake.
+    """
+    import time as _t
+    from app.config import settings
+    log = []
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 3)
+    monkeypatch.setattr(vb, "_run_is_live", lambda run: True)  # everyone is mid-conversation
+
+    now = _t.monotonic()
+    for name, age in (("userA", 90), ("userB", 40), ("userC", 5)):
+        s = _session(name, log)
+        s.owner_run = f"chat-{name}"
+        s.last_used = now - age
+        vb._sessions[name] = s
+
+    await vb._make_room_for_session()
+
+    assert set(vb._sessions) == {"userA", "userB", "userC"}, \
+        "a live conversation's tab was taken to make room"
+    assert all(not s.context.closed for s in vb._sessions.values())
+
+
+@pytest.mark.asyncio
+async def test_session_cap_falls_back_to_idle_when_all_runs_are_live(monkeypatch):
+    import time as _t
+    from app.config import settings
+    log = []
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 2)
+    monkeypatch.setattr(settings, "BROWSER_SESSION_IDLE_TTL_SECONDS", 60)
+    monkeypatch.setattr(vb, "_run_is_live", lambda run: True)
+
+    now = _t.monotonic()
+    stale, fresh = _session("stale", log), _session("fresh", log)
+    stale.owner_run = fresh.owner_run = "still-running"
+    stale.last_used = now - 900          # past the TTL: that conversation moved on
+    fresh.last_used = now - 5
+    vb._sessions.update({"stale": stale, "fresh": fresh})
+
+    await vb._make_room_for_session()
+    assert set(vb._sessions) == {"fresh"}
+    assert stale.context.closed is True
+
+
+@pytest.mark.asyncio
+async def test_a_full_worker_serves_drive_page_on_an_ephemeral_tab(monkeypatch):
+    """The 40-user case: every session slot is held by someone else's live
+    conversation. The call is served on a throwaway tab rather than failed, so
+    the render still happens and only the carried-over state is lost."""
+    log = []
+    calls = []
+
+    async def fake_open_context(profile, *, persistent=False, timeout=None, **kw):
+        calls.append(persistent)
+        if persistent:
+            raise bp.BrowserUnavailable("no persistent browser session slot free")
+        return _FakeContext(log, "ephemeral")
+
+    monkeypatch.setattr(bp, "open_context", fake_open_context)
+
+    class _Page:
+        async def goto(self, *a, **k): pass
+        def on(self, *a, **k): pass
+
+    async def fake_new_page():
+        return _Page()
+
+    monkeypatch.setattr(_FakeContext, "new_page", staticmethod(fake_new_page), raising=False)
+
+    sess, err = await vb._new_session(
+        "sid", "app", "SYSTEM", "home", None, 1440, 900, False, False, persistent=True)
+    assert sess is None and "session slot" in err
+
+    sess, err = await vb._new_session(
+        "sid", "app", "SYSTEM", "home", None, 1440, 900, False, False, persistent=False)
+    assert sess is not None and err is None
+    assert sess.ephemeral is True, "a fallback tab must be marked throwaway"
+    assert calls == [True, False]
+
+
+def test_drive_page_falls_back_instead_of_failing():
+    import inspect
+    src = inspect.getsource(vb._execute_drive_page)
+    assert "persistent=False" in src, "no ephemeral fallback on a full worker"
+    assert "if sess.ephemeral" in src, "ephemeral tab is never released"
+    assert "if not sess.ephemeral" in src, "ephemeral tab must not be registered"
+
+
+def test_run_liveness_defaults_to_live_when_unknowable(monkeypatch):
+    """Guessing 'dead' costs a user their tab; guessing 'live' costs a little RAM."""
+    import app.core.run_manager as rm
+
+    def _boom(_sid):
+        raise RuntimeError("registry unavailable")
+
+    monkeypatch.setattr(rm, "get_local_run", _boom)
+    assert vb._run_is_live("some-run") is True
+    assert vb._run_is_live("") is False
+    assert vb._run_is_live(None) is False
 
 
 def test_the_reaper_is_registered_as_a_pool_sweep_hook():
@@ -164,7 +270,7 @@ def test_drive_page_keys_sessions_on_the_chat_session():
     import inspect
     src = inspect.getsource(vb._execute_drive_page)
     assert 'context.get("session_id")' in src
-    assert "_enforce_session_cap" in src
+    assert "_make_room_for_session" in src
 
 
 def test_run_end_releases_browser_sessions():

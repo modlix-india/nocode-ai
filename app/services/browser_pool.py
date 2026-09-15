@@ -82,7 +82,8 @@ _browsers: dict[str, Any] = {}
 _browser_last_used: dict[str, float] = {}
 _launch_lock: asyncio.Lock | None = None
 _context_sem: asyncio.Semaphore | None = None
-_open_contexts: dict[int, str] = {}  # id(context) -> profile
+_session_sem: asyncio.Semaphore | None = None
+_open_contexts: dict[int, tuple[str, bool]] = {}  # id(context) -> (profile, persistent)
 _sweep_task: asyncio.Task | None = None
 _sweep_hooks: list[Callable[[], Awaitable[Any]]] = []
 
@@ -94,13 +95,21 @@ _stat_relaunches = 0
 
 def _ensure_loop() -> None:
     """Rebuild loop-bound primitives if the running loop changed."""
-    global _loop, _launch_lock, _context_sem
+    global _loop, _launch_lock, _context_sem, _session_sem
     running = asyncio.get_running_loop()
-    if _loop is running and _launch_lock is not None and _context_sem is not None:
+    if (_loop is running and _launch_lock is not None
+            and _context_sem is not None and _session_sem is not None):
         return
     _loop = running
     _launch_lock = asyncio.Lock()
-    _context_sem = asyncio.Semaphore(int(_cfg("BROWSER_MAX_CONTEXTS", 6)))
+    total = int(_cfg("BROWSER_MAX_CONTEXTS", 8))
+    # Persistent (drive_page) contexts get a SMALLER budget than the total, so
+    # the difference is a reserve that long-lived sessions can never occupy.
+    # Without it, enough concurrent conversations holding tabs take every permit
+    # and one-shot screenshots block until their acquire timeout and then fail.
+    persistent = max(1, min(int(_cfg("BROWSER_MAX_SESSIONS", 5)), total - 1))
+    _context_sem = asyncio.Semaphore(total)
+    _session_sem = asyncio.Semaphore(persistent)
     _open_contexts.clear()
 
 
@@ -190,24 +199,50 @@ async def _close_browser(profile: str) -> None:
 # ── Contexts ─────────────────────────────────────────────────────────────
 
 
-async def open_context(profile: str = INTERNAL, **kwargs: Any) -> Any:
+async def open_context(
+    profile: str = INTERNAL,
+    *,
+    persistent: bool = False,
+    timeout: float | None = None,
+    **kwargs: Any,
+) -> Any:
     """Acquire a permit and open an isolated BrowserContext.
 
+    `persistent=True` marks a context that will be HELD across calls (a
+    drive_page session). Those draw from a smaller budget than one-shot
+    renders, so a worker full of conversations holding tabs still leaves
+    permits for a screenshot. Pass a short `timeout` for a caller that has a
+    sensible fallback and should not sit in the queue.
+
     The caller MUST pass the result to `close_context()`, or use the
-    `browser_context()` wrapper which does it for you. Every open context holds
-    a renderer once a page is opened in it, so leaking one leaks ~216 MB.
+    `browser_context()` wrapper which does it. Every open context holds a
+    renderer once a page is opened in it, so leaking one leaks ~216 MB.
     """
     global _stat_contexts
     _ensure_loop()
-    assert _context_sem is not None
+    assert _context_sem is not None and _session_sem is not None
 
-    timeout = float(_cfg("BROWSER_ACQUIRE_TIMEOUT_SECONDS", 120))
+    wait = float(_cfg("BROWSER_ACQUIRE_TIMEOUT_SECONDS", 120) if timeout is None else timeout)
+    held_session = False
+
+    if persistent:
+        try:
+            await asyncio.wait_for(_session_sem.acquire(), timeout=wait)
+            held_session = True
+        except asyncio.TimeoutError as e:
+            raise BrowserUnavailable(
+                f"no persistent browser session slot free after {wait:.0f}s "
+                f"(cap {_cfg('BROWSER_MAX_SESSIONS', 5)} per worker)"
+            ) from e
+
     try:
-        await asyncio.wait_for(_context_sem.acquire(), timeout=timeout)
+        await asyncio.wait_for(_context_sem.acquire(), timeout=wait)
     except asyncio.TimeoutError as e:
+        if held_session:
+            _session_sem.release()
         raise BrowserUnavailable(
-            f"no browser context free after {timeout:.0f}s "
-            f"({len(_open_contexts)} in use, cap {_cfg('BROWSER_MAX_CONTEXTS', 6)})"
+            f"no browser context free after {wait:.0f}s "
+            f"({len(_open_contexts)} in use, cap {_cfg('BROWSER_MAX_CONTEXTS', 8)})"
         ) from e
 
     try:
@@ -215,28 +250,33 @@ async def open_context(profile: str = INTERNAL, **kwargs: Any) -> Any:
         ctx = await browser.new_context(**kwargs)
     except BaseException:
         _context_sem.release()
+        if held_session:
+            _session_sem.release()
         raise
 
-    _open_contexts[id(ctx)] = profile
+    _open_contexts[id(ctx)] = (profile, persistent)
     _stat_contexts += 1
     return ctx
 
 
 async def close_context(ctx: Any) -> None:
-    """Close a context and release its permit. Safe to call twice."""
+    """Close a context and release its permits. Safe to call twice."""
     if ctx is None:
         return
-    profile = _open_contexts.pop(id(ctx), None)
+    entry = _open_contexts.pop(id(ctx), None)
     try:
         await ctx.close()
     except Exception:  # noqa: BLE001
-        # A context whose browser already died raises here. The permit still
-        # has to come back or the cap leaks downward until the worker restarts.
+        # A context whose browser already died raises here. The permits still
+        # have to come back or the caps leak downward until the worker restarts.
         logger.debug("error closing browser context", exc_info=True)
-    if profile is not None:
+    if entry is not None:
+        profile, persistent = entry
         _browser_last_used[profile] = time.monotonic()
-        assert _context_sem is not None
+        assert _context_sem is not None and _session_sem is not None
         _context_sem.release()
+        if persistent:
+            _session_sem.release()
 
 
 @asynccontextmanager
@@ -288,7 +328,7 @@ async def _sweep_once() -> None:
     if ttl <= 0:
         return
     now = time.monotonic()
-    in_use = set(_open_contexts.values())
+    in_use = {profile for profile, _ in _open_contexts.values()}
     for profile in list(_browsers):
         if profile in in_use:
             continue
@@ -370,12 +410,14 @@ def stats() -> dict[str, Any]:
                 "profile": p,
                 "connected": bool(b.is_connected()),
                 "idle_seconds": round(now - _browser_last_used.get(p, now), 1),
-                "contexts": sum(1 for v in _open_contexts.values() if v == p),
+                "contexts": sum(1 for profile, _ in _open_contexts.values() if profile == p),
             }
             for p, b in _browsers.items()
         ],
         "open_contexts": len(_open_contexts),
-        "max_contexts": int(_cfg("BROWSER_MAX_CONTEXTS", 6)),
+        "persistent_contexts": sum(1 for _, persistent in _open_contexts.values() if persistent),
+        "max_contexts": int(_cfg("BROWSER_MAX_CONTEXTS", 8)),
+        "max_persistent": int(_cfg("BROWSER_MAX_SESSIONS", 5)),
         "total_launches": _stat_launches,
         "total_relaunches": _stat_relaunches,
         "total_contexts": _stat_contexts,
