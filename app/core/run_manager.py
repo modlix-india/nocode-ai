@@ -221,6 +221,20 @@ class AgentRun:
             from app.core import stream_registry
 
             stream_registry.unregister(self.session_id)
+            # Release any headless browser tabs this run opened. The run ending
+            # is the fact; the idle TTL is only a guess about it, and relying on
+            # the guess alone left tabs (and their ~216 MB renderers) parked for
+            # hours after the conversation was over.
+            try:
+                from app.agents.appbuilder.tools.modlix.visuals_browser import (
+                    close_sessions_for_run,
+                )
+
+                await close_sessions_for_run(self.session_id)
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "Failed releasing browser sessions: session=%s", self.session_id,
+                )
             await self._mark_finished_in_redis()
 
     def _fan_out(self, event: AgentEvent) -> None:

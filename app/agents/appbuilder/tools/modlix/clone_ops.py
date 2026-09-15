@@ -37,6 +37,8 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.services import browser_pool
+from app.services.browser_pool import EXTERNAL, INTERNAL, BrowserUnavailable
 
 from .visuals import (
     _MIME_PNG,
@@ -265,20 +267,15 @@ async def _execute_extract_site_assets(params: dict[str, Any], context: dict[str
     cc = _resolve_client_code(params, context)
     headers = dict(context.get("headers") or {})
 
-    try:
-        from playwright.async_api import async_playwright
-    except ImportError:
-        return ToolResult(success=False, error="playwright not installed; pip install playwright && python -m playwright install chromium")
-
     harvest: dict[str, list[dict[str, Any]]] = {"imgs": [], "svgs": [], "bgs": []}
     try:
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
-            ctx_b = await browser.new_context(
-                viewport={"width": viewport_width, "height": 900},
-                ignore_https_errors=True,
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-            )
+        # EXTERNAL profile: this renders an arbitrary third-party site.
+        async with browser_pool.browser_context(
+            EXTERNAL,
+            viewport={"width": viewport_width, "height": 900},
+            ignore_https_errors=True,
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        ) as ctx_b:
             page = await ctx_b.new_page()
             try:
                 await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -303,9 +300,9 @@ async def _execute_extract_site_assets(params: dict[str, Any], context: dict[str
             try:
                 harvest = await page.evaluate(_HARVEST_JS)
             except Exception as e:  # noqa: BLE001
-                await browser.close()
                 return ToolResult(success=False, error=f"harvest JS failed: {type(e).__name__}: {e}")
-            await browser.close()
+    except BrowserUnavailable as e:
+        return ToolResult(success=False, error=str(e))
     except Exception as e:  # noqa: BLE001
         return ToolResult(success=False, error=f"render error: {type(e).__name__}: {e}")
 
@@ -549,23 +546,17 @@ async def _screenshot_modlix_page(
     headers: dict[str, str],
 ) -> tuple[bytes | None, str | None]:
     """Render a Modlix page and return (png_bytes, error). Uses anonymous=True."""
-    try:
-        from playwright.async_api import async_playwright
-    except ImportError:
-        return None, "playwright not installed"
-
     from app.config import settings
     host = getattr(settings, "PREVIEW_HOST", "") or settings.GATEWAY_URL
     host = host.rstrip("/")
     target_url = f"{host}/{ac}/{cc}/page/{page_name}"
 
     try:
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
-            ctx_b = await browser.new_context(
-                viewport={"width": width, "height": height},
-                ignore_https_errors=True,
-            )
+        async with browser_pool.browser_context(
+            INTERNAL,
+            viewport={"width": width, "height": height},
+            ignore_https_errors=True,
+        ) as ctx_b:
             page = await ctx_b.new_page()
             try:
                 await page.goto(target_url, wait_until="networkidle", timeout=30000)
@@ -573,7 +564,6 @@ async def _screenshot_modlix_page(
                 pass
             await page.wait_for_timeout(wait_ms)
             png = await page.screenshot(full_page=True, type="png")
-            await browser.close()
             return png, None
     except Exception as e:  # noqa: BLE001
         return None, f"{type(e).__name__}: {e}"

@@ -17,6 +17,8 @@ import time
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
+from app.services import browser_pool
+from app.services.browser_pool import EXTERNAL
 from app.services.page_analyzer.models import (
     BreakpointInfo,
     NodeBreakpoint,
@@ -148,13 +150,6 @@ async def observe_breakpoints(
     Returns a PageAnalysis with `observations` (per-element per-breakpoint
     visibility + box) and per-breakpoint summaries (counts + active media).
     """
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError(
-            "playwright is not installed; run `python -m playwright install chromium`"
-        ) from exc
-
     bps = breakpoints or DEFAULT_BREAKPOINTS
     first = bps[0]
     warnings: List[str] = []
@@ -165,13 +160,13 @@ async def observe_breakpoints(
     obs_by_id: Dict[str, NodeObservation] = {}
     bp_infos: List[BreakpointInfo] = []
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=headless)
-        ctx = await browser.new_context(
-            viewport={"width": int(first["width"]), "height": int(first["height"])},
-            ignore_https_errors=True,
-            user_agent=_USER_AGENT,
-        )
+    async with browser_pool.browser_context(
+        EXTERNAL,
+        headless=headless,
+        viewport={"width": int(first["width"]), "height": int(first["height"])},
+        ignore_https_errors=True,
+        user_agent=_USER_AGENT,
+    ) as ctx:
         page = await ctx.new_page()
         try:
             try:
@@ -262,7 +257,9 @@ async def observe_breakpoints(
                     len(active_media),
                 )
         finally:
-            await browser.close()
+            # Frees the renderer now; the context (and the pool permit) is
+            # released by the `async with` on the way out.
+            await page.close()
 
     return PageAnalysis(
         url=url,
@@ -317,11 +314,6 @@ async def extract_authored_sample(
     CDP and convert to Modlix styleProperties. Validates the extraction +
     media-bucketing + hover + Modlix shape end-to-end on a real page.
     """
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError("playwright not installed") from exc
-
     from app.services.page_analyzer import to_modlix
     from app.services.page_analyzer.css_cdp import CDPStyleExtractor
 
@@ -331,13 +323,13 @@ async def extract_authored_sample(
     results: List[Dict[str, object]] = []
     root_vars: Dict[str, str] = {}
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=headless)
-        ctx = await browser.new_context(
-            viewport={"width": desktop_w, "height": 900},
-            ignore_https_errors=True,
-            user_agent=_USER_AGENT,
-        )
+    async with browser_pool.browser_context(
+        EXTERNAL,
+        headless=headless,
+        viewport={"width": desktop_w, "height": 900},
+        ignore_https_errors=True,
+        user_agent=_USER_AGENT,
+    ) as ctx:
         page = await ctx.new_page()
         try:
             try:
@@ -379,7 +371,7 @@ async def extract_authored_sample(
 
             root_vars = await extractor.root_custom_properties()
         finally:
-            await browser.close()
+            await page.close()
 
     return {"url": url, "widths": widths, "targets": results, "root_custom_properties": root_vars}
 
@@ -509,11 +501,6 @@ async def run_pipeline(
     """Unified pipeline: dismiss banner -> stamp -> segment -> walk -> build tree,
     then optionally attach authored styles (CDP), per-breakpoint visibility, and
     per-section screenshots. M3/M4/M5 toggle the flags."""
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError("playwright not installed") from exc
-
     from app.services.page_analyzer.banner import dismiss_banner
     from app.services.page_analyzer.segment import (
         _SEGMENT_JS,
@@ -529,13 +516,13 @@ async def run_pipeline(
     banner_info: Dict[str, object] = {}
     root_vars: Dict[str, str] = {}
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=headless)
-        ctx = await browser.new_context(
-            viewport={"width": int(bps[0]["width"]), "height": int(bps[0]["height"])},
-            ignore_https_errors=True,
-            user_agent=_USER_AGENT,
-        )
+    async with browser_pool.browser_context(
+        EXTERNAL,
+        headless=headless,
+        viewport={"width": int(bps[0]["width"]), "height": int(bps[0]["height"])},
+        ignore_https_errors=True,
+        user_agent=_USER_AGENT,
+    ) as ctx:
         page = await ctx.new_page()
         try:
             try:
@@ -565,7 +552,7 @@ async def run_pipeline(
                     with_visibility, with_shots, warnings,
                 )
         finally:
-            await browser.close()
+            await page.close()
 
     logger.info(
         "sections=%d kept_nodes=%d tree_nodes=%d banner=%s",
@@ -605,11 +592,6 @@ async def run_full_dom(
     breakpoints: Optional[List[Dict[str, object]]] = None,
 ) -> PageAnalysis:
     """Full-DOM capture for faithful render: every visible element + authored CSS."""
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError("playwright not installed") from exc
-
     from app.services.page_analyzer.banner import dismiss_banner
     from app.services.page_analyzer.full_dom import capture_full_dom
 
@@ -617,13 +599,13 @@ async def run_full_dom(
     warnings: List[str] = []
     banner_info: Dict[str, object] = {}
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=headless)
-        ctx = await browser.new_context(
-            viewport={"width": int(bps[0]["width"]), "height": int(bps[0]["height"])},
-            ignore_https_errors=True,
-            user_agent=_USER_AGENT,
-        )
+    async with browser_pool.browser_context(
+        EXTERNAL,
+        headless=headless,
+        viewport={"width": int(bps[0]["width"]), "height": int(bps[0]["height"])},
+        ignore_https_errors=True,
+        user_agent=_USER_AGENT,
+    ) as ctx:
         page = await ctx.new_page()
         try:
             try:
@@ -637,7 +619,7 @@ async def run_full_dom(
                 page, bps, base_url=url
             )
         finally:
-            await browser.close()
+            await page.close()
 
     logger.info("full DOM: styled=%d font_faces=%d banner=%s", styled, len(faces), banner_info.get("method"))
     return PageAnalysis(
