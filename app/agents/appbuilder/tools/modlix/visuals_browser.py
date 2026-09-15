@@ -49,6 +49,12 @@ _LS_EXPIRY_KEY = "AuthTokenExpiry"
 # Modlix URL path segment separating (app, client) prefix from page name + parts.
 _PAGE_PATH_SEGMENT = "/page/"
 
+# How long a new drive_page waits for a persistent session slot before settling
+# for a throwaway tab. Short on purpose: the slot is a nicety (it carries state
+# between calls), while the render is the thing the caller actually asked for.
+_SESSION_SLOT_WAIT_SECONDS = 5.0
+
+
 def _session_idle_ttl() -> float:
     from app.config import settings
     return float(getattr(settings, "BROWSER_SESSION_IDLE_TTL_SECONDS", 600))
@@ -81,6 +87,10 @@ class BrowserSession:
     context: Any
     page: Any
     owner_run: str | None = None
+    # True when the worker had no session slot free and this tab exists only for
+    # the current call. It is never registered and is closed on the way out, so
+    # the call succeeds and only the carried-over state is lost.
+    ephemeral: bool = False
     current_page_name: str | None = None
     current_app_code: str | None = None
     current_client_code: str | None = None
@@ -146,20 +156,72 @@ async def close_sessions_for_run(run_session_id: str) -> int:
     return len(owned)
 
 
-async def _enforce_session_cap() -> None:
-    """Close least-recently-used sessions past the cap.
+def _run_is_live(run_id: str | None) -> bool:
+    """Is the conversation that opened this session still running?
 
-    Keeps long-lived sessions strictly below the pool's context cap, so a
-    conversation holding sessions can never starve a one-shot screenshot of a
-    permit and deadlock it against its own acquire timeout.
+    Local-only by design: sessions live in one worker's memory, so the run that
+    owns one is a run this worker is hosting. If we cannot tell, say yes --
+    guessing "dead" costs someone their tab, guessing "live" costs a little RAM.
+    """
+    if not run_id:
+        return False
+    try:
+        from app.core.run_manager import get_local_run
+        run = get_local_run(run_id)
+    except Exception:  # noqa: BLE001
+        return True
+    return run is not None and run.status == "running"
+
+
+async def _make_room_for_session() -> None:
+    """Free a session slot without ever taking a live conversation's tab.
+
+    Evicting the globally least-recently-used session is wrong the moment two
+    people share a worker, and gunicorn runs four workers for any number of
+    users. A conversation waiting on an LLM turn looks idle for a minute or
+    more; evicting it drops its cookies, its logged-in end-user identity and
+    its scroll position, and the owner's next drive_page silently gets a blank
+    anonymous tab with no error to explain it.
+
+    So reclaim only what nobody is waiting on, oldest first:
+      1. sessions whose conversation has finished (the run-end hook misses a
+         run that died before its finally, and sessions opened outside a run)
+      2. sessions idle past the TTL
+
+    If neither exists, let the new session through and leave the context
+    semaphore to bound memory. One extra tab is cheaper than one destroyed
+    session, and the semaphore still refuses to go past BROWSER_MAX_CONTEXTS.
     """
     cap = _max_sessions()
+    now = _time.monotonic()
+    ttl = _session_idle_ttl()
+
     while len(_sessions) >= cap:
-        oldest = min(_sessions.items(), key=lambda kv: kv[1].last_used)
-        sid, sess = oldest
-        _sessions.pop(sid, None)
-        await _close_session(sess)
-        logger.info("Closed LRU browser session %s (cap %d reached)", sid, cap)
+        finished = sorted(
+            (s.last_used, sid) for sid, s in _sessions.items()
+            if not _run_is_live(s.owner_run)
+        )
+        idle = sorted(
+            (s.last_used, sid) for sid, s in _sessions.items()
+            if now - s.last_used > ttl
+        )
+        candidates = finished or idle
+        if not candidates:
+            logger.warning(
+                "Browser session cap (%d) reached and all %d sessions belong to "
+                "live conversations; allowing an extra rather than closing "
+                "someone's tab. Raise BROWSER_MAX_SESSIONS if this recurs.",
+                cap, len(_sessions),
+            )
+            return
+        _, sid = candidates[0]
+        sess = _sessions.pop(sid, None)
+        if sess is not None:
+            await _close_session(sess)
+            logger.info(
+                "Reclaimed browser session %s (%s, cap %d)",
+                sid, "run finished" if finished else "idle past TTL", cap,
+            )
 
 
 async def close_all_browser_sessions() -> int:
@@ -408,11 +470,22 @@ async def _new_session(
     width: int, height: int,
     capture_console: bool, capture_network: bool,
     owner_run: str | None = None,
+    persistent: bool = True,
 ) -> tuple[BrowserSession | None, str | None]:
-    """Open a context on the shared browser and put one tab in it."""
+    """Open a context on the shared browser and put one tab in it.
+
+    `persistent=False` takes an ordinary one-shot permit instead of a session
+    slot. The caller must then close it at the end of the call: it is a tab for
+    this request only, with no state carried to the next one.
+    """
     try:
         ctx = await browser_pool.open_context(
             INTERNAL,
+            persistent=persistent,
+            # A persistent slot is worth asking for but not worth queueing for:
+            # if the worker is full of other people's sessions, falling back to
+            # an ephemeral tab serves this call now instead of stalling it.
+            timeout=_SESSION_SLOT_WAIT_SECONDS if persistent else None,
             viewport={"width": width, "height": height},
             ignore_https_errors=True,
         )
@@ -435,6 +508,7 @@ async def _new_session(
         session_id=session_id, context=ctx, page=page, owner_run=owner_run,
         current_page_name=page_name, current_app_code=app_code, current_client_code=client_code,
         capture_console=capture_console, capture_network=capture_network,
+        ephemeral=not persistent,
     )
     _wire_session_capture(sess)
     return sess, None
@@ -871,89 +945,108 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
             _sessions.pop(effective_sid, None)
             await _close_session(candidate)
     if sess is None:
-        await _enforce_session_cap()
+        await _make_room_for_session()
         sess, err = await _new_session(
             effective_sid, ac, cc, page_name, identity, width, height,
             capture_console, capture_network, owner_run=run_id or None,
         )
         if sess is None:
-            return ToolResult(success=False, error=err)
-        _sessions[effective_sid] = sess
+            # Every session slot on this worker is held by another live
+            # conversation. Serve the call from a throwaway tab rather than
+            # failing it: the render still happens, only the state that would
+            # have carried into the next call is lost.
+            logger.info("No session slot free; driving %s on an ephemeral tab", page_name)
+            sess, err = await _new_session(
+                effective_sid, ac, cc, page_name, identity, width, height,
+                capture_console, capture_network, owner_run=run_id or None,
+                persistent=False,
+            )
+            if sess is None:
+                return ToolResult(success=False, error=err)
+        if not sess.ephemeral:
+            _sessions[effective_sid] = sess
         created_session = True
 
-    page = sess.page
-    # If session.current_page_name doesn't match or we just created, navigate.
-    if created_session or sess.current_page_name != page_name:
-        try:
-            await page.goto(url, wait_until="networkidle", timeout=20000)
-        except Exception:  # noqa: BLE001
-            pass
-        # Settle wait after the initial load. networkidle is not enough on a
-        # Modlix page: long-polling sockets mean it may never fire (the goto
-        # above then just times out), and the page's own onLoad FetchData
-        # round-trips land after it does. Without this pause the first action
-        # can fire against a half-rendered tree and miss its selector.
-        if initial_wait_ms:
-            await page.wait_for_timeout(initial_wait_ms)
-        sess.current_page_name = page_name
+    # An ephemeral tab is not registered anywhere, so nothing else will ever
+    # reclaim it. try/finally is the only thing standing between a failed
+    # action and a permanently held renderer.
+    try:
+        page = sess.page
+        # If session.current_page_name doesn't match or we just created, navigate.
+        if created_session or sess.current_page_name != page_name:
+            try:
+                await page.goto(url, wait_until="networkidle", timeout=20000)
+            except Exception:  # noqa: BLE001
+                pass
+            # Settle wait after the initial load. networkidle is not enough on a
+            # Modlix page: long-polling sockets mean it may never fire (the goto
+            # above then just times out), and the page's own onLoad FetchData
+            # round-trips land after it does. Without this pause the first action
+            # can fire against a half-rendered tree and miss its selector.
+            if initial_wait_ms:
+                await page.wait_for_timeout(initial_wait_ms)
+            sess.current_page_name = page_name
 
-    # Run actions
-    action_log: list[dict[str, Any]] = []
-    screenshots: list[tuple[str, str]] = []  # (label, base64_png)
-    for i, action in enumerate(actions):
-        if not isinstance(action, dict) or "type" not in action:
-            action_log.append({"ok": False, "type": "?", "error": f"action #{i} missing 'type' field"})
-            continue
-        result = await _run_action(page, url, action)
-        if result.get("_capture_screenshot"):
-            png = await _capture_action_screenshot(page, result)
-            if png is not None:
-                label = result.get("label") or f"action_{i}"
-                screenshots.append((label, base64.b64encode(png).decode("ascii")))
-                result["screenshot_bytes"] = len(png)
-            result.pop("_capture_screenshot", None)
-        action_log.append(result)
+        # Run actions
+        action_log: list[dict[str, Any]] = []
+        screenshots: list[tuple[str, str]] = []  # (label, base64_png)
+        for i, action in enumerate(actions):
+            if not isinstance(action, dict) or "type" not in action:
+                action_log.append({"ok": False, "type": "?", "error": f"action #{i} missing 'type' field"})
+                continue
+            result = await _run_action(page, url, action)
+            if result.get("_capture_screenshot"):
+                png = await _capture_action_screenshot(page, result)
+                if png is not None:
+                    label = result.get("label") or f"action_{i}"
+                    screenshots.append((label, base64.b64encode(png).decode("ascii")))
+                    result["screenshot_bytes"] = len(png)
+                result.pop("_capture_screenshot", None)
+            action_log.append(result)
 
-    # Final screenshot if requested
-    if final_screenshot_mode != "none":
-        try:
-            png = await page.screenshot(full_page=(final_screenshot_mode == "full"), type="png")
-            screenshots.append(("final", base64.b64encode(png).decode("ascii")))
-        except Exception:  # noqa: BLE001
-            pass
+        # Final screenshot if requested
+        if final_screenshot_mode != "none":
+            try:
+                png = await page.screenshot(full_page=(final_screenshot_mode == "full"), type="png")
+                screenshots.append(("final", base64.b64encode(png).decode("ascii")))
+            except Exception:  # noqa: BLE001
+                pass
 
-    sess.last_used = _time.monotonic()
+        sess.last_used = _time.monotonic()
 
-    # Build summary
-    lines = [
-        f"drive_page on {url}",
-        f"  session_id: {sess.session_id} ({'created' if created_session else 'reused'})",
-        f"  actions: {len(action_log)}",
-        f"  screenshots: {len(screenshots)}",
-    ]
-    for i, entry in enumerate(action_log):
-        ok = "✓" if entry.get("ok") else "✗"
-        extras = {k: v for k, v in entry.items() if k not in ("ok", "type") and not k.startswith("_")}
-        extra_str = " " + ", ".join(f"{k}={v!r}" for k, v in extras.items()) if extras else ""
-        lines.append(f"  {i:2d}. {ok} {entry.get('type')}{extra_str}")
-    if capture_console and sess.console_buf:
-        lines.append(f"\nConsole ({len(sess.console_buf)} messages):")
-        lines.extend(f"  {m}" for m in sess.console_buf)
-    if capture_network and sess.network_log:
-        lines.append(f"\nNetwork ({len(sess.network_log)} requests):")
-        lines.extend(f"  {r['method']:<6} {r['status']:<3} {r['ms']:>5}ms  [{r['type']}]  {r['url']}" for r in sess.network_log)
-    return ToolResult(
-        success=True,
-        summary="\n".join(lines),
-        data={
-            "session_id": sess.session_id,
-            "url": url,
-            "actions": action_log,
-            "screenshots": [{"label": label, "image_base64": b64, "image_mime": "image/png"} for label, b64 in screenshots],
-            "console": list(sess.console_buf) if capture_console else [],
-            "network": list(sess.network_log) if capture_network else [],
-        },
-    )
+        # Build summary
+        lines = [
+            f"drive_page on {url}",
+            f"  session_id: {sess.session_id} ({'created' if created_session else 'reused'})",
+            f"  actions: {len(action_log)}",
+            f"  screenshots: {len(screenshots)}",
+        ]
+        for i, entry in enumerate(action_log):
+            ok = "✓" if entry.get("ok") else "✗"
+            extras = {k: v for k, v in entry.items() if k not in ("ok", "type") and not k.startswith("_")}
+            extra_str = " " + ", ".join(f"{k}={v!r}" for k, v in extras.items()) if extras else ""
+            lines.append(f"  {i:2d}. {ok} {entry.get('type')}{extra_str}")
+        if capture_console and sess.console_buf:
+            lines.append(f"\nConsole ({len(sess.console_buf)} messages):")
+            lines.extend(f"  {m}" for m in sess.console_buf)
+        if capture_network and sess.network_log:
+            lines.append(f"\nNetwork ({len(sess.network_log)} requests):")
+            lines.extend(f"  {r['method']:<6} {r['status']:<3} {r['ms']:>5}ms  [{r['type']}]  {r['url']}" for r in sess.network_log)
+        return ToolResult(
+            success=True,
+            summary="\n".join(lines),
+            data={
+                "session_id": sess.session_id,
+                "url": url,
+                "actions": action_log,
+                "screenshots": [{"label": label, "image_base64": b64, "image_mime": "image/png"} for label, b64 in screenshots],
+                "console": list(sess.console_buf) if capture_console else [],
+                "network": list(sess.network_log) if capture_network else [],
+            },
+        )
+    finally:
+        if sess.ephemeral:
+            await _close_session(sess)
 
 
 drive_page_tool = ToolDefinition(
