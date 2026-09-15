@@ -131,6 +131,34 @@ class Settings(BaseSettings):
     # return 503 — safer than allowing unauthenticated access.
     ADMIN_TOKEN: str = ""
 
+    # ── Headless browser pool (app/services/browser_pool) ──────────────
+    # Chromium is shared per worker process and handed out as contexts, so a
+    # render costs a ~216 MB renderer instead of a ~595 MB browser tree.
+    # These are PER WORKER; gunicorn runs four, so multiply by four when
+    # sizing against host RAM.
+    #
+    # Live contexts allowed at once. Each one with a page open is a renderer
+    # process. Callers past the cap queue rather than spawn.
+    BROWSER_MAX_CONTEXTS: int = 6
+    # How long a caller waits for a free context before failing with a clear
+    # error. Longer than the slowest render so a busy burst queues instead of
+    # erroring, short enough that a deadlock surfaces.
+    BROWSER_ACQUIRE_TIMEOUT_SECONDS: int = 120
+    # Close a browser once it has held zero contexts for this long. Keeps a
+    # burst of renders on one browser without leaving Chromium resident on a
+    # quiet worker. 0 keeps browsers alive for the process lifetime.
+    BROWSER_IDLE_TTL_SECONDS: int = 300
+    # Background sweep cadence: reaps idle drive_page sessions, then closes
+    # idle browsers. Minimum 15s.
+    BROWSER_SWEEP_INTERVAL_SECONDS: int = 60
+    # Idle TTL for a persistent drive_page session (its context + tab). This
+    # is the backstop; the primary release is the agent run ending.
+    BROWSER_SESSION_IDLE_TTL_SECONDS: int = 600
+    # Concurrent drive_page sessions per worker. Deliberately below
+    # BROWSER_MAX_CONTEXTS so long-lived sessions can never starve one-shot
+    # screenshots of a permit. Oldest idle session is closed past the cap.
+    BROWSER_MAX_SESSIONS: int = 3
+
     # ── Lore ───────────────────────────────────────────────────────────
     # Curated, growing knowledge about each application (app/services/lore).
     # Requires the AI tracking database; silently no-ops without it.

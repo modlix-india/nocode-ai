@@ -36,6 +36,8 @@ from typing import Any
 import httpx
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.services import browser_pool
+from app.services.browser_pool import EXTERNAL, INTERNAL, BrowserUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +49,14 @@ _LS_EXPIRY_KEY = "AuthTokenExpiry"
 # Modlix URL path segment separating (app, client) prefix from page name + parts.
 _PAGE_PATH_SEGMENT = "/page/"
 
-# Idle TTL for persistent browser sessions. After 10 min of inactivity a
-# session is auto-closed on the next drive_page call (reaper runs lazily).
-_SESSION_IDLE_TTL_SECONDS = 600
+def _session_idle_ttl() -> float:
+    from app.config import settings
+    return float(getattr(settings, "BROWSER_SESSION_IDLE_TTL_SECONDS", 600))
+
+
+def _max_sessions() -> int:
+    from app.config import settings
+    return max(1, int(getattr(settings, "BROWSER_MAX_SESSIONS", 3)))
 
 
 # Param description constants.
@@ -63,12 +70,17 @@ _DESC_PAGE_NAME = "Page name to render (e.g. 'homeTwo')"
 
 @dataclass
 class BrowserSession:
-    """One persistent Playwright session surviving across drive_page calls."""
+    """One persistent browser context + tab surviving across drive_page calls.
+
+    Holds a BrowserContext from the shared pool, NOT a browser of its own. The
+    context is the isolation boundary (own cookies, localStorage, init scripts),
+    which matters because `_new_session` injects an end-user auth token into
+    localStorage; two sessions sharing a context would share that identity.
+    """
     session_id: str
-    playwright: Any
-    browser: Any
     context: Any
     page: Any
+    owner_run: str | None = None
     current_page_name: str | None = None
     current_app_code: str | None = None
     current_client_code: str | None = None
@@ -84,21 +96,27 @@ _sessions: dict[str, BrowserSession] = {}
 
 
 async def _close_session(sess: BrowserSession) -> None:
-    """Best-effort cleanup; swallows errors."""
+    """Best-effort cleanup; swallows errors.
+
+    Closes the context (and with it the tab and its renderer process). The
+    browser itself stays up in the pool for the next caller.
+    """
     try:
-        await sess.browser.close()
+        await browser_pool.close_context(sess.context)
     except Exception:  # noqa: BLE001
-        logger.exception("error closing browser for session %s", sess.session_id)
-    try:
-        await sess.playwright.stop()
-    except Exception:  # noqa: BLE001
-        logger.exception("error stopping playwright for session %s", sess.session_id)
+        logger.exception("error closing context for session %s", sess.session_id)
 
 
 async def _reap_idle_sessions() -> list[str]:
-    """Close sessions idle past the TTL. Returns session_ids closed."""
+    """Close sessions idle past the TTL. Returns session_ids closed.
+
+    Registered as a browser-pool sweep hook, so it runs on a timer rather than
+    only inside a tool call. The lazy version stranded a worker's sessions
+    indefinitely once its conversation ended and no further call landed on it.
+    """
     now = _time.monotonic()
-    stale = [sid for sid, s in _sessions.items() if now - s.last_used > _SESSION_IDLE_TTL_SECONDS]
+    ttl = _session_idle_ttl()
+    stale = [sid for sid, s in _sessions.items() if now - s.last_used > ttl]
     for sid in stale:
         s = _sessions.pop(sid, None)
         if s is not None:
@@ -107,16 +125,47 @@ async def _reap_idle_sessions() -> list[str]:
     return stale
 
 
+async def close_sessions_for_run(run_session_id: str) -> int:
+    """Close every session owned by a finished agent run.
+
+    This is the primary release path. An idle TTL is a guess about when a
+    conversation stopped; the run ending is the fact. Called from run_manager
+    when a run completes, fails or is stopped.
+    """
+    if not run_session_id:
+        return 0
+    owned = [sid for sid, s in _sessions.items() if s.owner_run == run_session_id]
+    for sid in owned:
+        sess = _sessions.pop(sid, None)
+        if sess is not None:
+            await _close_session(sess)
+    if owned:
+        logger.info(
+            "Closed %d browser session(s) for finished run %s", len(owned), run_session_id,
+        )
+    return len(owned)
+
+
+async def _enforce_session_cap() -> None:
+    """Close least-recently-used sessions past the cap.
+
+    Keeps long-lived sessions strictly below the pool's context cap, so a
+    conversation holding sessions can never starve a one-shot screenshot of a
+    permit and deadlock it against its own acquire timeout.
+    """
+    cap = _max_sessions()
+    while len(_sessions) >= cap:
+        oldest = min(_sessions.items(), key=lambda kv: kv[1].last_used)
+        sid, sess = oldest
+        _sessions.pop(sid, None)
+        await _close_session(sess)
+        logger.info("Closed LRU browser session %s (cap %d reached)", sid, cap)
+
+
 async def close_all_browser_sessions() -> int:
     """Close every live persistent session. Returns how many were closed.
 
-    Called from the FastAPI lifespan shutdown. Without it, a worker that exits
-    (redeploy, restart, OOM kill) leaves its Chromium children orphaned: the
-    reaper below only runs lazily inside a tool call, so nothing reaps a session
-    once the process stops taking calls. Observed locally as Chromium processes
-    surviving three sequential bench runs, one of them spinning 31% CPU and
-    holding the parent's stdout pipe open.
-
+    Called from the FastAPI lifespan shutdown and from the pool's own teardown.
     Best-effort and never raises: shutdown must not be blocked by a browser that
     is already gone.
     """
@@ -129,6 +178,10 @@ async def close_all_browser_sessions() -> int:
             await _close_session(sess)
     logger.info("Closed %d browser session(s) on shutdown", count)
     return count
+
+
+# Runs on the pool's timer, before it decides which browsers are idle.
+browser_pool.register_sweep_hook(_reap_idle_sessions)
 
 
 # ── Identity ─────────────────────────────────────────────────────────────
@@ -354,24 +407,32 @@ async def _new_session(
     identity: tuple[str, int] | None,
     width: int, height: int,
     capture_console: bool, capture_network: bool,
+    owner_run: str | None = None,
 ) -> tuple[BrowserSession | None, str | None]:
+    """Open a context on the shared browser and put one tab in it."""
     try:
-        from playwright.async_api import async_playwright
-    except ImportError:
-        return None, "playwright not installed; pip install playwright && python -m playwright install chromium"
-    pw = await async_playwright().start()
-    browser = await pw.chromium.launch()
-    ctx = await browser.new_context(viewport={"width": width, "height": height}, ignore_https_errors=True)
-    if identity is not None:
-        tok, exp = identity
-        script = (
-            f"window.localStorage.setItem({_json.dumps(_LS_TOKEN_KEY)}, JSON.stringify({_json.dumps(tok)}));"
-            f"window.localStorage.setItem({_json.dumps(_LS_EXPIRY_KEY)}, {_json.dumps(str(exp))});"
+        ctx = await browser_pool.open_context(
+            INTERNAL,
+            viewport={"width": width, "height": height},
+            ignore_https_errors=True,
         )
-        await ctx.add_init_script(script)
-    page = await ctx.new_page()
+    except BrowserUnavailable as e:
+        return None, str(e)
+    try:
+        if identity is not None:
+            tok, exp = identity
+            script = (
+                f"window.localStorage.setItem({_json.dumps(_LS_TOKEN_KEY)}, JSON.stringify({_json.dumps(tok)}));"
+                f"window.localStorage.setItem({_json.dumps(_LS_EXPIRY_KEY)}, {_json.dumps(str(exp))});"
+            )
+            await ctx.add_init_script(script)
+        page = await ctx.new_page()
+    except Exception as e:  # noqa: BLE001
+        # Hand the permit back; a half-built session would hold one forever.
+        await browser_pool.close_context(ctx)
+        return None, f"could not open browser tab: {type(e).__name__}: {e}"
     sess = BrowserSession(
-        session_id=session_id, playwright=pw, browser=browser, context=ctx, page=page,
+        session_id=session_id, context=ctx, page=page, owner_run=owner_run,
         current_page_name=page_name, current_app_code=app_code, current_client_code=client_code,
         capture_console=capture_console, capture_network=capture_network,
     )
@@ -407,11 +468,6 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
 
     url = _build_url(ac, cc, page_name, params.get("path_segments"), params.get("query"))
 
-    try:
-        from playwright.async_api import async_playwright
-    except ImportError:
-        return ToolResult(success=False, error="playwright not installed; pip install playwright && python -m playwright install chromium")
-
     width = int(params.get("width") or 1440)
     height = int(params.get("height") or 900)
     full_page = bool(params.get("full_page", True))
@@ -425,9 +481,11 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
     network_starts: dict[int, float] = {}
 
     try:
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
-            ctx = await browser.new_context(viewport={"width": width, "height": height}, ignore_https_errors=True)
+        async with browser_pool.browser_context(
+            INTERNAL,
+            viewport={"width": width, "height": height},
+            ignore_https_errors=True,
+        ) as ctx:
             if draft_headers:
                 await ctx.set_extra_http_headers(draft_headers)
             if identity is not None:
@@ -481,7 +539,8 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
                 except Exception as e:  # noqa: BLE001
                     return ToolResult(success=False, error=f"hover_selector {params['hover_selector']!r} failed: {type(e).__name__}: {e}")
             png = await page.screenshot(full_page=full_page, type="png")
-            await browser.close()
+    except BrowserUnavailable as e:
+        return ToolResult(success=False, error=str(e))
     except Exception as e:  # noqa: BLE001
         return ToolResult(success=False, error=f"render error: {type(e).__name__}: {e}")
 
@@ -784,28 +843,42 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
 
     url = _build_url(ac, cc, page_name, params.get("path_segments"), params.get("query"))
 
-    # Resolve session: reuse if session_id matches a live session AND
-    # (app, client) match; else create a new persistent session.
+    # Resolve session. The key defaults to the CHAT session plus the
+    # (app, client) pair rather than to something the model has to remember to
+    # send: `session_id` is optional, the model reliably omits it, and every
+    # omission used to mint a fresh key and with it a whole new browser. One
+    # conversation driving one app now reuses one tab.
+    run_id = str(context.get("session_id") or "") if isinstance(context, dict) else ""
+    effective_sid = (
+        session_id
+        or (f"run_{run_id}_{ac}_{cc}" if run_id else f"sess_{_time.time_ns():x}")
+    )
+
     sess: BrowserSession | None = None
     created_session = False
-    if session_id and session_id in _sessions:
-        candidate = _sessions[session_id]
-        if (candidate.current_app_code == ac and candidate.current_client_code == cc):
+    candidate = _sessions.get(effective_sid)
+    if candidate is not None:
+        if candidate.current_app_code == ac and candidate.current_client_code == cc:
             sess = candidate
             # clear capture buffers for fresh call
             candidate.console_buf.clear()
             candidate.network_log.clear()
             candidate.network_starts.clear()
             candidate.last_used = _time.monotonic()
+        else:
+            # Explicit session_id reused against a different app/client: the
+            # old context carries the wrong identity, so drop it.
+            _sessions.pop(effective_sid, None)
+            await _close_session(candidate)
     if sess is None:
-        new_sid = session_id or f"sess_{_time.time_ns():x}"
+        await _enforce_session_cap()
         sess, err = await _new_session(
-            new_sid, ac, cc, page_name, identity, width, height,
-            capture_console, capture_network,
+            effective_sid, ac, cc, page_name, identity, width, height,
+            capture_console, capture_network, owner_run=run_id or None,
         )
         if sess is None:
             return ToolResult(success=False, error=err)
-        _sessions[new_sid] = sess
+        _sessions[effective_sid] = sess
         created_session = True
 
     page = sess.page
@@ -887,9 +960,10 @@ drive_page_tool = ToolDefinition(
     name="drive_page",
     description=(
         "Drive a Modlix page through a sequence of actions (click, type, scroll, "
-        "screenshot, etc.) in a headless browser. Supports persistent sessions "
-        "(pass `session_id` to reuse one across calls — cookies/localStorage/"
-        "scroll state survive). Returns action log + screenshots (base64 in "
+        "screenshot, etc.) in a headless browser. Successive calls in this "
+        "conversation reuse the same tab for the same app, so cookies, "
+        "localStorage and scroll state carry over without you passing anything. "
+        "Returns action log + screenshots (base64 in "
         "result.data) + optional console/network buffers. Use for form fills, "
         "debug-panel flows, multi-step interactions that need state evolution. "
         "Action types: wait, click, dblclick, hover, type, press, clear, scroll, "
@@ -900,7 +974,7 @@ drive_page_tool = ToolDefinition(
     parameters=[
         ToolParameter(name="page_name", type="string", description=_DESC_PAGE_NAME),
         ToolParameter(name="actions", type="array", description="List of action dicts; each has a `type` plus type-specific fields", items={"type": "object"}),
-        ToolParameter(name="session_id", type="string", required=False, description="Reuse a persistent browser session by id (preserves state); omit to create one"),
+        ToolParameter(name="session_id", type="string", required=False, description="Usually omit this. Calls in one conversation already share a tab per app, so state (cookies, localStorage, scroll) carries over by default. Pass an id only to keep SEPARATE parallel tabs, e.g. two end-user identities side by side."),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
         ToolParameter(name="username", type="string", required=False, description="One-shot end-user login (with password)"),
@@ -924,11 +998,12 @@ drive_page_tool = ToolDefinition(
 
 async def _execute_list_browser_sessions(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     reaped = await _reap_idle_sessions()
+    pool = _json.dumps(browser_pool.stats(), indent=2, default=str)
     if not _sessions:
         msg = "No live browser sessions."
         if reaped:
             msg += f" (reaped {len(reaped)} idle: {', '.join(reaped)})"
-        return ToolResult(success=True, summary=msg)
+        return ToolResult(success=True, summary=f"{msg}\n\nBrowser pool (this worker):\n{pool}")
     now = _time.monotonic()
     rows = []
     for sid, s in _sessions.items():
@@ -941,7 +1016,14 @@ async def _execute_list_browser_sessions(params: dict[str, Any], context: dict[s
             "console_msgs": len(s.console_buf),
             "network_log": len(s.network_log),
         })
-    return ToolResult(success=True, summary=f"{len(rows)} live browser session(s):\n{_json.dumps(rows, indent=2, default=str)}")
+    return ToolResult(
+        success=True,
+        summary=(
+            f"{len(rows)} live browser session(s):\n"
+            f"{_json.dumps(rows, indent=2, default=str)}\n\n"
+            f"Browser pool (this worker):\n{pool}"
+        ),
+    )
 
 
 list_browser_sessions_tool = ToolDefinition(
@@ -1015,11 +1097,6 @@ async def _execute_screenshot_external_url(params: dict[str, Any], context: dict
     height = int(params.get("height") or 900)
     wait_ms = int(params.get("wait_ms") or 2500)
 
-    try:
-        from playwright.async_api import async_playwright
-    except ImportError:
-        return ToolResult(success=False, error="playwright not installed; pip install playwright && python -m playwright install chromium")
-
     # Vision-routing rule (same as screenshot_page): a vision-capable model
     # sees the PNG natively via image_base64; only fall back to Gemini-describe
     # for text-only models. Saves real cost on a vision-capable model for what
@@ -1063,14 +1140,17 @@ async def _execute_screenshot_external_url(params: dict[str, Any], context: dict
             session_context["_clone_source_shots"] = cache
 
     try:
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
-            for width in viewport_widths:
-                ctx = await browser.new_context(
-                    viewport={"width": width, "height": height},
-                    ignore_https_errors=True,
-                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-                )
+        for width in viewport_widths:
+            # EXTERNAL profile: untrusted third-party pages, kept off the browser
+            # that renders Modlix pages holding real end-user tokens. Chromium
+            # runs unsandboxed here (Playwright's default), so process-tree
+            # separation is worth the second browser.
+            async with browser_pool.browser_context(
+                EXTERNAL,
+                viewport={"width": width, "height": height},
+                ignore_https_errors=True,
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            ) as ctx:
                 page = await ctx.new_page()
                 try:
                     await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -1135,8 +1215,8 @@ async def _execute_screenshot_external_url(params: dict[str, Any], context: dict
                     else:
                         text_parts.append("(no GOOGLE_API_KEY in settings — set it to get structured descriptions)")
                     text_parts.append("")
-                await ctx.close()
-            await browser.close()
+    except BrowserUnavailable as e:
+        return ToolResult(success=False, error=str(e))
     except Exception as e:  # noqa: BLE001
         return ToolResult(success=False, error=f"render error: {type(e).__name__}: {e}")
 
