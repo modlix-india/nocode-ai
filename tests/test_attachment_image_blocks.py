@@ -52,17 +52,27 @@ def png_b64() -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def _use_deepseek(monkeypatch, model: str, tier: str = "balanced") -> None:
+# The one DeepSeek model that still rejects image parts.
+TEXT_ONLY = "deepseek-v4-pro"
+
+
+def _use_deepseek(
+    monkeypatch, model: str, tier: str = "balanced", fast_model: str = TEXT_ONLY,
+) -> None:
+    """Pin BOTH tiers. Shipped config now names `deepseek-flash` on each of
+    them, so a test that pinned only `balanced` would read a vision-capable
+    model off `fast` and stop testing what it says it tests."""
     monkeypatch.setattr(settings, "APPBUILDER_PROVIDER", "deepseek")
     monkeypatch.setattr(settings, "AGENT_MODEL_TIER", tier)
     monkeypatch.setattr(settings, "DEEPSEEK_MODEL_BALANCED", model)
+    monkeypatch.setattr(settings, "DEEPSEEK_MODEL_FAST", fast_model)
     reset_provider()
 
 
 def test_deepseek_formats_an_attachment_as_a_data_uri_image_part(monkeypatch, png_b64: str) -> None:
     """The shape DeepSeek's vision API documents, verified against the live
     endpoint: an OpenAI-compatible `image_url` part carrying a base64 data URI."""
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp")
+    _use_deepseek(monkeypatch, "deepseek-flash")
     block = get_llm_provider("deepseek").format_image_content(png_b64, "image/png")
 
     assert block["type"] == "image_url"
@@ -78,7 +88,7 @@ def test_attachment_part_matches_the_tool_result_part(monkeypatch, png_b64: str)
     """
     from app.services.llm_provider import _split_tool_result_content
 
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp")
+    _use_deepseek(monkeypatch, "deepseek-flash")
     _, tool_result_parts = _split_tool_result_content([{
         "type": "image",
         "source": {"type": "base64", "media_type": "image/png", "data": png_b64},
@@ -92,14 +102,14 @@ def test_attachment_part_matches_the_tool_result_part(monkeypatch, png_b64: str)
 def test_mime_type_is_carried_into_the_data_uri(monkeypatch, png_b64: str, media_type: str) -> None:
     """DeepSeek accepts these four types; the caller's mime must reach the URI
     rather than being flattened to the image/png default."""
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp")
+    _use_deepseek(monkeypatch, "deepseek-flash")
     block = get_llm_provider("deepseek").format_image_content(png_b64, media_type)
     assert block["image_url"]["url"].startswith(f"data:{media_type};base64,")
 
 
 def test_build_image_blocks_end_to_end(monkeypatch, png_b64: str) -> None:
     """The exact call the chat endpoint makes. This is the line that raised."""
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp")
+    _use_deepseek(monkeypatch, "deepseek-flash")
     blocks = build_image_blocks(
         [ChatAttachment(type="image", name="shot.png", mime_type="image/png", data=png_b64)],
         "deepseek",
@@ -113,7 +123,7 @@ def test_build_image_blocks_end_to_end(monkeypatch, png_b64: str) -> None:
 def test_non_image_attachments_are_skipped(monkeypatch, png_b64: str) -> None:
     """A file attachment alongside an image must not reach format_image_content
     (it would produce an image part out of arbitrary bytes)."""
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp")
+    _use_deepseek(monkeypatch, "deepseek-flash")
     blocks = build_image_blocks(
         [
             ChatAttachment(type="file", name="notes.txt", mime_type="text/plain", data=png_b64),
@@ -125,9 +135,9 @@ def test_non_image_attachments_are_skipped(monkeypatch, png_b64: str) -> None:
     assert blocks is not None and len(blocks) == 1
 
 
-@pytest.mark.parametrize("model", ["deepseek-v4-pro", "deepseek-v4-flash"])
+@pytest.mark.parametrize("model", [TEXT_ONLY])
 def test_text_only_model_is_refused_with_a_clear_reason(monkeypatch, png_b64: str, model: str) -> None:
-    """Text-only V4 chat models reject `image_url` parts with an opaque API
+    """A text-only chat model rejects `image_url` parts with an opaque API
     400. Failing in-process names the model that cannot read the image."""
     _use_deepseek(monkeypatch, model)
     with pytest.raises(NotImplementedError, match=model):
@@ -135,9 +145,9 @@ def test_text_only_model_is_refused_with_a_clear_reason(monkeypatch, png_b64: st
 
 
 def test_refusal_follows_the_tier_the_agent_actually_runs(monkeypatch, png_b64: str) -> None:
-    """With the vision model on `balanced`, an agent pinned to `fast` runs
-    text-only DeepSeek and must not be handed an attachment."""
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp", tier="fast")
+    """With a vision model on `balanced` and a text-only one on `fast`, an
+    agent pinned to `fast` must not be handed an attachment."""
+    _use_deepseek(monkeypatch, "deepseek-flash", tier="fast")
     with pytest.raises(NotImplementedError):
         get_llm_provider("deepseek").format_image_content(png_b64, "image/png")
 
@@ -163,7 +173,7 @@ def test_attached_image_survives_the_message_converter(monkeypatch, png_b64: str
     """
     from app.services.llm_provider import _append_user_list_content
 
-    _use_deepseek(monkeypatch, "deepseek-v4-flash-vision-exp")
+    _use_deepseek(monkeypatch, "deepseek-flash")
     stored = [  # exactly what session.append_user_message builds
         {"type": "text", "text": "What are these?"},
         get_llm_provider("deepseek").format_image_content(png_b64, "image/png"),

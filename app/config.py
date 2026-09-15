@@ -60,11 +60,11 @@ class Settings(BaseSettings):
 
     # Context limits for conversation tracking (reporting/metadata only — the
     # agent loop does NOT trim on this). 48000 dated from the 64K-context
-    # DeepSeek era; 112000 assumed a 128K floor. DeepSeek V4 (pro, flash and
-    # flash-vision-exp alike) documents a 1M window, so report against that.
-    # The output reservation the old value subtracted is noise at this scale
-    # (AGENT_MAX_TOKENS is ~1.6% of the window).
-    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek V4: 1M context window
+    # DeepSeek era; 112000 assumed a 128K floor. Both current DeepSeek models
+    # (`deepseek-flash` and `deepseek-v4-pro`) document a 1M window, so report
+    # against that. The output reservation the old value subtracted is noise at
+    # this scale (AGENT_MAX_TOKENS is ~1.6% of the window).
+    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek: 1M context window
     
     # LLM Provider Selection
     # Options: "anthropic", "openai", or "deepseek"
@@ -86,14 +86,21 @@ class Settings(BaseSettings):
     # DeepSeek Settings
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
-    DEEPSEEK_MODEL_FAST: str = "deepseek-v4-flash"   # DeepSeek V4 Flash (cheap tier)
-    # DeepSeek V4 Flash Vision (experimental) — the only DeepSeek model that
-    # accepts image input, so the AppBuilder can read its own screenshots
+    # `deepseek-flash` is DeepSeek-V4.1-Flash: 1M context, 384K max output, and
+    # it accepts image input, so the AppBuilder reads its own screenshots
     # natively instead of paying for a Gemini text description of each one.
-    # See _DEEPSEEK_VISION_MODELS in app/services/llm_provider.py: swapping this
-    # back to a text-only model (deepseek-v4-pro / -flash) automatically turns
-    # the multimodal tool_result path back off.
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-flash-vision-exp"
+    #
+    # Both tiers name the same model because both legacy ids we used to set here
+    # -- `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` -- are retired
+    # and already served by this one at Flash pricing. Keeping two spellings of
+    # one model only hid that the "cheap" tier had been vision-capable all along.
+    # The remaining separate model, `deepseek-v4-pro`, is dearer and text-only.
+    #
+    # See _DEEPSEEK_VISION_MODELS in app/services/llm_provider.py: pointing the
+    # balanced tier at a text-only model turns the multimodal tool_result path
+    # back off on its own.
+    DEEPSEEK_MODEL_FAST: str = "deepseek-flash"
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-flash"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
@@ -123,6 +130,34 @@ class Settings(BaseSettings):
     # export/import etc.). Must be set per env; if empty the admin routes
     # return 503 — safer than allowing unauthenticated access.
     ADMIN_TOKEN: str = ""
+
+    # ── Headless browser pool (app/services/browser_pool) ──────────────
+    # Chromium is shared per worker process and handed out as contexts, so a
+    # render costs a ~216 MB renderer instead of a ~595 MB browser tree.
+    # These are PER WORKER; gunicorn runs four, so multiply by four when
+    # sizing against host RAM.
+    #
+    # Live contexts allowed at once. Each one with a page open is a renderer
+    # process. Callers past the cap queue rather than spawn.
+    BROWSER_MAX_CONTEXTS: int = 6
+    # How long a caller waits for a free context before failing with a clear
+    # error. Longer than the slowest render so a busy burst queues instead of
+    # erroring, short enough that a deadlock surfaces.
+    BROWSER_ACQUIRE_TIMEOUT_SECONDS: int = 120
+    # Close a browser once it has held zero contexts for this long. Keeps a
+    # burst of renders on one browser without leaving Chromium resident on a
+    # quiet worker. 0 keeps browsers alive for the process lifetime.
+    BROWSER_IDLE_TTL_SECONDS: int = 300
+    # Background sweep cadence: reaps idle drive_page sessions, then closes
+    # idle browsers. Minimum 15s.
+    BROWSER_SWEEP_INTERVAL_SECONDS: int = 60
+    # Idle TTL for a persistent drive_page session (its context + tab). This
+    # is the backstop; the primary release is the agent run ending.
+    BROWSER_SESSION_IDLE_TTL_SECONDS: int = 600
+    # Concurrent drive_page sessions per worker. Deliberately below
+    # BROWSER_MAX_CONTEXTS so long-lived sessions can never starve one-shot
+    # screenshots of a permit. Oldest idle session is closed past the cap.
+    BROWSER_MAX_SESSIONS: int = 3
 
     # ── Lore ───────────────────────────────────────────────────────────
     # Curated, growing knowledge about each application (app/services/lore).
@@ -315,7 +350,7 @@ class Settings(BaseSettings):
     AGENT_HISTORY_KEEP_IMAGES_TURNS: int = 3
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-flash). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and

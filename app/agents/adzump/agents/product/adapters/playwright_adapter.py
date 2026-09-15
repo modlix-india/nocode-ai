@@ -182,7 +182,8 @@ async def _fetch_page(
     responses the browser actually fetched - load-bearing for SPAs whose DOM
     has no `<img>` tags. `image_positions` maps image URL → rendered bounding
     box so `_is_header_visual` can identify framework-site header logos."""
-    from playwright.async_api import async_playwright
+    from app.services import browser_pool
+    from app.services.browser_pool import EXTERNAL
 
     # sem_wait: time blocked on the cap-3 _browser_semaphore. The harness's outer
     # queue_wait_s only sees the harness Semaphore; this inner wait would otherwise
@@ -192,10 +193,13 @@ async def _fetch_page(
         _safe_set(timings, "sem_wait_ms", _ms(_t_entry))
         _safe_set(timings, "cold_start", _claim_cold_start())
         _t_launch = time.monotonic()
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+        # EXTERNAL profile: arbitrary advertiser landing pages.
+        async with browser_pool.browser_context(
+            EXTERNAL,
+            viewport={"width": 1280, "height": 800},
+        ) as _bctx:
+            page = await _bctx.new_page()
             try:
-                page = await browser.new_page(viewport={"width": 1280, "height": 800})
                 await page.set_extra_http_headers({
                     "User-Agent": USER_AGENT,
                     "Accept-Language": "en-US,en;q=0.9",
@@ -404,7 +408,7 @@ async def _fetch_page(
                     except Exception:
                         pass
             finally:
-                await browser.close()
+                await page.close()
 
 
 async def _handle_cloudflare_challenge(page, url: str) -> None:
