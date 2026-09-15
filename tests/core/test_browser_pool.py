@@ -179,6 +179,88 @@ async def test_a_failed_context_returns_its_permit(_reset_pool, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_persistent_contexts_cannot_take_the_whole_pool(_reset_pool, monkeypatch):
+    """The reserve. Without it, enough conversations holding drive_page tabs take
+    every permit and one-shot screenshots block until timeout and then fail."""
+    monkeypatch.setattr(settings, "BROWSER_MAX_CONTEXTS", 5)
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 3)
+    bp._loop = None
+
+    held = [await bp.open_context(bp.INTERNAL, persistent=True) for _ in range(3)]
+    assert bp.stats()["persistent_contexts"] == 3
+
+    with pytest.raises(bp.BrowserUnavailable) as e:
+        await bp.open_context(bp.INTERNAL, persistent=True, timeout=0.05)
+    assert "session slot" in str(e.value)
+
+    # The two reserved permits are still there for one-shot renders.
+    a = await asyncio.wait_for(bp.open_context(bp.INTERNAL), timeout=1)
+    b = await asyncio.wait_for(bp.open_context(bp.INTERNAL), timeout=1)
+    assert bp.stats()["open_contexts"] == 5
+
+    for c in [*held, a, b]:
+        await bp.close_context(c)
+    assert bp.stats()["open_contexts"] == 0
+    assert bp.stats()["persistent_contexts"] == 0
+
+
+@pytest.mark.asyncio
+async def test_closing_a_persistent_context_frees_its_session_slot(_reset_pool, monkeypatch):
+    monkeypatch.setattr(settings, "BROWSER_MAX_CONTEXTS", 4)
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 2)
+    bp._loop = None
+
+    one = await bp.open_context(bp.INTERNAL, persistent=True)
+    two = await bp.open_context(bp.INTERNAL, persistent=True)
+    with pytest.raises(bp.BrowserUnavailable):
+        await bp.open_context(bp.INTERNAL, persistent=True, timeout=0.05)
+
+    await bp.close_context(one)
+    three = await asyncio.wait_for(
+        bp.open_context(bp.INTERNAL, persistent=True, timeout=1), timeout=2)
+    assert three is not None
+    await bp.close_context(two)
+    await bp.close_context(three)
+
+
+@pytest.mark.asyncio
+async def test_a_failed_persistent_context_frees_both_permits(_reset_pool, monkeypatch):
+    monkeypatch.setattr(settings, "BROWSER_MAX_CONTEXTS", 2)
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 1)
+    bp._loop = None
+
+    browser = await bp.get_browser(bp.INTERNAL)
+
+    async def _boom(**kwargs):
+        raise RuntimeError("chromium said no")
+
+    monkeypatch.setattr(browser, "new_context", _boom)
+    with pytest.raises(RuntimeError):
+        await bp.open_context(bp.INTERNAL, persistent=True)
+
+    monkeypatch.undo()
+    bp._loop = None
+    ctx = await asyncio.wait_for(
+        bp.open_context(bp.INTERNAL, persistent=True, timeout=1), timeout=2)
+    assert ctx is not None
+
+
+@pytest.mark.asyncio
+async def test_session_cap_is_clamped_below_the_total(_reset_pool, monkeypatch):
+    """A misconfiguration must not let sessions own every permit."""
+    monkeypatch.setattr(settings, "BROWSER_MAX_CONTEXTS", 3)
+    monkeypatch.setattr(settings, "BROWSER_MAX_SESSIONS", 99)  # nonsense on purpose
+    bp._loop = None
+
+    held = [await bp.open_context(bp.INTERNAL, persistent=True) for _ in range(2)]
+    with pytest.raises(bp.BrowserUnavailable):
+        await bp.open_context(bp.INTERNAL, persistent=True, timeout=0.05)
+    assert bp.stats()["persistent_contexts"] == 2, "clamped to total - 1"
+    for c in held:
+        await bp.close_context(c)
+
+
+@pytest.mark.asyncio
 async def test_close_context_is_safe_twice(_reset_pool):
     ctx = await bp.open_context(bp.INTERNAL)
     await bp.close_context(ctx)
