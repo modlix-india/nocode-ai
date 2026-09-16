@@ -388,6 +388,28 @@ def _build_url(app_code: str, client_code: str, page_name: str,
     return url
 
 
+def _draft_wanted(params: dict[str, Any]) -> bool:
+    """Should this render target the draft surface?
+
+    An explicit `draft` in params wins, so a caller can always force either
+    surface. With nothing said, follow the turn's `draft_mode` -- the same
+    ContextVar every WRITE tool already honours.
+
+    The old default was a hard False, which meant a session drafting all its
+    edits screenshotted the LIVE page and so could not see its own work. The
+    model had to remember to pass `draft: true` on every call to look at what it
+    had just written, and reliably did not.
+    """
+    explicit = params.get("draft")
+    if explicit is not None:
+        return bool(explicit)
+    from app.core.tools.draft_registry import DraftScope
+
+    from . import _draft_surface as ds
+
+    return ds.wanted() is not DraftScope.LIVE
+
+
 async def _draft_host_headers(
     context: dict[str, Any], app_code: str, draft: bool,
 ) -> tuple[dict[str, str] | None, str | None]:
@@ -471,6 +493,7 @@ async def _new_session(
     capture_console: bool, capture_network: bool,
     owner_run: str | None = None,
     persistent: bool = True,
+    draft_headers: dict[str, str] | None = None,
 ) -> tuple[BrowserSession | None, str | None]:
     """Open a context on the shared browser and put one tab in it.
 
@@ -499,6 +522,10 @@ async def _new_session(
                 f"window.localStorage.setItem({_json.dumps(_LS_EXPIRY_KEY)}, {_json.dumps(str(exp))});"
             )
             await ctx.add_init_script(script)
+        # The draft surface is chosen by forwarded host, so it has to be set on
+        # the context before the first navigation -- not per action.
+        if draft_headers:
+            await ctx.set_extra_http_headers(draft_headers)
         page = await ctx.new_page()
     except Exception as e:  # noqa: BLE001
         # Hand the permit back; a half-built session would hold one forever.
@@ -535,7 +562,7 @@ async def _execute_screenshot_page(params: dict[str, Any], context: dict[str, An
         return ToolResult(success=False, error=idl_err)
 
     draft_headers, draft_err = await _draft_host_headers(
-        context, ac, bool(params.get("draft")),
+        context, ac, _draft_wanted(params),
     )
     if draft_err:
         return ToolResult(success=False, error=draft_err)
@@ -701,7 +728,7 @@ screenshot_page_tool = ToolDefinition(
         ToolParameter(name="page_name", type="string", description=_DESC_PAGE_NAME),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
-        ToolParameter(name="draft", type="boolean", required=False, default=False, description="Render the app's DRAFT surface. Set this to look at unpublished changes, including your own: the live page will not show them."),
+        ToolParameter(name="draft", type="boolean", required=False, description="Which surface to render. Omit it: the render then follows the turn's draft mode, so a session that is drafting its edits sees its own unpublished work. Pass false to force the published page, true to force the draft."),
         ToolParameter(name="username", type="string", required=False, description="One-shot end-user login (with password)"),
         ToolParameter(name="password", type="string", required=False, description="Password for the username login"),
         ToolParameter(name="anonymous", type="boolean", required=False, default=False, description="Skip auth — public/login page capture"),
@@ -915,6 +942,15 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
     if idl_err:
         return ToolResult(success=False, error=idl_err)
 
+    # Same rule as screenshot_page: follow the turn's draft mode unless told
+    # otherwise. Without this, drive_page verified the LIVE page while every
+    # write in the same turn went to the draft, so the agent kept "confirming"
+    # a page that did not have its changes.
+    want_draft = _draft_wanted(params)
+    draft_headers, draft_err = await _draft_host_headers(context, ac, want_draft)
+    if draft_err:
+        return ToolResult(success=False, error=draft_err)
+
     url = _build_url(ac, cc, page_name, params.get("path_segments"), params.get("query"))
 
     # Resolve session. The key defaults to the CHAT session plus the
@@ -922,10 +958,15 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
     # send: `session_id` is optional, the model reliably omits it, and every
     # omission used to mint a fresh key and with it a whole new browser. One
     # conversation driving one app now reuses one tab.
+    #
+    # The surface is part of the key: the headers that select draft vs live are
+    # set once on the context, so reusing a live tab for a draft call would
+    # silently render the wrong surface.
     run_id = str(context.get("session_id") or "") if isinstance(context, dict) else ""
+    surface = "draft" if draft_headers else "live"
     effective_sid = (
         session_id
-        or (f"run_{run_id}_{ac}_{cc}" if run_id else f"sess_{_time.time_ns():x}")
+        or (f"run_{run_id}_{ac}_{cc}_{surface}" if run_id else f"sess_{_time.time_ns():x}")
     )
 
     sess: BrowserSession | None = None
@@ -949,6 +990,7 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
         sess, err = await _new_session(
             effective_sid, ac, cc, page_name, identity, width, height,
             capture_console, capture_network, owner_run=run_id or None,
+            draft_headers=draft_headers,
         )
         if sess is None:
             # Every session slot on this worker is held by another live
@@ -959,7 +1001,7 @@ async def _execute_drive_page(params: dict[str, Any], context: dict[str, Any]) -
             sess, err = await _new_session(
                 effective_sid, ac, cc, page_name, identity, width, height,
                 capture_console, capture_network, owner_run=run_id or None,
-                persistent=False,
+                persistent=False, draft_headers=draft_headers,
             )
             if sess is None:
                 return ToolResult(success=False, error=err)
@@ -1070,6 +1112,7 @@ drive_page_tool = ToolDefinition(
         ToolParameter(name="session_id", type="string", required=False, description="Usually omit this. Calls in one conversation already share a tab per app, so state (cookies, localStorage, scroll) carries over by default. Pass an id only to keep SEPARATE parallel tabs, e.g. two end-user identities side by side."),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
+        ToolParameter(name="draft", type="boolean", required=False, description="Which surface to drive. Omit it: the session then follows the turn's draft mode, so you exercise the page carrying your own unpublished edits. Pass false to force the published page, true to force the draft."),
         ToolParameter(name="username", type="string", required=False, description="One-shot end-user login (with password)"),
         ToolParameter(name="password", type="string", required=False, description="Password for the username login"),
         ToolParameter(name="anonymous", type="boolean", required=False, default=False, description="Skip auth"),
