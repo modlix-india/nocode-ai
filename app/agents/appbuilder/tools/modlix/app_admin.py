@@ -262,7 +262,12 @@ async def _upsert_ui_app(
         ui_body["translations"] = tr
 
     client, headers = _client_and_headers(context)
+    # Retry once. The UI write fails transiently often enough that the agent's
+    # own workaround -- calling create_app a second time -- is what healed
+    # `circuitbreakers`. Doing it here costs one request and saves the app.
     ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
+    if not ui_resp.success and "409" not in str(ui_resp.error or ""):
+        ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
     if not ui_resp.success:
         # 409 means a UI doc with this appCode already exists from a prior partial
         # create — fine, the app is now fully present in both layers. Reads will
@@ -280,13 +285,32 @@ async def _upsert_ui_app(
                     f"update_app."
                 ),
             )
+        # HARD FAILURE. This used to return success=True with the warning buried
+        # in the summary, and the model read the first clause ("Created security
+        # app ...") as a win and kept building. Without the UI doc, every
+        # /api/ui/** read for the app 404s or 403s, so the whole rest of the
+        # build is a cascade of "Forbidden access to the application with code
+        # <x>" that looks like a permissions problem and is not. Seen on
+        # `crumbcotwo`: security row 815, no UI doc, one stub page, abandoned.
+        #
+        # Calling create_app again with the SAME app_code is the fix, and it is
+        # safe: step 0 finds the existing security row and skips straight to the
+        # UI write. Say so explicitly, or the model invents a new appCode and
+        # leaves the half-built one behind as an orphan.
         return ToolResult(
-            success=True,
-            summary=(
-                f"Created security app '{app_code}' (id={sec_id}), but the UI "
-                f"override write failed: {ui_resp.error}. The app is "
-                f"PARTIALLY CREATED — listing pages or visiting the app URL "
-                f"will 403 until you retry the UI write via update_app."
+            success=False,
+            error=(
+                f"App '{app_code}' is PARTIALLY CREATED and is not usable. The "
+                f"security row exists (id={sec_id}) but the UI application "
+                f"document could not be written after two attempts: "
+                f"{ui_resp.error}\n"
+                f"Until that document exists, every /api/ui read for this app "
+                f"fails — listing pages, reading the app, or opening its URL "
+                f"will 403/404, which looks like a permissions problem but is a "
+                f"missing document.\n"
+                f"Recovery: call create_app again with app_code='{app_code}'. It "
+                f"reuses the existing security row and retries only the UI write. "
+                f"Do NOT pick a different appCode — that strands this one."
             ),
         )
     next_step = (

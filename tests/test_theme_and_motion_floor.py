@@ -211,3 +211,79 @@ class TestFontFloor:
     def test_garbage_input_does_not_raise(self):
         assert apply_font_floor(None)[0] == {}
         assert apply_font_floor({"ALL": "nonsense"})[1] is None
+
+
+class TestPartialAppCreateFailsLoudly:
+    """`crumbcotwo`: security row 815, no UI doc, one stub page, abandoned.
+
+    The UI write failed and create_app still returned success=True with the
+    warning buried after "Created security app ...". The model read that as a
+    win and kept building against an app whose every /api/ui read 404s.
+    """
+
+    @staticmethod
+    def _ctx():
+        return {"headers": {}, "client_code": "FIN"}
+
+    @staticmethod
+    def _run(post_results):
+        """Drive _upsert_ui_app with a stubbed client."""
+        import asyncio
+
+        from app.agents.appbuilder.tools.modlix import app_admin
+
+        calls = []
+
+        class _Client:
+            async def post(self, url, headers=None, json=None):
+                calls.append(url)
+                return post_results[min(len(calls) - 1, len(post_results) - 1)]
+
+        orig = app_admin._client_and_headers
+        app_admin._client_and_headers = lambda ctx: (_Client(), {})
+        try:
+            # asyncio.run, not get_event_loop(): another test in the suite
+            # closes the default loop, so this passed alone and failed in a
+            # full run.
+            res = asyncio.run(
+                app_admin._upsert_ui_app(
+                    {}, TestPartialAppCreateFailsLoudly._ctx(), "acme", "acme", 815,
+                )
+            )
+        finally:
+            app_admin._client_and_headers = orig
+        return res, calls
+
+    @staticmethod
+    def _resp(success, error=None, data=None):
+        from types import SimpleNamespace
+        return SimpleNamespace(success=success, error=error, data=data or {})
+
+    def test_failed_ui_write_is_not_reported_as_success(self):
+        res, _ = self._run([self._resp(False, "HTTP 404: not found")])
+        assert res.success is False
+        assert "PARTIALLY CREATED" in (res.error or "")
+
+    def test_recovery_names_the_same_app_code(self):
+        # Picking a new appCode strands the security row as an orphan.
+        res, _ = self._run([self._resp(False, "HTTP 500")])
+        assert "app_code='acme'" in (res.error or "")
+        assert "Do NOT pick a different appCode" in (res.error or "")
+
+    def test_ui_write_is_retried_before_giving_up(self):
+        _, calls = self._run([self._resp(False, "HTTP 500")])
+        assert len(calls) == 2, "a transient failure deserves one retry"
+
+    def test_retry_that_succeeds_yields_success(self):
+        res, calls = self._run([
+            self._resp(False, "HTTP 500"),
+            self._resp(True, data={"id": "ui1"}),
+        ])
+        assert res.success is True
+        assert len(calls) == 2
+
+    def test_409_is_success_and_is_not_retried(self):
+        # The doc already exists from a prior partial run: the app is usable.
+        res, calls = self._run([self._resp(False, "HTTP 409 already exists")])
+        assert res.success is True
+        assert len(calls) == 1
