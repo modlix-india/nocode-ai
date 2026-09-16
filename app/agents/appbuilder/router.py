@@ -19,8 +19,10 @@ from app.core.base_router import (
     create_common_routes,
     stream_agent_response,
 )
+from app.core import run_manager
 from app.core.session import BaseSession, AuthContext
 from app.core.tools.draft_registry import DraftScope, to_scope
+from app.services.chat_attachments import store_chat_attachments
 from app.services.session_manager import get_session_manager
 from app.services.security import ALLOWED_AI_APPS
 
@@ -297,6 +299,37 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
             await get_session_manager().update_session_title(
                 session.session_id, title, auth.user_id
             )
+
+    if body.attachments:
+        # Asked before anything is written, because `start_run` below answers a
+        # second concurrent run with a 409 — and by then we would already have
+        # stored these files against turn N+1, which is the turn the run that is
+        # ALREADY going is about to write. `start_run` keeps its own check as
+        # the authoritative one; this only stops the write that precedes it.
+        if await run_manager.is_run_live(session.session_id):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "A run is already in progress for this session",
+                    "session_id": session.session_id,
+                },
+            )
+        try:
+            # `client_code` comes off the verified AuthContext and never off the
+            # body: the files endpoint behind this is permitAll inside the
+            # cluster, so this is the only thing deciding whose storage is
+            # written.
+            await store_chat_attachments(
+                body.attachments,
+                session_id=session.session_id,
+                turn_number=session.next_turn_number(),
+                client_code=auth.client_code,
+                access_app_code=auth.access_app_code,
+                headers=auth.to_headers(),
+            )
+        except Exception:  # noqa: BLE001
+            # Keeping a copy is worth strictly less than answering the user.
+            logger.warning("Could not store chat attachments", exc_info=True)
 
     image_blocks = build_image_blocks(body.attachments, _agent._provider_name) if body.attachments else None
     return await stream_agent_response(_agent, body.message, session, image_blocks, model_override=body.model)

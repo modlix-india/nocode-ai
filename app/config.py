@@ -311,6 +311,22 @@ class Settings(BaseSettings):
     MAX_IMAGE_BASE64_MB: float = 4.5  # Max base64 size before compression (Anthropic limit is 5MB)
     IMAGE_MAX_DIMENSION: int = 1568  # Max pixels on longest side (Anthropic recommendation)
 
+    # Chat attachment persistence.
+    #
+    # How long a file the user attached to a chat is kept. Stamped on the file
+    # itself at upload as `expiresAfterMinutes`, which is what makes the
+    # existing FILES_TTL_CLEANUP worker collect it — that job deletes only files
+    # that were given a lifetime, so a generated image (uploaded with none) is
+    # invisible to it at any age.
+    #
+    # A setting rather than a literal so retention can be changed per
+    # environment. Changing it does NOT re-stamp files already uploaded: their
+    # lifetime was fixed at upload, in files_file_system.
+    CHAT_ATTACHMENT_TTL_MINUTES: int = 90 * 24 * 60  # 129600 — 90 days
+    # Largest single attachment that will be stored. Bigger ones still reach the
+    # model (compression handles that separately); they are just not kept.
+    MAX_ATTACHMENT_MB: float = 25.0
+
     # Gateway URL (nocode-saas API gateway)
     # All agent tool calls route through this gateway
     # Can be overridden by config server: ai.gateway.url

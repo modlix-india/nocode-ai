@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 import os
 import urllib.parse
 from pathlib import Path
@@ -28,6 +29,9 @@ from urllib.parse import urlparse
 import httpx
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.services.chat_attachments import record_generated_asset
+
+logger = logging.getLogger(__name__)
 
 from . import _page_ops as p_ops
 
@@ -670,7 +674,40 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
     local.write_bytes(png)
     rel, absolute, up_err = await _upload_generated_static(local, params.get("page_name") or "global", params.get("folder") or "", filename, ac, cc, context.get("headers") or {})
     if up_err:
+        # The local copy is deliberately KEPT here: the error names it and tells
+        # the agent to upload it by hand, which only works if it still exists.
         return ToolResult(success=False, error=f"{up_err}\n(image saved at {local} — upload manually with upload_static_asset)")
+
+    # Note it against the session, so "what did this chat produce" is answerable
+    # without reading every assistant message. No lifetime, ever: a generated
+    # image gets wired into a page that has to keep working, which is the whole
+    # reason retention is expressed per file rather than swept by age.
+    try:
+        # FILE_PATH is the client-relative path, the way FileDetail.filePath
+        # gives it — that is the handle a delete needs, and it is not the same
+        # string as the URL a browser fetches. `rel` is the URL, so the
+        # "/api/files/static/file/{clientCode}" it is prefixed with comes back off.
+        url_prefix = f"/api/files/static/file/{cc}"
+        stored_path = rel[len(url_prefix):] if rel.startswith(url_prefix) else rel
+        await record_generated_asset(
+            session_id=context.get("session_id") or "",
+            turn_number=int(context.get("turn_number") or 0),
+            name=filename,
+            url=rel,
+            file_path=stored_path,
+            mime_type="image/png",
+            size_bytes=len(png),
+        )
+    except Exception:  # noqa: BLE001 — bookkeeping must not fail a good image
+        logger.warning("Could not record generated image %s", filename, exc_info=True)
+
+    # The local copy is deliberately NOT deleted, though nothing ever collects
+    # /tmp/cfa-generated-images and it grows for the life of the container. It
+    # is still reachable: `input_image_paths` on this very tool takes local
+    # paths for an image-to-image edit, and every tool in image_ops.py reads and
+    # writes local paths, so the usual next step after generating is to feed
+    # this file back in. Removing it here would break that chain silently.
+    # Collecting the directory needs its own retention rule, not a line here.
     return ToolResult(
         success=True,
         summary=(
