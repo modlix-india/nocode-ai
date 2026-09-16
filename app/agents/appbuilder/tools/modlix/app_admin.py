@@ -796,6 +796,8 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._theme_floor import apply_theme_floor
+    variables, floor_notes = apply_theme_floor(variables)
     body = {
         "name": name, "appCode": ac, "clientCode": cc,
         "variables": variables, "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -804,7 +806,10 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_THEMES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created theme '{name}' (id={(r.data or {}).get('id', '?')}).")
+    summary = f"Created theme '{name}' (id={(r.data or {}).get('id', '?')})."
+    if floor_notes:
+        summary += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
+    return ToolResult(success=True, summary=summary)
 
 
 create_theme_tool = ToolDefinition(
@@ -838,6 +843,12 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     if err or doc is None:
         return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
 
+    # Rename only. An update replaces the map wholesale, so seeding defaults here
+    # would resurrect variables that were deliberately dropped -- and would also
+    # make the drop check below compare against something the caller never sent.
+    from ._theme_floor import apply_theme_floor
+    variables, floor_notes = apply_theme_floor(variables, fill_gaps=False)
+
     before = _flatten_vars(doc.get("variables"))
     after = _flatten_vars(variables)
     dropped = sorted(set(before) - set(after))
@@ -861,6 +872,8 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     line = (f"Updated theme '{name}' (v{(save.data or {}).get('version', '?')}, "
             f"variables {len(before)} -> {len(_flatten_vars(saved))}"
             f"{f', {len(dropped)} deleted' if dropped else ''}).")
+    if floor_notes:
+        line += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
     return ToolResult(success=not problems,
                       summary=line if not problems else line + "\n  ! " + "\n  ! ".join(problems),
                       error=None if not problems else "; ".join(problems))
@@ -1088,6 +1101,8 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._motion_floor import with_motion_floor
+    css, motion_added = with_motion_floor(css)
     body = {
         "name": name, "appCode": ac, "clientCode": cc, "styleString": css,
         "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -1096,7 +1111,14 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_STYLES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created style '{name}' (id={(r.data or {}).get('id', '?')}).")
+    summary = f"Created style '{name}' (id={(r.data or {}).get('id', '?')})."
+    if motion_added:
+        summary += (
+            "\n  - Added baseline motion (hover/focus transitions, reduced-motion "
+            "guard, and opt-in _revealUp / _revealFade / _zoomOnHover classes). "
+            "A generated site otherwise has no animation at all."
+        )
+    return ToolResult(success=True, summary=summary)
 
 
 create_style_tool = ToolDefinition(

@@ -120,29 +120,61 @@ Two kinds of variable live here, and they behave differently:
 2. **Arbitrary names of your own** — reachable only through a `Theme.` expression
    (below). Useful, but they style nothing by themselves.
 
-The example here is the second kind.
+**Write the first kind.** A theme built only out of invented names is inert: it
+looks like a theme, reads back fine, and styles nothing. `primaryColor`,
+`textColor`, `backgroundColor` and `fontFamily` are the four the model reaches
+for most and **none of them exist** — nothing in the entire style surface reads
+them. The primary colour is `colorOne`.
+
+The real names, which is what a theme should mostly contain:
+
+| Role | Variable |
+|---|---|
+| Primary / accent | `colorOne` (then `colorTwo` … `colorFifteen`) |
+| Body text | `fontColorOne` |
+| Text on an accent fill | `fontColorTwo` |
+| Surfaces | `backgroundColorOne` … `backgroundColorNine` |
+| Page ground | `bodyBackground` |
+| Hover washes | `backgroundHoverColorOne` … (pair with the `colorX` of the same rank) |
+| Borders | `borderColorOne` … `borderColorSeven` |
+| Fonts | `primaryFont`, `secondaryFont` … |
+| Status | `successColor`, `errorColor`, `warningColor`, `informationColor` |
+| Grid gap | `gapBetween` |
 
 ```json
 {
   "name": "appTheme",
   "variables": {
     "ALL": {
-      "primaryColor": "#3B82F6",
-      "textColor": "#1F2937",
-      "backgroundColor": "#FFFFFF",
-      "fontFamily": "'Inter', sans-serif",
-      "fontSize": "16px",
-      "borderRadius": "8px",
-      "spacing": "16px",
-      "shadowMd": "0 4px 6px rgba(0,0,0,0.1)"
-    },
-    "MOBILE_POTRAIT_SCREEN_ONLY": {
-      "fontSize": "14px",
-      "spacing": "12px"
+      "colorOne": "#3B82F6",
+      "colorTwo": "#1E40AF",
+      "fontColorOne": "#1F2937",
+      "backgroundColorOne": "#FFFFFF",
+      "bodyBackground": "#FFFFFF",
+      "backgroundHoverColorOne": "#A1C4FA",
+      "primaryFont": "'Inter', sans-serif",
+      "gapBetween": "0px"
     }
   }
 }
 ```
+
+**Always set the hover washes when you set the colours.** Unset,
+`backgroundHoverColorOne` resolves to its stock `#A8DEC9` — a mint green — and
+that is what paints the open dropdown's highlighted row and ButtonBar's primary
+hover. On any palette that is not green it looks like a bug, because it is one.
+A good value is the matching `colorX` mixed about 45% toward white, which is how
+the stock values themselves were derived. `create_theme` fills these in if you
+omit them, but choosing them deliberately is better.
+
+**Always set `gapBetween`.** The platform default is `5px` on *every* grid in the
+app. Full-bleed sections stacked in a page root then show a 5px stripe of the page
+background between them — on a dark site that reads as white seams across the
+whole page. Set `0px` at the theme and give the grids that genuinely want space
+(form rows, card decks) an explicit per-instance gap.
+
+Arbitrary names of your own are still allowed, but they are the second kind: only
+a `Theme.` expression reads them, and they style nothing on their own.
 
 ### Using Theme Variables
 
