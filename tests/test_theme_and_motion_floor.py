@@ -12,6 +12,13 @@ from app.agents.appbuilder.tools.modlix._motion_floor import (
     needs_motion,
     with_motion_floor,
 )
+from app.agents.appbuilder.tools.modlix._font_floor import (
+    FONT_SLOTS,
+    PAIRINGS,
+    apply_font_floor,
+    font_packs_for,
+    pairing_from_families,
+)
 from app.agents.appbuilder.tools.modlix._theme_floor import (
     APP_THEME_VARIABLES,
     _mix_toward_white,
@@ -149,3 +156,58 @@ class TestMotionFloor:
 
     def test_needs_motion_on_empty_input(self):
         assert needs_motion("") and needs_motion(None)
+
+
+class TestFontFloor:
+    """Every generated site rendered in the stock face: no pack, no tokens."""
+
+    def test_silent_theme_gets_a_real_pairing_and_a_pack(self):
+        v, packs, notes = apply_font_floor({"ALL": {"colorOne": "#C75B39"}})
+        assert v["ALL"]["bodyFont"].startswith("16px/24px")
+        assert packs, "a font nobody downloads is not a font"
+        assert "fonts.googleapis.com/css2" in next(iter(packs.values()))["code"]
+        assert notes
+
+    def test_every_token_carries_a_size_because_font_is_a_shorthand(self):
+        # A family-only value is invalid CSS shorthand and the whole
+        # declaration is dropped -- the quiet way a theme stays on the default.
+        v, _, _ = apply_font_floor({"ALL": {}})
+        for slot in ("bodyFont", *FONT_SLOTS):
+            assert "/" in v["ALL"][slot].split()[0], f"{slot} has no size"
+
+    def test_headings_and_body_use_different_faces(self):
+        v, _, _ = apply_font_floor({"ALL": {}}, pairing=PAIRINGS["editorial"])
+        assert "Fraunces" in v["ALL"]["primaryFont"]
+        # Small text stays on the body face or every button becomes a serif.
+        assert "Inter" in v["ALL"]["quinaryFont"]
+
+    def test_explicit_fonts_are_never_overwritten(self):
+        mine = "18px/28px 'Georgia', serif"
+        v, packs, _ = apply_font_floor({"ALL": {"primaryFont": mine}})
+        assert v["ALL"]["primaryFont"] == mine
+        # We cannot know which pack they meant, so we must not guess one.
+        assert packs is None
+
+    def test_family_only_value_is_flagged(self):
+        _, _, notes = apply_font_floor({"ALL": {"primaryFont": "Inter, sans-serif"}})
+        assert any("SHORTHAND" in n for n in notes)
+
+    def test_pack_code_is_html_the_runtime_can_inject(self):
+        # processFontPacks trims `code`; a non-string crashes it.
+        packs = font_packs_for(PAIRINGS["modern"])
+        entry = next(iter(packs.values()))
+        assert isinstance(entry["code"], str) and entry["code"].startswith("<link")
+        assert isinstance(entry["name"], str) and entry["name"]
+
+    def test_single_family_pairing_requests_one_family(self):
+        code = next(iter(font_packs_for(PAIRINGS["neutral"]).values()))["code"]
+        assert code.count("family=") == 1, "Inter+Inter should not be requested twice"
+
+    def test_custom_families_are_url_encoded(self):
+        packs = font_packs_for(pairing_from_families("Space Grotesk", "Source Sans 3"))
+        code = next(iter(packs.values()))["code"]
+        assert "family=Space+Grotesk" in code and "family=Source+Sans+3" in code
+
+    def test_garbage_input_does_not_raise(self):
+        assert apply_font_floor(None)[0] == {}
+        assert apply_font_floor({"ALL": "nonsense"})[1] is None

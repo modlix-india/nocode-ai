@@ -137,7 +137,7 @@ The real names, which is what a theme should mostly contain:
 | Page ground | `bodyBackground` |
 | Hover washes | `backgroundHoverColorOne` … (pair with the `colorX` of the same rank) |
 | Borders | `borderColorOne` … `borderColorSeven` |
-| Fonts | `primaryFont`, `secondaryFont` … |
+| Fonts | `bodyFont`, then `primaryFont` … `senaryFont` (six slots) |
 | Status | `successColor`, `errorColor`, `warningColor`, `informationColor` |
 | Grid gap | `gapBetween` |
 
@@ -152,7 +152,8 @@ The real names, which is what a theme should mostly contain:
       "backgroundColorOne": "#FFFFFF",
       "bodyBackground": "#FFFFFF",
       "backgroundHoverColorOne": "#A1C4FA",
-      "primaryFont": "'Inter', sans-serif",
+      "bodyFont": "16px/24px 'Inter', sans-serif",
+      "primaryFont": "40px/48px 'Space Grotesk', sans-serif",
       "gapBetween": "0px"
     }
   }
@@ -172,6 +173,44 @@ app. Full-bleed sections stacked in a page root then show a 5px stripe of the pa
 background between them — on a dark site that reads as white seams across the
 whole page. Set `0px` at the theme and give the grids that genuinely want space
 (form rows, card decks) an explicit per-instance gap.
+
+**Always choose fonts. A site on the stock face looks like a template**, however
+good the rest of it is, and until now every generated site shipped that way.
+
+Two things have to line up, and doing one without the other achieves nothing:
+
+1. **The pack** — `app.properties.fontPacks`, a UUID-keyed map of `{name, code}`
+   where `code` is literal HTML injected into the page head. This is what
+   *downloads* the font. `create_app` seeds it empty, so unless something fills
+   it no webfont is ever fetched.
+2. **The tokens** — `bodyFont` and `primaryFont` … `senaryFont` on the theme.
+   These are the CSS `font` **SHORTHAND**, so they need a size:
+   `"16px/24px 'Inter', sans-serif"`. A family-only value such as
+   `"'Inter', sans-serif"` is invalid and the whole declaration is discarded —
+   the quiet way a theme names a font and still renders in the default one.
+
+The easy path is to let `create_theme` do both: pass `font_pairing` and it picks
+the families, writes all seven tokens and registers the pack in one call.
+
+| `font_pairing` | Faces | Suits |
+|---|---|---|
+| `editorial` | Fraunces + Inter | Food, craft, retail |
+| `modern` | Space Grotesk + Inter | Software, engineering |
+| `classic` | Playfair Display + Source Sans 3 | Law, finance, luxury |
+| `friendly` | Poppins + Inter | Consumer, education |
+| `neutral` | Inter throughout | No brand voice yet |
+
+For a family outside that list pass `font_display` (and optionally `font_body`)
+with any Google Fonts family name. Omit all three and `editorial` is applied,
+with a note saying so.
+
+**Six slots exist so text can differ.** `primaryFont` and `secondaryFont` take
+the display face for headings; the rest stay on the body face so buttons, labels
+and captions do not inherit a display serif. Do not put one family in all seven.
+
+If you write the tokens by hand, register the pack yourself in the same turn —
+`create_theme` only registers one when it chose the fonts, because it cannot
+know which family you meant.
 
 Arbitrary names of your own are still allowed, but they are the second kind: only
 a `Theme.` expression reads them, and they style nothing on their own.

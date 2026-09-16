@@ -454,6 +454,64 @@ async def _lookup_ui_app_by_code(client: Any, headers: dict, app_code: str) -> t
     return match, None
 
 
+async def _register_font_packs(
+    client: Any, headers: dict, params: dict[str, Any], context: dict[str, Any],
+    app_code: str, packs: dict[str, dict[str, str]],
+) -> str:
+    """Merge font packs into `app.properties.fontPacks`. Returns a note.
+
+    `properties.fontPacks` is what actually loads the webfont: its `code` is
+    literal HTML injected into the page head. Theme tokens naming a family that
+    no pack loads leave the page on a fallback face, which looks exactly like
+    the fonts having done nothing.
+
+    Reads the doc BY ID. The list route strips `properties`, so merging onto a
+    list row would PUT the app back with every property erased.
+
+    Never raises: the theme already exists, and losing the pack is a degraded
+    site, not a failed build.
+    """
+    try:
+        row, err = await _lookup_ui_app_by_code(client, headers, app_code)
+        if err or not row or not row.get("id"):
+            return (
+                f"Could not register the font pack ({err or 'no UI doc for ' + app_code}). "
+                f"The theme names fonts nothing downloads — add them to "
+                f"app.properties.fontPacks via update_app."
+            )
+        app_id = row["id"]
+        full = await client.get(f"{_APPS_API}/{app_id}", headers=headers)
+        if not full.success or not isinstance(full.data, dict):
+            return f"Could not read the app doc to register the font pack ({full.error})."
+        body = full.data
+        props = body.get("properties")
+        if not isinstance(props, dict):
+            props = {}
+            body["properties"] = props
+        existing = props.get("fontPacks")
+        if not isinstance(existing, dict):
+            existing = {}
+        # Additive: a pack someone added by hand outranks anything seeded here.
+        already = {
+            p.get("code") for p in existing.values() if isinstance(p, dict)
+        }
+        added = {k: v for k, v in packs.items() if v.get("code") not in already}
+        if not added:
+            return "Font pack was already registered on the app."
+        existing.update(added)
+        props["fontPacks"] = existing
+        props.setdefault("iconPacks", {})
+        body["properties"] = props
+        body["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
+        put = await client.put(f"{_APPS_API}/{app_id}", headers=headers, json=body)
+        if not put.success:
+            return f"Theme saved, but registering the font pack failed ({put.error})."
+        names = ", ".join(v.get("name", "?") for v in added.values())
+        return f"Registered the font pack ({names}) on app.properties.fontPacks."
+    except Exception as e:  # noqa: BLE001 - a degraded site beats a failed build
+        return f"Theme saved, but registering the font pack raised {type(e).__name__}: {e}"
+
+
 async def _create_ui_doc_with_page_ref(
     client: Any, headers: dict, params: dict[str, Any], context: dict[str, Any],
     app_code: str, slot: str, page_name: str, message: str,
@@ -796,8 +854,21 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._font_floor import PAIRINGS, apply_font_floor, pairing_from_families
     from ._theme_floor import apply_theme_floor
     variables, floor_notes = apply_theme_floor(variables)
+
+    # Typography, which the agent had never once set: every generated site
+    # rendered in the stock face. The pairing can be named outright
+    # (`font_pairing="modern"`) or spelled out (`font_display=` / `font_body=`).
+    chosen = None
+    if (fd := (params.get("font_display") or "").strip()):
+        chosen = pairing_from_families(fd, params.get("font_body"))
+    elif (fp := (params.get("font_pairing") or "").strip().lower()) in PAIRINGS:
+        chosen = PAIRINGS[fp]
+    variables, font_packs, font_notes = apply_font_floor(variables, pairing=chosen)
+    floor_notes.extend(font_notes)
+
     body = {
         "name": name, "appCode": ac, "clientCode": cc,
         "variables": variables, "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -806,6 +877,13 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_THEMES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
+
+    # The font only loads once the pack is on the app. Failing to register it is
+    # not worth failing the theme over — say so and let the agent retry.
+    if font_packs:
+        reg_note = await _register_font_packs(client, headers, params, context, ac, font_packs)
+        floor_notes.append(reg_note)
+
     summary = f"Created theme '{name}' (id={(r.data or {}).get('id', '?')})."
     if floor_notes:
         summary += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
@@ -820,6 +898,9 @@ create_theme_tool = ToolDefinition(
         ToolParameter(name="variables", type="object", description="Per-breakpoint variables: {ALL: {colorOne: '#50BC9B'}, MOBILE_POTRAIT_SCREEN_ONLY: {messageContainerWidth: '100vw'}, ...}"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
+        ToolParameter(name="font_pairing", type="string", required=False, description="Typography for the site, picked to suit the business: 'editorial' (Fraunces + Inter — food, craft, retail), 'modern' (Space Grotesk + Inter — software, engineering), 'classic' (Playfair Display + Source Sans 3 — law, finance, luxury), 'friendly' (Poppins + Inter — consumer, education), 'neutral' (Inter throughout). Picks the Google fonts, writes the font tokens AND registers the pack that loads them. Omit and 'editorial' is used, because the stock face makes every site look like a template."),
+        ToolParameter(name="font_display", type="string", required=False, description="Any Google font family for headings, e.g. 'Fraunces'. Overrides font_pairing. Use when the brand needs a specific face."),
+        ToolParameter(name="font_body", type="string", required=False, description="Google font family for body text. Defaults to font_display when omitted."),
         ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_theme,
