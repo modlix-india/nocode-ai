@@ -180,6 +180,55 @@ class TurnUpsertKeepsTheInstructionCurrentTests(unittest.TestCase):
         self.assertIn("NULLIF(VALUES(USER_INSTRUCTION), '')", update_clause[1])
 
 
+class CancelledTurnKeepsItsProgressTests(unittest.TestCase):
+    """Found live (2026-09-16, session HARSH4_3c9f40c0): a cancelled turn was
+    saved with no tool calls and no model, after eight successful LLM calls.
+
+    BaseAgent's cancellation path calls
+    ``persist_turn(user, "[Stopped by user]", None)`` — no tool calls, no
+    model, and a token estimate covering only the instruction and the stop
+    marker. Every column was assigned unconditionally, so those NULLs landed
+    on top of everything ``persist_turn_incremental`` had written during the
+    tool loop. The one case incremental saves exist for was the one case that
+    erased them.
+
+    Source-level for the same reason as the class above: the statement only
+    runs against a live MySQL. The behaviour it encodes was checked against
+    MySQL 8.0 by hand.
+    """
+
+    def setUp(self):
+        import inspect
+
+        from app.services.context_manager import ContextManager
+
+        source = inspect.getsource(ContextManager.upsert_turn)
+        self.update_clause = source.split("ON DUPLICATE KEY UPDATE", 1)[1]
+        # Comments carry the same words as the SQL, and would pass every
+        # assertion below on their own.
+        self.sql = "\n".join(
+            line
+            for line in self.update_clause.splitlines()
+            if not line.lstrip().startswith("--")
+        )
+
+    def test_tool_calls_survive_a_write_that_omits_them(self):
+        self.assertIn("TOOL_CALLS_JSON = COALESCE(", self.sql)
+
+    def test_model_survives_a_write_that_omits_it(self):
+        self.assertIn("MODEL = COALESCE(VALUES(MODEL), MODEL)", self.sql)
+
+    def test_token_estimate_never_shrinks(self):
+        self.assertIn("INPUT_TOKENS_USED = GREATEST(", self.sql)
+
+    def test_the_summary_can_still_be_replaced(self):
+        # The verdict is the one field a later write must be able to overwrite:
+        # "[Stopped by user]" landing on a half-written answer is the point.
+        # Guarded only against being blanked.
+        self.assertIn("ASSISTANT_SUMMARY = COALESCE(", self.sql)
+        self.assertIn("NULLIF(VALUES(ASSISTANT_SUMMARY), '')", self.sql)
+
+
 # ── The loop ────────────────────────────────────────────────────────
 
 

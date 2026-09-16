@@ -1426,10 +1426,14 @@ Files (`/api/files`):
 - Uploads: `upload_static_asset`, `upload_client_file`, `upload_user_file`.
 - Transforms: `resize_image_to_path`, `image_to_base64`.
 
-Image gen: `generate_image(prompt, mode="generate"|"edit", reference_image=...)` via
-Gemini 2.5 Flash Image (Nano Banana). Text-to-image OR image-to-image edit. AVOID
-this when cloning a real site — use `extract_site_assets` to harvest the originals
-and bind those URLs into Image components.
+Image gen: `generate_image(prompt, filename, aspect_ratio=..., input_image_paths=[...])`.
+Text-to-image, or image-to-image edit when `input_image_paths` is set. Renders on
+MiniMax image-01 by default; pass `image_provider="gemini"` when the image must
+contain READABLE TEXT (a poster, a logo lockup), because Gemini renders lettering
+more cleanly. Multi-image edits go to Gemini automatically — image-01 takes only one
+reference image. AVOID this whole tool when cloning a real site: use
+`extract_site_assets` to harvest the originals and bind those URLs into Image
+components.
 
 Source-asset harvest: `extract_site_assets(url=..., max_assets=50)` drives Playwright
 across an external page, collects every `<img>`, inline `<svg>`, and CSS
