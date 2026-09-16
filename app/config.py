@@ -390,6 +390,36 @@ class Settings(BaseSettings):
     LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
     # balanced tier as AppBuilder, so the two agents share one model and one set of
     # provider quirks to reason about rather than two.
+    # Which backend `generate_image` renders with. "minimax" is image-01 on
+    # MINIMAX_BASE_URL; "gemini" is gemini-2.5-flash-image / Nano Banana.
+    #
+    # MiniMax is the default because of aspect ratio, which is most of what
+    # this tool is asked for. Benched 2026-09-16 over 5 prompts: Gemini has no
+    # aspect field, so the ratio is a sentence appended to the prompt and the
+    # model ignores it — every request came back 1024x1024, including the 16:9
+    # and 4:3 ones (3/5 wrong). image-01 takes aspect_ratio as a real field and
+    # was exact 5/5. Gemini is ~2x faster (median 9.1s vs 18.5s) and renders
+    # cleaner lettering, so pass image_provider="gemini" for a typographic
+    # image; it also reproduced a real brand's logo on a prompt asking for an
+    # unbranded product, which is why it is no longer the default for the
+    # product shots this tool generates for customers.
+    #
+    # Gemini stays the fallback on two counts, both in _execute_generate_image:
+    #   - capability: image-01's only image input is `subject_reference`, ONE
+    #     image typed `character`, for carrying a person's likeness across
+    #     scenes. A real multi-image edit can only be Gemini.
+    #   - availability: a failed MiniMax render retries on Gemini.
+    # Both are reported in the tool summary rather than applied silently,
+    # because the fallback render will NOT honour the aspect ratio.
+    #
+    # Note MiniMax's *chat* models cannot do this at all: ask MiniMax-M3 for an
+    # image and it prints an image_generation call as text and then narrates
+    # "the image has been generated" with nothing attached. Image gen is a
+    # separate model on a separate endpoint, never a chat completion.
+    IMAGE_PROVIDER: str = "minimax"  # minimax | gemini
+    IMAGE_EDIT_FALLBACK_TO_GEMINI: bool = True   # >1 input image → Gemini
+    IMAGE_ERROR_FALLBACK_TO_GEMINI: bool = True  # MiniMax render failed → Gemini
+    MINIMAX_IMAGE_MODEL: str = "image-01"
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     # Where nocode-ui's generated catalog lives, for a dev box. Accepts the
     # client dir, its dist/ dir, or the JSON file. Empty auto-resolves to a

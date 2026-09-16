@@ -4,7 +4,7 @@ Consolidates the non-browser visual surface from modlix-mcp:
   preview.py    → 2 tools (get_preview_url, validate_page)
   files.py      → 9 tools (build_*_url, upload_*, image_to_base64,
                             generate/download secured keys, resize)
-  image_gen.py  → 1 tool  (generate_image via Gemini Nano Banana)
+  image_gen.py  → 1 tool  (generate_image; Gemini Nano Banana or MiniMax image-01)
 
 The browser-driven tools (screenshot_page, drive_page, list/close sessions)
 live in visuals_browser.py because Playwright is heavyweight.
@@ -539,7 +539,7 @@ download_secured_file_by_key_tool = ToolDefinition(
 
 
 # ═════════════════════════════════════════════════════════════════════════
-#  IMAGE GEN (1 tool — Gemini Nano Banana)
+#  IMAGE GEN (1 tool — Gemini Nano Banana / MiniMax image-01)
 # ═════════════════════════════════════════════════════════════════════════
 
 
@@ -598,6 +598,104 @@ async def _generate_via_gemini(
     return None, f"Gemini returned no image. Response: {str(data)[:300]}"
 
 
+# ── MiniMax image-01 ──────────────────────────────────────────────────────
+# A different model on a different path from the chat API: image gen is NOT a
+# chat completion here. Asking MiniMax-M3 for an image gets you a fenced
+# `image_generation` call printed inside `content` plus the sentence "the image
+# has been generated" and no image, so this must never be routed through
+# llm_provider.
+#
+# Two contract differences from Gemini that this function absorbs, so the
+# caller sees one shape:
+#   - aspect ratio is a real request field, not a sentence appended to the
+#     prompt, so it is honoured rather than hinted.
+#   - the bytes come back JPEG. `generate_image` promises a PNG at the filename
+#     the agent chose, and image_ops.py downstream assumes that, so we
+#     transcode rather than hand back a .png that is secretly a JPEG.
+
+_MINIMAX_IMAGE_PATH = "/image_generation"
+
+
+def _to_png(raw: bytes) -> tuple[bytes | None, str]:
+    """Transcode arbitrary image bytes to PNG. Already-PNG passes through."""
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return raw, ""
+    try:
+        import io
+
+        from PIL import Image
+
+        with Image.open(io.BytesIO(raw)) as im:
+            buf = io.BytesIO()
+            im.convert("RGBA" if im.mode in ("RGBA", "LA", "P") else "RGB").save(buf, format="PNG")
+        return buf.getvalue(), ""
+    except Exception as e:  # noqa: BLE001
+        return None, f"could not transcode generated image to PNG: {type(e).__name__}: {e}"
+
+
+async def _generate_via_minimax(
+    api_key: str, prompt: str, model: str, aspect: str,
+    input_images: list[tuple[str, bytes]] | None = None,
+) -> tuple[bytes | None, str]:
+    """Call MiniMax image_generation; return (png_bytes, error)."""
+    from app.config import settings
+
+    base = (getattr(settings, "MINIMAX_BASE_URL", "") or "").rstrip("/")
+    if not base:
+        return None, "MINIMAX_BASE_URL is empty"
+    body: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "aspect_ratio": aspect,
+        "n": 1,
+        "response_format": "base64",
+    }
+    if input_images:
+        # image-01 takes exactly ONE reference, and only as a `character`
+        # subject to carry a likeness across scenes. It is not a general edit
+        # slot; the caller is responsible for deciding this is acceptable.
+        mime, raw = input_images[0]
+        b64 = base64.b64encode(raw).decode("ascii")
+        body["subject_reference"] = [{"type": "character", "image_file": f"data:{mime};base64,{b64}"}]
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    try:
+        async with httpx.AsyncClient(timeout=300.0 if input_images else 120.0) as client:
+            resp = await client.post(base + _MINIMAX_IMAGE_PATH, json=body, headers=headers)
+    except httpx.HTTPError as e:
+        return None, f"{type(e).__name__}: {e}"
+    if resp.status_code >= 400:
+        return None, f"MiniMax HTTP {resp.status_code}: {resp.text[:600]}"
+    try:
+        data = resp.json()
+    except ValueError:
+        return None, f"MiniMax response not JSON: {resp.text[:200]}"
+    # MiniMax answers 200 with the failure in the body, so status alone is not
+    # a success check.
+    base_resp = data.get("base_resp") or {}
+    if base_resp.get("status_code"):
+        return None, f"MiniMax image error {base_resp.get('status_code')}: {base_resp.get('status_msg', '')}"
+    d = data.get("data") or {}
+    raw: bytes | None = None
+    b64s = d.get("image_base64") or []
+    urls = d.get("image_urls") or []
+    if b64s:
+        try:
+            raw = base64.b64decode(b64s[0])
+        except Exception as e:  # noqa: BLE001
+            return None, f"base64 decode failed: {e}"
+    elif urls:
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                r = await client.get(urls[0])
+            r.raise_for_status()
+            raw = r.content
+        except Exception as e:  # noqa: BLE001
+            return None, f"could not fetch generated image: {type(e).__name__}: {e}"
+    if not raw:
+        return None, f"MiniMax returned no image. Response: {str(data)[:300]}"
+    return _to_png(raw)
+
+
 async def _upload_generated_static(
     local_path: Path, page_name: str, folder: str, filename: str,
     app_code: str, client_code: str, headers: dict[str, str],
@@ -627,6 +725,85 @@ async def _upload_generated_static(
     return rel, absolute, ""
 
 
+_IMAGE_PROVIDERS = ("minimax", "gemini")
+
+
+def _build_prompt(provider: str, prompt: str, style_notes: str, profile: dict[str, Any],
+                  has_inputs: bool) -> str:
+    """Per-provider prompt. The aspect hint is Gemini-only and mostly futile.
+
+    Gemini's API has no aspect field, so the only way to ask is a sentence —
+    which it largely ignores (benched: 1024x1024 back for every ratio). It is
+    kept because it costs nothing and occasionally nudges composition. image-01
+    takes aspect_ratio as a real field, so repeating it in the prompt there
+    would just spend tokens restating what was already specified.
+    """
+    out = prompt
+    if style_notes:
+        out += f"\n\nStyle notes: {style_notes}"
+    if provider == "gemini" and not has_inputs:
+        out += f"\n\nAspect: {profile['label']} (target {profile['size'][0]}x{profile['size'][1]} px)."
+    return out
+
+
+async def _render_once(
+    provider: str, prompt: str, style_notes: str, aspect: str, profile: dict[str, Any],
+    input_images: list[tuple[str, bytes]] | None, model_override: str,
+) -> tuple[bytes | None, str, str]:
+    """One render attempt. Returns (png, model_used, error)."""
+    from app.config import settings
+
+    full_prompt = _build_prompt(provider, prompt, style_notes, profile, bool(input_images))
+    if provider == "minimax":
+        key = getattr(settings, "MINIMAX_API_KEY", "") or ""
+        model = model_override or (getattr(settings, "MINIMAX_IMAGE_MODEL", "") or "image-01")
+        if not key:
+            return None, model, "MINIMAX_API_KEY not set in nocode-ai settings. Set it and reload."
+        png, err = await _generate_via_minimax(key, full_prompt, model, aspect, input_images=input_images)
+    else:
+        key = getattr(settings, "GOOGLE_API_KEY", "") or ""
+        model = model_override or _DEFAULT_IMAGE_MODEL
+        if not key:
+            return None, model, "GOOGLE_API_KEY not set in nocode-ai settings. Set it and reload."
+        png, err = await _generate_via_gemini(key, full_prompt, model, input_images=input_images)
+    return png, model, err
+
+
+async def _render(
+    provider: str, prompt: str, style_notes: str, aspect: str, profile: dict[str, Any],
+    input_images: list[tuple[str, bytes]] | None, model_override: str,
+) -> tuple[bytes | None, str, str, str, str]:
+    """Render, falling back to Gemini if MiniMax fails.
+
+    Returns (png, provider_used, model_used, error, note).
+
+    A `model_override` is deliberately NOT carried across the fallback: it names
+    a model on the provider the caller picked, and passing e.g. "image-01" to
+    Gemini would turn an availability blip into a confusing 400.
+
+    The note is not cosmetic. The fallback render comes from the backend that
+    ignores aspect_ratio, so a 16:9 request that falls back returns a square
+    image. Saying so is the difference between the caller cropping it and the
+    caller wiring a square into a banner slot.
+    """
+    from app.config import settings
+
+    png, model, err = await _render_once(
+        provider, prompt, style_notes, aspect, profile, input_images, model_override)
+    if not err or provider != "minimax":
+        return png, provider, model, err, ""
+    if not getattr(settings, "IMAGE_ERROR_FALLBACK_TO_GEMINI", True):
+        return None, provider, model, err, ""
+    logger.warning("MiniMax image render failed, retrying on Gemini: %s", err)
+    png2, model2, err2 = await _render_once(
+        "gemini", prompt, style_notes, aspect, profile, input_images, "")
+    if err2:
+        # Report both, or the operator debugs the wrong provider.
+        return None, provider, model, f"minimax: {err}\ngemini fallback also failed: {err2}", ""
+    note = f"minimax failed ({err[:120]}), rendered on gemini instead — aspect {aspect} may not be honoured"
+    return png2, "gemini", model2, "", note
+
+
 async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     prompt = (params.get("prompt") or "").strip()
     filename = (params.get("filename") or "").strip()
@@ -636,25 +813,14 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
     if aspect not in _ASPECT_PROFILES:
         return ToolResult(success=False, error=f"aspect_ratio must be one of {list(_ASPECT_PROFILES)}, got {aspect!r}")
     from app.config import settings
-    api_key = getattr(settings, "GOOGLE_API_KEY", "") or ""
-    if not api_key:
-        return ToolResult(success=False, error="GOOGLE_API_KEY not set in nocode-ai settings. Set it and reload.")
     ac, err_result = _resolve_app_code(params, context)
     if err_result:
         return err_result
     cc = _resolve_client_code(params, context)
     profile = _ASPECT_PROFILES[aspect]
-    model = (params.get("model") or _DEFAULT_IMAGE_MODEL).strip()
     style_notes = (params.get("style_notes") or "").strip()
 
-    # Build prompt — aspect hint only on text-to-image (image-edit has its own composition).
-    full_prompt = prompt
-    if style_notes:
-        full_prompt += f"\n\nStyle notes: {style_notes}"
     input_image_paths = params.get("input_image_paths") or None
-    if not input_image_paths:
-        full_prompt += f"\n\nAspect: {profile['label']} (target {profile['size'][0]}x{profile['size'][1]} px)."
-
     input_images: list[tuple[str, bytes]] | None = None
     if input_image_paths:
         input_images = []
@@ -664,10 +830,35 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
                 return ToolResult(success=False, error=f"input_image_path not found: {ipath}")
             input_images.append((_mime_for_path(ipath), ipath.read_bytes()))
 
-    png, gen_err = await _generate_via_gemini(api_key, full_prompt, model, input_images=input_images)
+    # Pick the backend. The setting is only a preference: MiniMax's image-01
+    # has one reference-image slot and it means "keep this person's likeness",
+    # so a real multi-image edit has to go to Gemini or not happen at all.
+    # Silently rendering a 3-image composite off image 1 alone would look like
+    # success and be wrong, which is the one outcome worth code to avoid.
+    provider = (params.get("image_provider") or getattr(settings, "IMAGE_PROVIDER", "minimax") or "minimax").strip().lower()
+    if provider not in _IMAGE_PROVIDERS:
+        return ToolResult(success=False, error=f"image_provider must be one of {sorted(_IMAGE_PROVIDERS)}, got {provider!r}")
+    routed_note = ""
+    if provider == "minimax" and input_images and len(input_images) > 1:
+        if getattr(settings, "IMAGE_EDIT_FALLBACK_TO_GEMINI", True):
+            provider, routed_note = "gemini", (
+                f"routed to gemini: {len(input_images)} input images, and image-01 accepts one"
+            )
+        else:
+            return ToolResult(success=False, error=(
+                f"image_provider=minimax supports a single reference image, got {len(input_images)}. "
+                "Use gemini for multi-image edits, or set IMAGE_EDIT_FALLBACK_TO_GEMINI=true."
+            ))
+
+    png, provider, model, gen_err, retry_note = await _render(
+        provider, prompt, style_notes, aspect, profile, input_images,
+        (params.get("model") or "").strip(),
+    )
     if gen_err:
         return ToolResult(success=False, error=gen_err)
     assert png is not None
+    if retry_note:
+        routed_note = f"{routed_note}; {retry_note}" if routed_note else retry_note
     out_dir = Path("/tmp/cfa-generated-images")
     out_dir.mkdir(parents=True, exist_ok=True)
     local = out_dir / filename
@@ -713,6 +904,9 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
         summary=(
             f"Generated + uploaded image ({len(png):,} bytes)\n"
             f"  prompt:        {prompt!r}\n"
+            f"  model:         {provider}/{model}"
+            + (f"  ({routed_note})" if routed_note else "")
+            + "\n"
             f"  aspect:        {aspect}\n"
             f"  local path:    {local}\n"
             f"  public URL:    {rel}\n"
@@ -725,10 +919,13 @@ async def _execute_generate_image(params: dict[str, Any], context: dict[str, Any
 generate_image_tool = ToolDefinition(
     name="generate_image",
     description=(
-        "Generate or edit an image with Gemini Nano Banana, save locally, upload to "
-        "the app's static asset space, return its public URL. Text-to-image when "
-        "only `prompt` is given; image-to-image edit when input_image_paths is set. "
-        "Requires GOOGLE_API_KEY in nocode-ai settings."
+        "Generate or edit an image, save locally, upload to the app's static asset "
+        "space, return its public URL. Text-to-image when only `prompt` is given; "
+        "image-to-image edit when input_image_paths is set. Backend is the "
+        "IMAGE_PROVIDER setting unless `image_provider` overrides it: gemini "
+        "(Nano Banana, the only one that edits multiple input images) or minimax "
+        "(image-01, text-to-image plus a single character reference). Multi-image "
+        "edits route to gemini whichever is set."
     ),
     parameters=[
         ToolParameter(name="prompt", type="string", description="Natural-language description"),
@@ -737,7 +934,8 @@ generate_image_tool = ToolDefinition(
         ToolParameter(name="folder", type="string", required=False, default="", description="Optional sub-folder"),
         ToolParameter(name="aspect_ratio", type="string", required=False, default="1:1", description="1:1 | 16:9 | 9:16 | 4:3 | 3:4"),
         ToolParameter(name="style_notes", type="string", required=False, description="Extra styling instructions appended to prompt"),
-        ToolParameter(name="model", type="string", required=False, default=_DEFAULT_IMAGE_MODEL, description="Gemini image model id"),
+        ToolParameter(name="image_provider", type="string", required=False, description="gemini | minimax; defaults to the IMAGE_PROVIDER setting"),
+        ToolParameter(name="model", type="string", required=False, description="Image model id; defaults per provider (gemini-2.5-flash-image / image-01)"),
         ToolParameter(name="input_image_paths", type="array", required=False, description="Optional local images for image-to-image edit", items={"type": "string"}),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
