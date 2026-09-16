@@ -1994,6 +1994,11 @@ class BaseAgent:
         """
         ctx: dict[str, Any] = {
             "session_id": session.session_id,
+            # The turn a tool call belongs to. Built after `start_turn`, so this
+            # is the live turn rather than the next one — unlike the route, which
+            # has to ask for `next_turn_number()`. Used to file a generated image
+            # against the turn that asked for it.
+            "turn_number": session.current_turn_number(),
             # AuthContext object — kb_app and call_as_app_user read user_id
             # off it for audit / identity-stamping.
             "auth": session.auth,
