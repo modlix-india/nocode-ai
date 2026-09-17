@@ -270,6 +270,11 @@ app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Lear
 from app.services.lore.router import router as lore_router
 app.include_router(lore_router, prefix=f"{API_PREFIX}/lore", tags=["Lore"])
 
+# Blueprint: the plan for an application — what it is MEANT to be. Read and
+# written by the BlueprintEditor board and by SiteZump's AI Studio page.
+from app.services.blueprint.router import router as blueprint_router
+app.include_router(blueprint_router, prefix=f"{API_PREFIX}/blueprint", tags=["Blueprint"])
+
 # Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
 # Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.
 from app.api.admin_app_kb import router as admin_app_kb_router
