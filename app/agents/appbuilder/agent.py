@@ -561,6 +561,15 @@ class AppBuilderAgent(BaseAgent):
         if lore_brief:
             parts.append(lore_brief)
 
+        # What this app was MEANT to be, as opposed to what lore says it turned
+        # out to be. Pushed for the same reason and with a much tighter budget:
+        # the agent needs to know a plan EXISTS, because one that does not know
+        # to ask will not ask. The whole plan is one blueprint_get away.
+        from app.services.blueprint import context as blueprint_context
+        plan_brief = await blueprint_context.app_brief(session)
+        if plan_brief:
+            parts.append(plan_brief)
+
         # Progressive tool docs: inject detailed reference for relevant groups
         tool_details = get_relevant_tool_details(session.messages)
         if tool_details:
