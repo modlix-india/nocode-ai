@@ -597,6 +597,9 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         TEMPLATE_AUTHOR_TOOLS as _template_author_tools,
     )
     from app.services.lore.tools import LORE_TOOLS as _lore_tools  # noqa: PLC0415
+    from app.services.blueprint.tools import (  # noqa: PLC0415
+        BLUEPRINT_TOOLS as _blueprint_tools,
+    )
 
     groups: list[tuple[str, list[str]]] = [
         ("Discovery (use these to find or learn a tool)", [t.name for t in _meta_tools]),
@@ -605,6 +608,8 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         ("Per-app knowledge base (cfa_app_kb — propose-then-commit)", [t.name for t in _kb_app_tools]),
         ("Lore — what this app already knows (read before you change anything)",
          [t.name for t in _lore_tools]),
+        ("Blueprint — what this app is MEANT to be, and where the build disagrees",
+         [t.name for t in _blueprint_tools]),
         ("Draft surface — the review link, pending work, publish",
          [t.name for t in _draft_tools.DRAFT_TOOLS]),
         ("Apps + themes + styles + URI paths", [t.name for t in _app_admin.TOOLS]),
@@ -1287,6 +1292,51 @@ marked as confirmed by a person outranks one the curator derived.
 
 """,
 
+    "blueprint": """\
+## Blueprint — what this app is MEANT to be — Detailed Reference
+
+An app's definitions record what it IS. The blueprint records what it was meant to be:
+the purpose of each object and each section, the features they add up to, and a ledger
+of decisions with the reason for each. It lives as a `blueprint` field on the object it
+describes, so a page's plan travels with that page through override, transport and
+versioning.
+
+**Not the same thing as lore.** Lore is what has been LEARNED about an app, curated from
+evidence after the fact. A blueprint is DECIDED in advance and is the thing a build gets
+measured against. That is why disagreement between plan and build is a normal, reportable
+state here and a contradiction to resolve over there.
+
+- `blueprint_get(kind="application")` — the app's own plan: audience, brand, features and
+  a manifest of every object the app should have. Start here.
+- `blueprint_get(kind="page", name="home")` — one object's plan: its role, route, and the
+  purpose of each section.
+- `blueprint_drift(name="home")` — where the plan and the build disagree.
+- `blueprint_set(blueprint={...}, kind, name)` — record a plan.
+
+**Drift has three states and two of them move in OPPOSITE directions.**
+`pending` means the plan is ahead: something was planned and nothing was built for it, so
+you resolve it by BUILDING. `drifted` means the definition is ahead: someone edited the
+page by hand since the plan was agreed, so you resolve it by UPDATING THE PLAN, never by
+reverting their edit. Collapsing these into one "out of sync" is how an update overwrites
+the work it was meant to record. Say which direction you are moving before you move.
+
+**`blueprint_set` replaces the whole plan for that object.** Call `blueprint_get` first
+and send the merged result; sending only your new part deletes everything else.
+
+**No arrays, at any depth.** Every list is an object keyed by a short letter-first
+alphanumeric id, each entry carrying an integer `order` — use gaps of 1000. This is not a
+style preference: the platform's override mechanism treats an array as one opaque value,
+so a customer who changes a single item silently stops receiving every later correction
+to the others. A plan containing an array anywhere is refused whole and nothing is
+written.
+
+**`purpose` and `describes` are different fields and one is not a fallback for the
+other.** `purpose` is what a PERSON said something is for and is never overwritten.
+`describes` is derived from the definition and is freely recomputed. Writing a derivation
+into `purpose` erases the only record of intent anybody wrote down.
+
+""",
+
     "kb_and_workspace": """\
 ## Per-app KB + code workspace — Detailed Reference
 
@@ -1560,6 +1610,12 @@ _GROUP_KEYWORDS: dict[str, list[str]] = {
         "glossary", "what does it mean here", "tribal", "lore",
         "what do we know", "is it safe to change",
     ],
+    "blueprint": [
+        "blueprint", "plan", "the plan", "planned", "meant to be", "supposed to be",
+        "intent", "purpose", "what is this for", "structure of the site",
+        "site plan", "app plan", "feature", "features", "drift", "out of sync",
+        "matches the plan", "according to the plan", "restructure", "replan",
+    ],
     "page_operations": [
         "page", "pages", "component", "button", "text", "grid", "layout",
         "textbox", "dropdown", "checkbox", "radio", "image", "icon", "table",
@@ -1628,6 +1684,9 @@ _TOOL_NAME_TO_GROUP: dict[str, str] = {
         "lore_index", "lore_get", "lore_brief", "lore_search", "lore_about",
         "lore_add", "lore_note", "lore_correct",
     ), "lore"),
+    **dict.fromkeys((
+        "blueprint_get", "blueprint_set", "blueprint_drift",
+    ), "blueprint"),
     # page authoring
     **dict.fromkeys((
         "list_pages", "get_page", "create_page", "create_pages", "update_page", "delete_page",
