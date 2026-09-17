@@ -44,7 +44,10 @@ import uuid
 from collections import deque
 from typing import Any, AsyncIterator
 
+from redis.exceptions import TimeoutError as RedisTimeoutError
+
 from app.core.streaming import AgentEvent, AgentEventType, AgentEventStream
+from app.services.redis_client import SOCKET_TIMEOUT_S
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +66,22 @@ SUBSCRIBER_QUEUE_MAX = 2000
 # Gap after which an attached client is sent a keepalive so proxies and the
 # client's own watchdog can tell a quiet run from a dead one.
 KEEPALIVE_S = 15.0
+
+# How long a single XREAD may block. This MUST stay under the Redis client's
+# socket timeout: redis-py applies that timeout to the socket read, so a command
+# still blocking server-side when it expires raises TimeoutError instead of
+# returning empty.
+#
+# Prod ran block=KEEPALIVE_S (15s) against socket_timeout=5s. Measured against a
+# real Redis: that raises after ~10s of silence (two 5s attempts, because the
+# client is built with retry_on_timeout=True) having never once returned. Any
+# pause longer than that -- an LLM turn, a screenshot, a browser drive, which is
+# most of them -- hit the broad `except` and told the user "Lost contact with
+# the running agent. Reopen the chat to reconnect."
+#
+# The subscriber now wakes well inside the socket timeout and counts the quiet
+# windows itself, so clients still see a keepalive every KEEPALIVE_S.
+_XREAD_BLOCK_S = max(1.0, min(KEEPALIVE_S, SOCKET_TIMEOUT_S - 1.0))
 
 # Liveness. Deliberately short: this key is what tells another worker a run is
 # still going, and a worker that dies mid-turn cannot retract it. Until it
@@ -723,11 +742,17 @@ async def _subscribe_remote(
     if saw_done or not running:
         return
 
+    quiet_since = time.monotonic()
     while True:
         try:
             response = await redis.xread(
-                {key: last_id}, count=200, block=int(KEEPALIVE_S * 1000)
+                {key: last_id}, count=200, block=int(_XREAD_BLOCK_S * 1000)
             )
+        except RedisTimeoutError:
+            # The socket read timed out while XREAD was still blocking. That is
+            # a quiet stream, not a lost one, so fall through to the quiet-window
+            # handling below rather than killing the subscriber.
+            response = None
         except Exception:  # noqa: BLE001
             logger.warning("run_manager: remote tail failed for %s", session_id, exc_info=True)
             yield AgentEvent(
@@ -737,8 +762,14 @@ async def _subscribe_remote(
             return
 
         if not response:
-            # Nothing in a keepalive window. Either genuinely quiet, or the
-            # worker holding the run is gone. The meta key answers which.
+            # Quiet window. Poll far more often than we report, so the block
+            # stays inside the socket timeout; only speak up once a full
+            # KEEPALIVE_S of silence has passed.
+            if time.monotonic() - quiet_since < KEEPALIVE_S:
+                continue
+            quiet_since = time.monotonic()
+            # Either genuinely quiet, or the worker holding the run is gone.
+            # The meta key answers which.
             still_there = await _read_remote_meta(session_id)
             if not still_there:
                 yield AgentEvent(
@@ -752,6 +783,7 @@ async def _subscribe_remote(
             yield AgentEvent(event=AgentEventType.KEEPALIVE, data={})
             continue
 
+        quiet_since = time.monotonic()
         for _stream_key, items in response:
             for entry_id, fields in items:
                 last_id = entry_id

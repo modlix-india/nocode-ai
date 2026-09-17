@@ -665,6 +665,20 @@ class BaseSession:
         self._turn_count += 1
         self._turn_started = True
 
+    def next_turn_number(self) -> int:
+        """The number ``start_turn`` is about to assign.
+
+        For the route, which has to file a turn's attachments before the agent
+        loop has begun and therefore before ``start_turn`` has run. Correct only
+        while nothing else can be mid-turn on this session, which is what the
+        run-already-live check in the chat route is there to guarantee.
+        """
+        return self._turn_count + 1
+
+    def current_turn_number(self) -> int:
+        """The turn in progress. Zero before the first ``start_turn``."""
+        return self._turn_count
+
     async def persist_turn(
         self,
         user_text: str,

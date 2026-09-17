@@ -31,6 +31,7 @@ from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEvent
 from app.core import run_manager, stream_registry
 from app.db.models import SessionListItem, SessionListResponse, SessionStatus
+from app.services.chat_attachments import get_attachments
 from app.services.session_manager import get_session_manager
 from app.services.context_manager import get_context_manager
 
@@ -159,9 +160,24 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
         history, total = await context_mgr.get_history(
             session_id, limit=limit, offset=offset
         )
+
+        # Attached onto the response dicts here rather than onto AiSessionHistory
+        # itself. That model is also what `context_manager._format_turn` reads to
+        # build the string the LLM sees, and an attachment must never reach it:
+        # the picture already went to the model as an image block on the turn it
+        # arrived, and a text description of it in the context would be a stale
+        # second copy of something the model cannot look at.
+        turn_numbers = [h.turn_number for h in history]
+        by_turn = await get_attachments(session_id, turn_numbers)
+        rows = []
+        for h in history:
+            row = h.model_dump()
+            row["attachments"] = by_turn.get(h.turn_number, [])
+            rows.append(row)
+
         return {
             "session": session,
-            "history": [h.model_dump() for h in history],
+            "history": rows,
             "total_history": total,
             "limit": limit,
             "offset": offset,
