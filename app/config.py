@@ -263,6 +263,34 @@ class Settings(BaseSettings):
     # to an answer than to a broadcast, which is why it survives.
     LORE_PUSH_SUBJECT: bool = True
 
+    # ── Blueprint ──────────────────────────────────────────────────────
+    # The plan for an application: what it is MEANT to be, carried as a
+    # `blueprint` field on every overridable object (app/services/blueprint).
+    # Planning is one model call with a schema and no tools — routing it
+    # through the AppBuilder agent would spend ~44K tokens of tool schemas
+    # before the first word of a request that has nothing to call.
+    BLUEPRINT_TIER: str = "balanced"
+    # Output budget for one generation. A whole application plan with a
+    # glossary, features and forty objects is a big JSON document, and a
+    # reasoning model needs room to think AND then emit it.
+    BLUEPRINT_MAX_TOKENS: int = 16000
+    # Hard ceiling on one blueprint model call. The provider clients carry no
+    # timeout of their own, and this one runs inside a request, so without it a
+    # hung connection holds a worker until the browser gives up.
+    #
+    # Under the gateway's own 60s ceiling on purpose. Set to 180 it was a lie:
+    # the gateway returned a bare 504 at 60s while this went on waiting, so the
+    # caller got a timeout with no message and the service never learned its
+    # request had been abandoned. Failing first means the failure is ours to
+    # describe. A generation that genuinely needs longer than this — a plan for
+    # a forty-page site — does not belong in a request at all and needs a job.
+    BLUEPRINT_TIMEOUT_SECONDS: int = 50
+    # Fold a short plan brief into the agent's per-request context. On by
+    # default and deliberately small (~1.6K chars): the point is that the agent
+    # knows a plan EXISTS, since one that does not know to ask will not ask.
+    # The full plan is one blueprint_get away.
+    BLUEPRINT_PUSH_BRIEF: bool = True
+
     # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
     # nocode-kirun live for code-reading tools. Per-instance mounted volume
     # in prod (/var/cfa/workspace); local dev falls back to siblings of
