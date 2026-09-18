@@ -55,14 +55,32 @@ KINDS: dict[str, Kind] = {
         ("rootComponent", "componentDefinition", "properties"),
         fingerprint_field="componentVersions",
     ),
-    "storage": Kind("storage", "/api/core/storages", ("schema", "isAppLevel", "isAudited")),
+    # `relations` is the storage's foreign keys and is a TOP-LEVEL field, not
+    # part of the schema. Leaving it out meant a storage was described as a bag
+    # of fields with no mention of the storages it links to — the one fact about
+    # a storage that nobody can recover by looking at the site.
+    "storage": Kind(
+        "storage", "/api/core/storages",
+        ("schema", "relations", "isAppLevel", "isAudited"),
+    ),
+    # Not a board kind and never swept. It is here so a storage's fields can be
+    # resolved: a storage's `schema` is usually a REF to one of these.
+    "schema": Kind("schema", "/api/core/schemas", ("properties", "required")),
     "function": Kind("function", "/api/core/functions", ("definition",)),
     "uifunction": Kind("uifunction", "/api/ui/functions", ("definition",)),
     "theme": Kind("theme", "/api/ui/themes", ("variables", "componentDefinition")),
     "style": Kind("style", "/api/ui/styles", ("styles", "variables")),
-    "uripath": Kind("uripath", "/api/ui/uripaths", ("pathDefinition", "pathString")),
+    # `pathDefinitions` — PLURAL — is a map of HTTP method to handler. The
+    # singular does not exist on the document, so every URI path in the platform
+    # came back with nothing to describe and no connections.
+    "uripath": Kind("uripath", "/api/ui/uripaths", ("pathDefinitions", "pathString")),
     "template": Kind("template", "/api/core/templates", ("templateParts", "templateType")),
-    "notification": Kind("notification", "/api/core/notifications", ("channelDetails", "notificationType")),
+    # `channelTemplates`, not `channelDetails`. Same mistake, same result: the
+    # notification band drew a card per notification saying only its own name.
+    "notification": Kind(
+        "notification", "/api/core/notifications",
+        ("channelTemplates", "notificationType"),
+    ),
 }
 
 KIND_NAMES: tuple[str, ...] = tuple(KINDS)
@@ -103,12 +121,12 @@ BOARD_KINDS: tuple[str, ...] = (
 #: to whatever is listed here.
 BOARD_FIELDS: dict[str, tuple[str, ...]] = {
     "page": ("rootComponent", "componentDefinition", "componentVersions"),
-    "storage": ("schema",),
+    "storage": ("schema", "relations"),
     "function": ("definition",),
     "uifunction": ("definition",),
-    "uripath": ("pathDefinition", "pathString"),
+    "uripath": ("pathDefinitions", "pathString"),
     "template": ("templateParts", "templateType"),
-    "notification": ("channelDetails", "notificationType"),
+    "notification": ("channelTemplates", "notificationType"),
 }
 
 COMMON_BOARD_FIELDS: tuple[str, ...] = (
@@ -179,18 +197,36 @@ async def _find_id(
 
 async def read_object(
     kind_name: str, app_code: str, name: str, headers: dict[str, str],
+    *, draft: bool = False,
 ) -> dict[str, Any]:
     """The full document for one object, plan included.
 
     For `application` the name IS the app code: there is one UI document per
     app and asking for it by any other name is a mistake worth naming.
+
+    `draft=True` reads the DRAFT surface, and something has to read it.
+
+    The AppBuilder agent is draft-first: everything it authors lands on a draft
+    and nothing is published until a person says so. That is correct and it is
+    the whole point of a draft. But the build's reconciliation read the LIVE
+    object, found an empty page, and reported "the builder finished without
+    putting anything on the page" — about a page carrying eleven components and
+    all three of its planned sections on the draft.
+
+    So every fill run looked like a total failure while the work sat one query
+    parameter away, and the conclusion drawn from it — that the authoring half
+    had never once worked — was false.
+
+    `GET ?draft=true` returns the object itself (only PUT returns a wrapper), so
+    this is the same shape either way.
     """
     kind = resolve_kind(kind_name)
     if kind.name == "application":
         name = app_code
 
     object_id, _ = await _find_id(kind, app_code, name, headers)
-    result = await _client().get(f"{kind.api}/{object_id}", headers=headers)
+    params = {"draft": "true"} if draft else None
+    result = await _client().get(f"{kind.api}/{object_id}", headers=headers, params=params)
     if not result.success:
         raise BlueprintObjectError(
             f"Could not read {kind.name} '{name}': {result.error}", status=502,
@@ -198,6 +234,57 @@ async def read_object(
     document = result.data if isinstance(result.data, dict) else {}
     if not document:
         raise BlueprintObjectError(f"{kind.name} '{name}' came back empty.", status=502)
+    if kind.name == "storage":
+        document = await _inline_storage_schema(document, app_code, headers)
+    return document
+
+
+async def _inline_storage_schema(
+    document: dict[str, Any], app_code: str, headers: dict[str, str],
+) -> dict[str, Any]:
+    """Put a storage's real fields where anything reading it expects them.
+
+    A storage's `schema` is usually not a schema. It is a REFERENCE to one:
+
+        "schema": {"ref": "sitezump.contactUsDetails", "type": ["OBJECT"]}
+
+    with the fields in a separate document of their own. Only a storage built
+    with an inline schema carries `properties` here.
+
+    Everything reading a storage read `schema.properties` and found nothing, so
+    a referenced storage looked like a storage with NO FIELDS. Two things then
+    went wrong and neither announced itself: the sweep described nothing, and
+    the board — which calls a planned field with no matching property "not on
+    the site yet" — marked every field of a working form as unbuilt while the
+    live site was busy collecting them.
+
+    Resolved on read so that both sides get it, rather than at either call site
+    where the next caller would have to remember.
+
+    A ref that cannot be read leaves the document exactly as it came. A storage
+    whose fields we failed to look up is a storage we know nothing about, and
+    that is better said by silence than by a confident empty list.
+    """
+    schema = document.get("schema")
+    if not isinstance(schema, dict) or schema.get("properties"):
+        return document
+    ref = schema.get("ref")
+    if not ref:
+        return document
+
+    try:
+        referenced = await read_object("schema", app_code, str(ref), headers)
+    except BlueprintObjectError as exc:
+        logger.info("blueprint: could not resolve schema '%s': %s", ref, exc.message)
+        return document
+
+    properties = referenced.get("properties")
+    if isinstance(properties, dict) and properties:
+        document["schema"] = {
+            **schema,
+            "properties": properties,
+            "required": referenced.get("required"),
+        }
     return document
 
 
@@ -271,6 +358,10 @@ async def write_blueprint(
         "kind": kind.name,
         "name": name,
         "app_code": app_code,
+        # Handed back because the caller announcing this write needs it, and
+        # it was already read above to address the PATCH. Looking it up a
+        # second time would be a listing round trip for something in hand.
+        "id": object_id,
         "version": saved.get("version"),
         "blueprint": saved.get("blueprint") or blueprint,
     }
@@ -310,6 +401,65 @@ async def list_objects(
 # ── Drift ────────────────────────────────────────────────────────────────
 
 
+#: The fields of a plan entry that say what the thing is MEANT to be.
+#:
+#: `describes` is not among them and must never be: it is derived from the
+#: definition and rewritten on every sweep, so including it would make every
+#: sweep look like the plan had changed and put the whole site up for rebuild.
+#: `order`, `componentKey` and `name` are bookkeeping — moving a section up the
+#: page is not a change to what it is for.
+INTENT_FIELDS: tuple[str, ...] = ("purpose", "spec", "content", "role", "layout", "uses")
+
+
+def plan_fingerprint(entry: dict[str, Any]) -> str:
+    """A short hash of what one plan entry ASKS FOR.
+
+    This is the counterpart to `componentVersions` and it exists because the
+    plan had no way to express a change to something that already exists.
+    `pending` meant `componentKey` was null, so the moment a section was built
+    it could never be planned again: you could add to a page and you could
+    describe a page, and you could not CHANGE one. Every conversation about
+    changing an existing page ended in a plan nobody could act on.
+
+    With a fingerprint the two directions stay symmetric and separate:
+
+        componentVersions moved  ->  the DEFINITION changed  ->  drifted
+        this fingerprint moved   ->  the PLAN changed        ->  pending
+
+    An entry that has never been stamped is NOT pending. That is the whole
+    installed base — every section seeded from an existing site — and treating
+    an unstamped entry as changed would put every card on every existing site
+    up for rebuild the first time anybody looked at it.
+    """
+    import hashlib
+    import json as _json
+
+    intent = {
+        field: entry.get(field)
+        for field in INTENT_FIELDS
+        if entry.get(field) not in (None, "", {}, [])
+    }
+    if not intent:
+        return ""
+    canonical = _json.dumps(intent, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(canonical.encode()).hexdigest()[:16]
+
+
+def plan_moved(blueprint: dict[str, Any], uid: str, entry: dict[str, Any]) -> bool:
+    """Has this entry's intent changed since whatever was built for it?
+
+    False when nothing was ever stamped, which is the safe default and the
+    common case.
+    """
+    agreed = (blueprint or {}).get("agreed")
+    if not isinstance(agreed, dict):
+        return False
+    stamped = agreed.get(uid)
+    if not stamped:
+        return False
+    return stamped != plan_fingerprint(entry)
+
+
 def drift_of(document: dict[str, Any]) -> dict[str, Any]:
     """Which plan entries agree with the definition, and which do not.
 
@@ -336,6 +486,7 @@ def drift_of(document: dict[str, Any]) -> dict[str, Any]:
     component_versions = document.get("componentVersions") or {}
     definition = document.get("componentDefinition") or {}
 
+    blueprint = document.get("blueprint") or {}
     status: dict[str, str] = {}
     for uid, entry in (sections or {}).items():
         if not isinstance(entry, dict):
@@ -343,6 +494,14 @@ def drift_of(document: dict[str, Any]) -> dict[str, Any]:
         component_key = entry.get("componentKey")
         if not component_key or component_key not in definition:
             # Planned, and nothing in the definition answers to it.
+            status[uid] = "pending"
+            continue
+        if plan_moved(blueprint, uid, entry):
+            # Built once, and the plan has been changed since. The plan is
+            # ahead, so this is `pending` in exactly the same sense as something
+            # never built: it is resolved by building, not by rewriting the
+            # plan. Without this a built section could never be planned again
+            # and changing an existing page was not expressible.
             status[uid] = "pending"
             continue
         agreed = reconciled.get(uid)

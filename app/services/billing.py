@@ -87,6 +87,95 @@ async def check_serving_status(auth: AuthContext) -> bool:
         return True
 
 
+#: How long a "yes, this consumer may spend" answer is trusted inside one
+#: long-running job.
+#:
+#: A sweep is one action to a person and sixty model calls to a wallet, so
+#: gating it once at the start lets a consumer who runs out on object four go on
+#: spending through object sixty. Re-asking before every call is the correct
+#: grain and costs one 3-second HTTP call against a model call taking five to
+#: thirty seconds — but sixty of them in a row is still noise on the security
+#: service, so a YES is trusted for this long.
+#:
+#: A NO is never cached. Somebody who tops up mid-sweep should be able to carry
+#: on, and the failure mode of caching a no is a job that stays dead after the
+#: money arrives.
+GATE_TTL_SECONDS = 30.0
+
+
+class CallMeter:
+    """Gate and charge LLM calls made OUTSIDE the agent loop.
+
+    The agent meters itself: `BaseAgent.run` gates each turn against the wallet
+    and charges each call as it lands. Anything calling a provider directly —
+    the blueprint sweep, a one-off derivation — bypasses all of that, and for a
+    while that is exactly what happened: a plan sweep ran forty model calls
+    against a SUSPENDED wallet and was never billed for one of them, while the
+    chat beside it correctly refused to answer. The two halves of the same
+    screen disagreed about whether the customer had any money.
+
+    Fail-open, deliberately and in both directions, matching the agent:
+    `check_serving_status` returning True on error means a security hiccup does
+    not stop the work, and a failed debit is logged loud rather than retried,
+    because the charge is idempotent per `requestId` and can be reconciled from
+    the log line.
+
+    Not blueprint-specific. Every future direct call should take one of these.
+    """
+
+    __slots__ = ("auth", "session_id", "_allowed_until", "calls", "tokens")
+
+    def __init__(self, auth: AuthContext, session_id: str = "") -> None:
+        self.auth = auth
+        #: What the charge is attributed to, for reconciliation. A job id reads
+        #: better here than a synthetic session: it is the thing a person can
+        #: point at and say "that is the sweep I ran".
+        self.session_id = session_id or "direct"
+        self._allowed_until = 0.0
+        #: Counted so a job can report what it spent. A sweep that silently
+        #: costs money is the thing this class exists to stop.
+        self.calls = 0
+        self.tokens = 0.0
+
+    async def allowed(self) -> bool:
+        """Whether this consumer may spend right now. Fail-open on any error."""
+        import time
+
+        now = time.monotonic()
+        if now < self._allowed_until:
+            return True
+        if not await check_serving_status(self.auth):
+            return False
+        self._allowed_until = now + GATE_TTL_SECONDS
+        return True
+
+    async def charge(self, response: dict | None) -> None:
+        """Charge one completed provider call, from its own usage block.
+
+        Every provider in `llm_provider.py` returns `usage` in the shape
+        `weighted_tokens` expects plus the resolved `model`, so this needs no
+        per-provider special casing — and taking the model from the RESPONSE
+        rather than from the requested tier is what keeps the weighting honest
+        when a tier resolves to something heavier than expected.
+        """
+        import uuid
+
+        if not isinstance(response, dict):
+            return
+        usage = response.get("usage")
+        if not isinstance(usage, dict):
+            return
+        model = response.get("model")
+        self.calls += 1
+        self.tokens += weighted_tokens(usage, model)
+        await charge_llm_call(
+            self.auth, usage, model, uuid.uuid4().hex, self.session_id,
+        )
+
+
+OUT_OF_TOKENS = "You're out of tokens. Top up your wallet to keep using AI."
+
+
 async def charge_llm_call(
     auth: AuthContext,
     usage: dict[str, int],
