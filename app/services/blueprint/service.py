@@ -44,6 +44,7 @@ from app.services.blueprint.validate import (
     mint_uid,
     validate_blueprint,
 )
+from app.services.billing import OUT_OF_TOKENS
 from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,7 @@ def parse_json_object(raw: str) -> tuple[dict[str, Any] | None, str]:
 
 
 async def _complete_json(
-    *, system_prompt: str, user_message: str, label: str,
+    *, system_prompt: str, user_message: str, label: str, meter: Any = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """One JSON-returning model call, with the retry that actually matters.
 
@@ -134,6 +135,17 @@ async def _complete_json(
     and emit no content at all, and every symptom of that looks like "the model
     decided there was nothing to say". Doubling the budget fixes it; nothing
     else does, and without the branch nobody ever finds out.
+
+    `meter` is a `billing.CallMeter` and every real caller passes one. This
+    talks to a provider directly rather than through the agent loop, so nothing
+    else in the path meters it: without a meter a sweep runs forty model calls
+    against a suspended wallet, is billed for none of them, and disagrees with
+    the chat on the same screen about whether the customer has any money.
+
+    BOTH ATTEMPTS ARE CHARGED. A retry is a second real call to a real provider
+    and the tokens are spent whether or not the answer parsed. Charging only
+    the successful one would make the malformed-JSON path free, which is exactly
+    the path a cheap model takes most often.
     """
     provider = get_llm_provider()
     max_tokens = _max_tokens()
@@ -145,6 +157,10 @@ async def _complete_json(
 
     for attempt in (1, 2):
         diagnostics["attempts"] = attempt
+        # Before the call, and before the RETRY as well: a wallet that emptied
+        # on the first attempt must not fund the second.
+        if meter is not None and not await meter.allowed():
+            raise BlueprintGenerationError(OUT_OF_TOKENS, reason="out-of-tokens")
         try:
             response = await asyncio.wait_for(
                 provider.create_completion(
@@ -161,6 +177,11 @@ async def _complete_json(
                 f"The model did not answer within {_timeout():.0f} seconds.",
                 reason="timeout",
             ) from exc
+
+        # Charged as soon as it lands, before anything can decide the answer was
+        # unusable. A call that produced garbage still consumed the tokens.
+        if meter is not None:
+            await meter.charge(response)
 
         raw = (response or {}).get("content") or ""
         reasoning = (response or {}).get("reasoning_content") or ""
@@ -209,6 +230,7 @@ async def generate(
     app_code: str = "",
     context: dict[str, Any] | None = None,
     existing: dict[str, Any] | None = None,
+    meter: Any = None,
 ) -> dict[str, Any]:
     """Turn a prompt into a plan for one object.
 
@@ -231,6 +253,7 @@ async def generate(
         system_prompt=prompts.generate_system_prompt(kind),
         user_message=user_message,
         label=f"generate:{kind}",
+        meter=meter,
     )
 
     blueprint = coerce_lists(parsed)
@@ -319,17 +342,35 @@ def _storage_fields(document: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _look(document: dict[str, Any], kind: str) -> dict[str, str]:
+    """A theme's brand variables: the typeface, the palette, and nothing else.
+
+    A theme carries a couple of hundred variables and all but a few dozen are
+    per-component tokens — `textBoxBorderRadiusDefaultTertiary` and two hundred
+    relatives — which say how one widget is drawn, not what the site looks like.
+    Describing all of them is two hundred cards each restating its own name.
+
+    Describing NONE of them was the other mistake, and the one that was actually
+    shipped: a theme came back as one card reading "the theme called Crumb",
+    which answers nothing. Somebody looking at a plan wants to know what the
+    site is set in.
+    """
+    from app.services.blueprint.compose import brand_variables
+
+    found = brand_variables(document)
+    if found:
+        return found
+    name = str(document.get("name") or "").strip()
+    title = str(document.get("title") or "").strip()
+    return {name or kind: f"the {kind}" + (f" called {title}" if title else "")}
+
+
 def _whole_object(document: dict[str, Any], kind: str) -> dict[str, str]:
     """One part, which is the object itself.
 
-    A theme and a style are described as ONE thing rather than picked apart.
-    Their parts are variables, and a theme carries a couple of hundred of them:
-    a card per variable is two hundred cards saying what their own names say,
-    for two hundred lines of tokens. What is worth a sentence about a theme is
-    the theme.
-
-    Keyed by the object's OWN name rather than a placeholder, so the card it
-    produces is titled "Crumb" on the board instead of "object".
+    The fallback for a kind with nothing worth picking apart. Keyed by the
+    object's OWN name rather than a placeholder, so the card it produces is
+    titled "Crumb" on the board instead of "object".
     """
     name = str(document.get("name") or "").strip()
     title = str(document.get("title") or "").strip()
@@ -346,20 +387,26 @@ _PART_READERS: dict[str, Any] = {
     "storage": _storage_fields,
     "function": lambda d: _function_steps(d.get("definition")),
     "uifunction": lambda d: _function_steps(d.get("definition")),
-    # A uripath IS a function with a path in front of it, so its parts are its
-    # steps. The path itself is the object's own name on the board and would be
-    # a card describing its own column.
-    "uripath": lambda d: _function_steps(d.get("pathDefinition")),
+    "uripath": lambda d: _uripath_methods(d),
     "template": lambda d: _named_parts(d.get("templateParts"), "template part"),
-    "notification": lambda d: _named_parts(d.get("channelDetails"), "channel"),
+    "notification": lambda d: _notification_channels(d),
+    "theme": lambda d: _look(d, "theme"),
+    "style": lambda d: _look(d, "style"),
 }
 
 
 def _function_steps(definition: Any) -> dict[str, str]:
-    """{statementName: "what it calls"} for one KIRun definition.
+    """{statementName: "what it calls, and on what"} for one KIRun definition.
 
     Keyed by statement name because that is what a plan entry points back at and
     what survives a step being moved, where a position or an index does not.
+
+    The literal arguments are part of the line, and they are most of its value.
+    `calls CoreServices.Storage.ReadPage` is true of a hundred steps in an app
+    and distinguishes none of them; `calls CoreServices.Storage.ReadPage
+    (storageName=Task)` says what the step is for. Only VALUE parameters are
+    shown — an EXPRESSION is computed at run time and printing its text puts a
+    guess in front of the model as though it were a fact.
     """
     if not isinstance(definition, dict):
         return {}
@@ -371,7 +418,90 @@ def _function_steps(definition: Any) -> dict[str, str]:
         if not isinstance(step, dict):
             continue
         called = f"{step.get('namespace') or ''}.{step.get('name') or ''}".strip(".")
-        out[str(key)] = f"calls {called}" if called else "a step"
+        arguments = _step_arguments(step.get("parameterMap"))
+        line = f"calls {called}" if called else "a step"
+        out[str(key)] = f"{line} ({arguments})" if arguments else line
+    return out
+
+
+#: Parameters worth putting in a description. Every KIRun primitive takes a
+#: handful and most are plumbing — a `value`, an `eventName`, a position. These
+#: are the ones that say what the step operates ON.
+_TELLING_PARAMS = (
+    "storagename", "url", "path", "name", "linkpath", "pagename", "filter",
+    "eventname", "templatename", "to", "subject", "count", "size", "message",
+)
+
+#: How much of one argument is shown. A `filter` can be a page of JSON and the
+#: shape of it, not the whole, is what identifies the step.
+ARGUMENT_CHARS = 60
+
+
+def _step_arguments(parameter_map: Any) -> str:
+    """`storageName=Task, size=200` for one step's literal arguments."""
+    if not isinstance(parameter_map, dict):
+        return ""
+    shown: list[str] = []
+    for name, values in parameter_map.items():
+        if not isinstance(name, str) or name.lower() not in _TELLING_PARAMS:
+            continue
+        if not isinstance(values, dict):
+            continue
+        for entry in values.values():
+            if not isinstance(entry, dict) or entry.get("type") == "EXPRESSION":
+                continue
+            literal = entry.get("value")
+            if literal in (None, "", {}, []):
+                continue
+            shown.append(f"{name}={str(literal)[:ARGUMENT_CHARS]}")
+            break
+        if len(shown) >= 4:
+            break
+    return ", ".join(shown)
+
+
+def _uripath_methods(document: dict[str, Any]) -> dict[str, str]:
+    """{METHOD: "what answers on it"} for one URI path.
+
+    A URI path has no steps of its own. `pathDefinitions` — plural — maps an
+    HTTP method to a handler whose `kiRunFxDefinition` NAMES the function that
+    runs. So the parts of a URI path are its methods, and the useful thing to
+    say about each is which function answers it.
+
+    Reading the singular `pathDefinition`, which is not a field, is why every
+    URI path on the board was one card carrying only its own path.
+    """
+    out: dict[str, str] = {}
+    for method, handler in (document.get("pathDefinitions") or {}).items():
+        if not isinstance(handler, dict):
+            continue
+        fx = handler.get("kiRunFxDefinition") or {}
+        called = f"{fx.get('namespace') or ''}.{fx.get('name') or ''}".strip(".")
+        public = str(handler.get("uriType") or "")
+        line = f"answered by {called}" if called else "answered by nothing yet"
+        out[str(method)] = f"{line} ({public})" if public else line
+    return out
+
+
+def _notification_channels(document: dict[str, Any]) -> dict[str, str]:
+    """{channel: "the wording it sends"} for one notification.
+
+    The field is `channelTemplates`, not `channelDetails`. Each channel — inapp,
+    email, sms — usually carries its wording INLINE under `templateParts`, keyed
+    by language, so the title is right there and is by far the most useful thing
+    to show. Reading the wrong key gave every notification one card saying its
+    own name back to it.
+    """
+    out: dict[str, str] = {}
+    for channel, detail in (document.get("channelTemplates") or {}).items():
+        if not isinstance(detail, dict):
+            continue
+        parts = detail.get("templateParts") or {}
+        first = next((p for p in parts.values() if isinstance(p, dict)), {})
+        title = str(first.get("title") or "").strip()
+        body = str(first.get("description") or "").strip()
+        summary = title or body[:80] or "no wording set"
+        out[str(channel)] = f"{channel}: {summary[:120]}"
     return out
 
 
@@ -382,7 +512,37 @@ def _named_parts(parts: Any, what: str) -> dict[str, str]:
     return {str(key): what for key in list(parts)[:DESCRIBE_MAX_SECTIONS]}
 
 
+#: How deep into a section's subtree the words are gathered from. Two levels
+#: below the section reaches a heading inside a card inside a row, which is
+#: where the words on a real page actually are. Deeper adds icons and spacers.
+SECTION_DEPTH = 3
+
+#: Words shown per section. Enough to tell a hero from a pricing table, not
+#: enough for one long section to crowd out the other eleven.
+SECTION_TEXT_CHARS = 220
+
+
 def _page_sections(document: dict[str, Any]) -> dict[str, str]:
+    """{componentKey: "what this section is"} for a page's top-level sections.
+
+    This used to say `Grid named 'heroGrid' with 4 direct children`, which is
+    the shape of a section and tells you nothing about it. Every section on
+    every page reads the same, so the describer had no way to tell a hero from a
+    footer and wrote interchangeable sentences about both — and that, not the
+    prompt, is why the board read as shallow.
+
+    Three things go in now, and none of them costs a call:
+
+      the WORDS in it     — a section that says "Order a box of pastries" is a
+                            section anything can describe correctly.
+      the WIDGETS in it   — a TextBox and a Button is a form, wherever it sits.
+      what it RUNS        — an `onClick` naming an event function is the whole
+                            difference between a heading and a working control.
+
+    Still bounded: the words are gathered to a fixed depth and trimmed, because
+    a page can carry nine hundred components and the section is the unit the
+    board draws.
+    """
     definition = document.get("componentDefinition") or {}
     root_key = document.get("rootComponent")
     root = definition.get(root_key) if root_key else None
@@ -400,13 +560,69 @@ def _page_sections(document: dict[str, Any]) -> dict[str, str]:
     for _, key, component in ordered[:DESCRIBE_MAX_SECTIONS]:
         name = component.get("name") or key
         kind = component.get("type") or "component"
-        child_count = len([c for c in (component.get("children") or {}).values() if c])
-        out[key] = f"{kind} named '{name}' with {child_count} direct children"
+        words, widgets, runs = _section_contents(definition, key)
+        line = f"{kind} '{name}'"
+        if widgets:
+            line += " containing " + ", ".join(widgets)
+        if words:
+            line += ' — reads: "' + words[:SECTION_TEXT_CHARS] + '"'
+        if runs:
+            line += " — runs " + ", ".join(sorted(runs)[:4])
+        out[key] = line
     return out
+
+
+#: Component types that are structure rather than content. Listing them as the
+#: contents of a section says "a section contains a section", which is true of
+#: everything and distinguishes nothing.
+_STRUCTURAL = {"Grid", "SubPage", "TableGrid", "TableColumns", "ArrayRepeater"}
+
+
+def _section_contents(
+    definition: dict[str, Any], key: str,
+) -> tuple[str, list[str], set[str]]:
+    """(the words, the widget types, the event functions it runs) for a subtree."""
+    words: list[str] = []
+    widgets: dict[str, int] = {}
+    runs: set[str] = set()
+
+    def walk(node_key: str, depth: int) -> None:
+        component = definition.get(node_key)
+        if not isinstance(component, dict) or depth > SECTION_DEPTH:
+            return
+        kind = str(component.get("type") or "")
+        properties = component.get("properties") or {}
+
+        for field in ("text", "label", "placeholder", "title"):
+            value = properties.get(field)
+            literal = value.get("value") if isinstance(value, dict) else value
+            if isinstance(literal, str) and literal.strip():
+                words.append(literal.strip())
+
+        for handler in ("onClick", "onChange", "onSubmit"):
+            value = properties.get(handler)
+            literal = value.get("value") if isinstance(value, dict) else value
+            if isinstance(literal, str) and literal.strip():
+                runs.add(literal.strip())
+
+        if depth and kind and kind not in _STRUCTURAL:
+            widgets[kind] = widgets.get(kind, 0) + 1
+
+        for child_key, on in (component.get("children") or {}).items():
+            if on:
+                walk(child_key, depth + 1)
+
+    walk(key, 0)
+    listed = [
+        f"{count} {kind}" if count > 1 else kind
+        for kind, count in sorted(widgets.items(), key=lambda kv: -kv[1])[:5]
+    ]
+    return " / ".join(words)[:SECTION_TEXT_CHARS * 2], listed, runs
 
 
 async def describe(
     *, document: dict[str, Any], kind: str, app_code: str = "",
+    connections: str = "", meter: Any = None,
 ) -> dict[str, Any]:
     """One line per part of one object. Returns {"describes": {key: line}}.
 
@@ -414,17 +630,28 @@ async def describe(
     `purpose`, which is what a PERSON said the thing is for: a derivation that
     can overwrite a statement will eventually erase the only record of intent
     anybody wrote down.
+
+    `connections` is what this object reaches and what reaches it, already
+    derived from the definitions by `relations`. It is the single highest-value
+    line in the prompt and it costs nothing: without it the describer sees a
+    component tree and writes "a form with four fields" about a form whose whole
+    purpose is the storage it fills, because from the tree alone that storage is
+    invisible.
     """
     parts = summarise_definition(document, kind)
     if not parts:
-        return {"describes": {}, "summary": "", "diagnostics": {"skipped": "nothing-to-describe"}}
+        return {
+            "describes": {}, "names": {}, "summary": "",
+            "diagnostics": {"skipped": "nothing-to-describe"},
+        }
 
     user_message = (
         f"Object kind: {kind}\n"
         f"Application: {app_code or '(unnamed)'}\n"
         f"Name: {document.get('name') or ''}\n"
-        f"Title: {document.get('title') or ''}\n\n"
-        "Its parts, by key:\n"
+        f"Title: {document.get('title') or ''}\n"
+        + (f"\nHow it connects to the rest of the app: {connections}\n" if connections else "")
+        + "\nIts parts, by key:\n"
         + json.dumps(parts, indent=2)[:12000]
         + "\n\nDescribe each one."
     )
@@ -433,6 +660,7 @@ async def describe(
         system_prompt=prompts.DESCRIBE_SYSTEM_PROMPT,
         user_message=user_message,
         label=f"describe:{kind}",
+        meter=meter,
     )
 
     described = parsed.get("describes")
@@ -451,8 +679,18 @@ async def describe(
     # a board of forty objects draws forty second lines without opening forty
     # documents. Same call, one extra line of output.
     summary = parsed.get("summary")
+    # What a person would CALL each part. Only for keys we asked about, and
+    # trimmed hard: this is a board title, and a title that wraps to three lines
+    # is a description wearing a title's clothes.
+    offered = parsed.get("names")
+    names = {
+        key: str(value).strip()[:60]
+        for key, value in (offered or {}).items()
+        if key in parts and isinstance(value, str) and value.strip()
+    } if isinstance(offered, dict) else {}
     return {
         "describes": clean,
+        "names": names,
         "summary": str(summary).strip()[:400] if isinstance(summary, str) else "",
         "diagnostics": {**diagnostics, "asked": len(parts)},
     }
@@ -462,7 +700,7 @@ async def describe(
 
 
 async def suggest_features(
-    *, objects: list[dict[str, Any]], app_code: str = "",
+    *, objects: list[dict[str, Any]], app_code: str = "", meter: Any = None,
 ) -> dict[str, Any]:
     """Group an app's objects into named capabilities.
 
@@ -495,6 +733,7 @@ async def suggest_features(
         system_prompt=prompts.SUGGEST_FEATURES_SYSTEM_PROMPT,
         user_message=user_message,
         label="suggest_features",
+        meter=meter,
     )
 
     features = coerce_lists(parsed.get("features") or {})

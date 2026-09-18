@@ -1461,6 +1461,25 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
         })
 
 
+# OpenAI-compatible `finish_reason` → the Anthropic-style `stop_reason` the
+# agent loop switches on. "length" must NOT fold into "end_turn": a response cut
+# off at the output ceiling is not a finished one, and this string is the loop's
+# only signal that the turn should be resumed rather than handed back to the
+# user. Folding it lost every truncated turn silently — prod session
+# HHARS1_984fdbf5 died mid-sentence 8 times in 19 turns, each one read as "the
+# model is done", so the user saw a plan break off and had to type "continue".
+_OAI_STOP_REASONS = {
+    "tool_calls": "tool_use",
+    "length": "max_tokens",
+    "stop": "end_turn",
+}
+
+
+def _stop_reason_from_finish(finish_reason: str | None) -> str:
+    """Map one OpenAI-compatible finish_reason, defaulting to "end_turn"."""
+    return _OAI_STOP_REASONS.get(finish_reason or "", "end_turn")
+
+
 class DeepSeekProvider(LLMProvider):
     """DeepSeek provider — OpenAI-compatible Chat Completions API.
 
@@ -1681,9 +1700,7 @@ class DeepSeekProvider(LLMProvider):
                     "input": json_lib.loads(tc.function.arguments),
                 })
 
-        stop_reason = "end_turn"
-        if choice.finish_reason == "tool_calls":
-            stop_reason = "tool_use"
+        stop_reason = _stop_reason_from_finish(choice.finish_reason)
 
         result: Dict[str, Any] = {
             "content": content_blocks,
@@ -1708,6 +1725,17 @@ class DeepSeekProvider(LLMProvider):
         """Stream completion via Chat Completions API (OpenAI-compatible)."""
         import json as json_lib
         model = self.get_model(model_tier)
+
+        # The thinking floor was applied on `create_completion_with_tools` only,
+        # and the agent loop runs HERE — so the tier that spends part of its
+        # budget on reasoning was the one path that never got the headroom for
+        # it. Same floor, same reason: reasoning_content is billed as output and
+        # comes out of this ceiling, so a caller's ordinary budget can be gone
+        # before the first token of the answer.
+        effective_max_tokens = (
+            max(max_tokens, self._THINKING_MIN_MAX_TOKENS)
+            if self._is_thinking_tier(model_tier) else max_tokens
+        )
 
         sys_text = flatten_system_blocks(system_prompt)
 
@@ -1755,7 +1783,7 @@ class DeepSeekProvider(LLMProvider):
         def _run_sync_stream():
             try:
                 stream = self.client.chat.completions.create(
-                    model=model, max_tokens=max_tokens,
+                    model=model, max_tokens=effective_max_tokens,
                     messages=full_messages,
                     tools=openai_tools if openai_tools else None,
                     stream=True,
@@ -1823,7 +1851,7 @@ class DeepSeekProvider(LLMProvider):
                     if tc.function and tc.function.arguments:
                         tool_call_buffer[idx]["arguments"] += tc.function.arguments
             if finish_reason:
-                final_stop_reason = "tool_use" if finish_reason == "tool_calls" else "end_turn"
+                final_stop_reason = _stop_reason_from_finish(finish_reason)
                 for idx, tc_data in tool_call_buffer.items():
                     if tc_data["arguments"]:
                         yield StreamChunk(type="tool_input_delta",

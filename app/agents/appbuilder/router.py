@@ -40,6 +40,18 @@ def set_appbuilder_agent(agent) -> None:
     _agent = agent
 
 
+def get_appbuilder_agent():
+    """The one AppBuilderAgent this process built, or None if it failed to.
+
+    There is exactly one, made during startup with the component catalogue, the
+    API catalogue and a loaded context — about 10K tokens of rendered prefix that
+    is computed once and cached for the life of the process. Anything that needs
+    to author a page uses THIS one; a second instance would re-download both
+    catalogues and then disagree with the first about what components exist.
+    """
+    return _agent
+
+
 async def require_ai_auth_context(
     auth: AuthContext = Depends(require_auth_context),
 ) -> AuthContext:
