@@ -45,6 +45,26 @@ from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
+# Resuming a turn the model left unfinished at the output ceiling. The notice is
+# the user-visible half: without it a truncation is indistinguishable from the
+# agent wandering off, which is exactly how it read before — "hey u stoped like
+# 5 times till now what going on" (HHARS1_984fdbf5, turn 15).
+_TRUNCATION_NOTICE = "\n\n[Hit the response length limit. Picking up where it stopped.]\n\n"
+_TRUNCATION_EXHAUSTED = (
+    "\n\n[Hit the response length limit again after resuming. Stopping here so this "
+    "doesn't loop — send 'continue' to carry on, or ask for a smaller step.]"
+)
+# Sent as the user turn that resumes it. Addressed to the model, so it names
+# what went wrong and what not to do again (restart the answer, re-summarise).
+_TRUNCATION_RESUME = (
+    "[system] Your previous message was cut off at the output length limit before it "
+    "finished, and any tool calls it had started were discarded. Continue from where it "
+    "stopped. Do not restart or re-summarise what you already said. Make the tool calls "
+    "you were about to make, and keep prose short so the work lands this time."
+)
+# Stands in when a turn spends its whole budget on reasoning and emits no text:
+# an assistant message with empty content is rejected by the chat APIs.
+_TRUNCATED_PLACEHOLDER = "[cut off at the output length limit before any text was written]"
 
 
 class _ToolBlockAssembler:
@@ -333,6 +353,10 @@ class BaseAgent:
         session.append_user_message(user_message, image_blocks)
         logger.info("Message history: %d messages", len(session.get_messages()))
         session.start_turn()
+        # The turn's true start. Everything before the first LLM call — the
+        # pushed context, the access checks, the billing gate — is inside this
+        # and inside nothing else that is recorded.
+        turn_started = time.monotonic()
         await session.persist_turn_incremental(user_message, "", None)
 
         # Billing — AI is a metered, gated action. Gate this turn against the
@@ -357,7 +381,16 @@ class BaseAgent:
         )
         logger.info("System prompt built: %d block(s)", len(system_prompt))
 
+        # Local import to match the rest of this module: app.config is imported
+        # lazily because agent.py loads before it on some boot paths.
+        from app.config import settings as _loop_cfg  # noqa: PLC0415
+
         turn = 0
+        # Turns resumed after a max_tokens cut-off, run-scoped. Bounded so a
+        # model that truncates every time cannot spend the whole turn budget
+        # (and the user's wallet) restarting the same answer.
+        truncations = 0
+        max_truncation_continuations = _loop_cfg.AGENT_MAX_TRUNCATION_CONTINUATIONS
         assistant_text_parts: list[str] = []
         # Collects one record per tool call for training/audit storage
         tool_call_log: list[dict[str, Any]] = []
@@ -439,12 +472,6 @@ class BaseAgent:
             usage["latency_ms"] = latency_ms
             logger.info("Turn %d: LLM streamed in %dms, stop_reason=%s, text_chunks=%d, usage=%s",
                        turn, latency_ms, stop_reason, _text_chunk_count, usage)
-            if stop_reason == "max_tokens":
-                logger.warning(
-                    "Turn %d truncated at max_tokens=%d — response incomplete. "
-                    "Increase max_tokens or tighten the prompt's output.",
-                    turn, self.max_tokens,
-                )
 
             resolved_model = provider.get_model(effective_tier)
             if not model_used:
@@ -465,6 +492,48 @@ class BaseAgent:
             # provider re-emits it. Pop here so it doesn't leak into the persisted
             # usage record.
             reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
+
+            if stop_reason == "max_tokens":
+                # Cut off at the output ceiling, NOT finished. Resume the turn
+                # instead of handing a half-sentence back to the user: on a
+                # thinking model the budget is shared with reasoning_content, so
+                # a turn can spend it all deliberating and stop before writing a
+                # single tool call (prod HHARS1_984fdbf5 turn 11: 15,999 output
+                # tokens for 399 characters of text, then silence).
+                #
+                # The partial tool calls are DROPPED. A call cut mid-stream has
+                # half-streamed argument JSON, which the assembler parses to
+                # `input: {}` — running it would execute the tool with no
+                # arguments. They also cannot be left on the message unanswered,
+                # since every OpenAI-compatible API rejects an assistant
+                # tool_call with no matching tool result. The model re-issues
+                # them on the resumed turn.
+                truncations += 1
+                logger.warning(
+                    "Turn %d truncated at max_tokens=%d (%d/%d), dropping %d partial "
+                    "tool call(s)", turn, self.max_tokens, truncations,
+                    max_truncation_continuations, len(tool_use_blocks),
+                )
+                text_blocks = [b for b in content_blocks if b.get("type") == "text"]
+                session.append_assistant_message(
+                    text_blocks or [{"type": "text", "text": _TRUNCATED_PLACEHOLDER}],
+                    reasoning_content,
+                )
+                if event_stream.is_cancelled:
+                    break
+                # Both notices go into assistant_text_parts as well as the
+                # stream, so the saved summary records that the turn was cut
+                # off. Reconstructing this session needed per-call token rows.
+                if truncations > max_truncation_continuations:
+                    # Resuming is not converging. Say so rather than stopping
+                    # mid-sentence again, which is the behaviour being fixed.
+                    await event_stream.emit_text(_TRUNCATION_EXHAUSTED)
+                    assistant_text_parts.append(_TRUNCATION_EXHAUSTED)
+                    break
+                await event_stream.emit_text(_TRUNCATION_NOTICE)
+                assistant_text_parts.append(_TRUNCATION_NOTICE)
+                session.append_user_text(_TRUNCATION_RESUME)
+                continue
 
             session.append_assistant_message(content_blocks, reasoning_content)
 
@@ -677,7 +746,40 @@ class BaseAgent:
         assistant_summary = "".join(assistant_text_parts) if assistant_text_parts else ""
         if len(assistant_summary) > 60000:
             assistant_summary = assistant_summary[:60000] + "\n…[summary truncated]"
-        await session.persist_turn(user_message, assistant_summary, tool_call_log or None, model_used)
+
+        # One last entry recording where the turn's time actually went.
+        #
+        # It rides in the tool log because that is the only per-turn structure
+        # persisted, and it is `kind: "timing"` so nothing reading the log for
+        # TOOLS picks it up. It is never sent to the model: this is the turn's
+        # receipt, written after the model has finished talking.
+        #
+        # Worth having because the three durations are recorded in three
+        # different places and only one of them existed. LLM latency is per call
+        # in `ai_tracking_token_usage`; tool time is now per call here; and the
+        # REST — session setup, the brief, the billing gate, persistence — was
+        # in neither, so it could only ever be inferred from a gap nobody could
+        # see. A turn that feels slow is usually slow somewhere nobody measured.
+        elapsed = round((time.monotonic() - turn_started) * 1000)
+        in_tools = sum(
+            entry.get("ms") or 0 for entry in (tool_call_log or [])
+            if isinstance(entry, dict)
+        )
+        timing = {
+            "kind": "timing",
+            "tool": "_turn",
+            "ms": elapsed,
+            "tool_ms": in_tools,
+            "turns": turn,
+            "tool_calls": len(tool_call_log or []),
+            # What is left after the tools. Mostly model time, plus whatever
+            # the turn spent on neither — which is the interesting part when
+            # this number is large and the model was quick.
+            "other_ms": max(0, elapsed - in_tools),
+        }
+        await session.persist_turn(
+            user_message, assistant_summary, (tool_call_log or []) + [timing], model_used,
+        )
         await session.save_context()
 
         # Lore: accumulate what was asked and what happened, so the app's
@@ -979,6 +1081,17 @@ class BaseAgent:
         ``assistant_text_parts`` is the run-scoped list the persisted turn is
         built from; a tool whose ``audience`` targets the user appends its summary
         here so the receipt survives refresh (see the audience block below)."""
+        # Wall clock for this one tool, from the moment the block is taken to
+        # the moment its log entry is built — confirmation waits, retries and
+        # every platform round trip included.
+        #
+        # Without it a slow turn could only be accounted for by its LLM calls,
+        # because `ai_tracking_token_usage.LATENCY_MS` is the ONLY duration
+        # anything records. A turn measured that way reads as "19 seconds of
+        # model time" with no way to see the thirty spent in tools around it,
+        # and every question about why a screen felt slow was answered from the
+        # one number that happened to exist.
+        _started = time.monotonic()
         tool_name = tool_block["name"]
         tool_input = tool_block["input"]
         tool_use_id = tool_block["id"]
@@ -1044,6 +1157,8 @@ class BaseAgent:
                     "input": tool_input,
                     "success": False,
                     "summary": f"Denied: {reason}",
+                    # A denial can be slow: it may have waited on a person.
+                    "ms": round((time.monotonic() - _started) * 1000),
                     "tool_use_id": tool_use_id,
                     # Blocking elicitation (already resolved in-tool) — never
                     # triggers the deferred break. Stamped for consistency.
@@ -1134,6 +1249,7 @@ class BaseAgent:
             "input": tool_input,
             "success": result.success,
             "summary": result.summary or result.error or "",
+            "ms": round((time.monotonic() - _started) * 1000),
             "tool_use_id": tool_use_id,
             "kind": getattr(tool, "kind", "tool") if tool else "tool",
             "elicit_mode": getattr(tool, "elicit_mode", "deferred") if tool else "deferred",
