@@ -43,15 +43,24 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.services.blueprint import objects, service
+from app.services.blueprint import objects, relations, service
 from app.services.blueprint.compose import (
+    access_facts,
     apply_describes,
+    brand_facts,
     build_app_context,
+    index_access,
+    index_assets,
+    index_brand,
     index_objects,
     seed_entries,
+    set_uses,
 )
+from app.services.blueprint.relations import Edge, Known
+from app.services.blueprint import job_store
 from app.services.blueprint.objects import BlueprintObjectError
 from app.services.blueprint.service import BlueprintGenerationError
+from app.services.billing import OUT_OF_TOKENS, CallMeter
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +122,26 @@ class PlanJob:
     finished_at: float = 0.0
     steps: list[Step] = field(default_factory=list)
     task: asyncio.Task | None = None
-    #: (kind, name, summary) per object read, for the index written at the end.
-    seen: list[tuple[str, str, str]] = field(default_factory=list)
+    #: (kind, name, summary, pending, parts) per object read, for the index.
+    seen: list[tuple[str, str, str, int, int]] = field(default_factory=list)
+    #: Every storage the app has, known before the first page is read, so a
+    #: page's plan can record which of them its own logic names.
+    storage_names: list[str] = field(default_factory=list)
+    #: Every object name the app has, by kind, listed before the sweep starts.
+    #: A reference only becomes an edge when it resolves to something in here,
+    #: which is what keeps a derived graph from containing guesses.
+    known: Known = field(default_factory=lambda: Known({}))
+    #: Every edge found while reading the objects, accumulated so the app plan
+    #: can be written with the whole graph at the end. Incoming edges cannot be
+    #: computed by an object about itself, so they can only be written here.
+    edges: list[Edge] = field(default_factory=list)
+    #: Gates and charges every model call this sweep makes.
+    #:
+    #: A sweep talks to the provider directly rather than through the agent
+    #: loop, so nothing else in the path meters it — and for a while nothing
+    #: did: forty calls against a suspended wallet, billed for none, while the
+    #: chat on the same screen correctly refused to answer.
+    meter: CallMeter | None = None
 
     def progress(self) -> dict[str, Any]:
         """What a poll answers. Flat, and a whole answer every time.
@@ -137,6 +164,10 @@ class PlanJob:
             "steps": [s.as_dict() for s in self.steps],
             "error": self.error,
             "seconds": round((self.finished_at or time.time()) - self.started_at, 1),
+            # What it cost, so a sweep is never a silent charge. Weighted
+            # tokens, the same unit the wallet is debited in.
+            "calls": self.meter.calls if self.meter else 0,
+            "tokens": round(self.meter.tokens) if self.meter else 0,
         }
 
 
@@ -174,6 +205,7 @@ async def start(
     prompt: str,
     headers: dict[str, str],
     client_code: str,
+    auth: Any = None,
     seed_app_plan: bool = True,
     kinds: tuple[str, ...] | None = None,
 ) -> PlanJob:
@@ -188,12 +220,21 @@ async def start(
     if seed_app_plan:
         steps.append(Step(kind="application", name="", label="the site as a whole"))
 
-    for kind in kinds or SWEPT_KINDS:
+    # Names first, ALL of them, before any object is read. A reference found in
+    # a page can only become an edge if it resolves to a real object, and the
+    # page being read second must be able to resolve a name belonging to a kind
+    # that is swept ninth. Listing as we go would mean the first half of the
+    # sweep silently found fewer edges than the second.
+    names_by_kind: dict[str, list[str]] = {}
+    for kind in objects.BOARD_KINDS:
         try:
             rows = await objects.list_objects(kind, app_code, headers)
         except BlueprintObjectError as exc:
             # A kind that cannot be listed is not a reason to abandon the rest.
             logger.warning("blueprint sweep: cannot list %s in %s: %s", kind, app_code, exc)
+            continue
+        names_by_kind[kind] = [row["name"] for row in rows]
+        if kind not in (kinds or SWEPT_KINDS):
             continue
         for row in rows:
             steps.append(
@@ -207,9 +248,28 @@ async def start(
     if len(steps) > (1 if seed_app_plan else 0):
         steps.append(Step(kind="index", name="", label="the list of what it is made of"))
 
-    job = PlanJob(id=uuid.uuid4().hex, app_code=app_code, prompt=prompt, steps=steps)
+    job = PlanJob(
+        id=uuid.uuid4().hex, app_code=app_code, prompt=prompt, steps=steps,
+        storage_names=list(names_by_kind.get("storage") or ()),
+        known=Known(names_by_kind),
+    )
+    # The job id as the billing session, because it is the thing a person can
+    # point at afterwards and say "that is the sweep I ran".
+    if auth is not None:
+        job.meter = CallMeter(auth, session_id=f"blueprint-plan:{job.id}")
+        # Asked here, before the task is created, so an empty wallet refuses the
+        # REQUEST. A job that starts and then fails on its first step reads as a
+        # broken feature; a refused request reads as what it is, and the refusal
+        # is the same sentence the chat uses so the two halves of the screen
+        # agree about whether there is any money.
+        if not await job.meter.allowed():
+            raise BlueprintGenerationError(OUT_OF_TOKENS, reason="out-of-tokens")
     _JOBS[job.id] = job
     job.task = asyncio.create_task(_run(job, headers, client_code))
+    # Published beside the job so a board that refreshed, or a request that
+    # landed on another of the four workers, can still find it. A no-op when
+    # Redis is off, which is the single-process local case.
+    job_store.watch(job)
     return job
 
 
@@ -277,7 +337,7 @@ async def _plan_the_app(job: PlanJob, headers: dict[str, str], client_code: str)
     context = await build_app_context(job.app_code, headers)
     result = await service.generate(
         prompt=job.prompt, kind="application", app_code=job.app_code,
-        context=context, existing=existing,
+        context=context, existing=existing, meter=job.meter,
     )
     if not result.get("valid"):
         raise BlueprintGenerationError(
@@ -289,36 +349,117 @@ async def _plan_the_app(job: PlanJob, headers: dict[str, str], client_code: str)
     )
 
 
+def _counts(blueprint: dict[str, Any], kind: str) -> tuple[int, int]:
+    """(pending, parts) for one object's plan, as the app index records them.
+
+    In one place because the sweep reaches the index down three paths — a
+    described object, one with nothing new to say, and one whose description
+    failed — and two of those reported zero parts for a page whose plan held
+    three. That is the exact failure the count exists to prevent: a board
+    reading "0" under a page with three sections in its plan, which is a
+    confident wrong answer where a blank would at least have been honest.
+    """
+    from app.services.blueprint.build_job import pending_sections
+    from app.services.blueprint.compose import collection_for
+
+    collection, _ = collection_for(kind)
+    return (
+        len(pending_sections(blueprint, kind)),
+        len(((blueprint or {}).get("plan") or {}).get(collection) or {}),
+    )
+
+
+
 async def _describe_one(
     job: PlanJob, step: Step, headers: dict[str, str], client_code: str,
 ) -> None:
-    """One object: derive a line per part, seed entries for parts with none.
+    """One object: read what it connects to, then derive a line per part.
 
     `seed` is on because this is the case it exists for. A site that has never
     been planned has no entries for a description to land on, so deriving
     without seeding would spend the tokens and write nothing.
+
+    THE CONNECTIONS ARE TAKEN FIRST AND KEPT WHATEVER HAPPENS NEXT. They are
+    read off the definition, so they cost nothing and cannot fail the way a
+    model call can — and a sweep whose provider is down, out of budget or simply
+    wrong should still leave the app knowing what reaches what. Letting a failed
+    description discard them would throw away the free half of the work because
+    the paid half broke.
     """
     document = await objects.read_object(step.kind, job.app_code, step.name, headers)
-    result = await service.describe(
-        document=document, kind=step.kind, app_code=job.app_code,
-    )
+
+    # Before the model call, not after. What a page touches is the single most
+    # useful thing to know about it, and a describer that has not been told
+    # writes "a form with four fields" about a form whose entire purpose is the
+    # storage it fills. Derived, so it costs nothing and cannot be wrong in the
+    # way a guess can.
+    found = relations.edges_of(document, step.kind, job.known)
+    job.edges.extend(found)
+
+    try:
+        result = await service.describe(
+            document=document, kind=step.kind, app_code=job.app_code,
+            connections=relations.summarise(found, step.kind, step.name),
+            meter=job.meter,
+        )
+    except BlueprintGenerationError as exc:
+        if not found:
+            raise
+        # The description failed and the connections did not. Write them, then
+        # let the step report the failure honestly: half the work landed, and
+        # saying "failed" with nothing written would be the wrong half of true.
+        blueprint = set_uses(
+            document.get("blueprint") or {},
+            relations.uses_of(found, step.kind, step.name),
+        )
+        await objects.write_blueprint(
+            step.kind, job.app_code, step.name, blueprint,
+            headers, client_code, message="connections derived from the definition",
+        )
+        job.seen.append((step.kind, step.name, "", *_counts(blueprint, step.kind)))
+        raise BlueprintGenerationError(
+            f"{exc.message} ({len(found)} connections were still recorded)",
+            reason=exc.reason,
+        ) from exc
+
     describes: dict[str, str] = result.get("describes") or {}
-    # Recorded before the early return: an object with no parts worth describing
-    # is still an object the app is made of, and leaving it out of the index
-    # would say the site does not have it.
-    job.seen.append((step.kind, step.name, result.get("summary") or ""))
-    if not describes:
+    if not describes and not found:
+        # Recorded even so: an object with no parts worth describing is still an
+        # object the app is made of, and leaving it out of the index would say
+        # the site does not have it.
+        job.seen.append((
+            step.kind, step.name, result.get("summary") or "",
+            *_counts(document.get("blueprint") or {}, step.kind),
+        ))
         step.detail = "nothing to describe"
         return
 
     blueprint = document.get("blueprint") or {}
-    blueprint = seed_entries(blueprint, document, step.kind, describes)
-    blueprint = apply_describes(blueprint, describes, step.kind)
+    if describes:
+        blueprint = seed_entries(
+            blueprint, document, step.kind, describes, result.get("names") or {},
+        )
+        blueprint = apply_describes(blueprint, describes, step.kind)
+    # What this object reaches, for every kind rather than only storages. An
+    # object's own plan carries its outgoing edges so an agent working on one
+    # page does not have to read the whole app plan to learn what it touches.
+    blueprint = set_uses(blueprint, relations.uses_of(found, step.kind, step.name))
+
+    # Counted here, where the object's plan is already in hand, and carried to
+    # the index so a board can see outstanding work without opening anything.
+    from app.services.blueprint.build_job import pending_sections
+
+    job.seen.append((
+        step.kind, step.name, result.get("summary") or "",
+        *_counts(blueprint, step.kind),
+    ))
     await objects.write_blueprint(
         step.kind, job.app_code, step.name, blueprint,
         headers, client_code, message="plan derived from the definition",
     )
     step.detail = f"{len(describes)} described"
+    if found:
+        step.detail += f", {len(found)} connections"
 
 
 async def _write_the_index(
@@ -340,11 +481,36 @@ async def _write_the_index(
         step.detail = "nothing to index"
         return
 
+    # The application's own references — its shell, its landing page, its theme.
+    # Read here because the application document was never one of the swept
+    # steps, so nothing else in the sweep ever opens it.
+    try:
+        app_document = await objects.read_object("application", job.app_code, "", headers)
+        job.edges.extend(relations.edges_of(app_document, "application", job.known))
+    except BlueprintObjectError as exc:
+        logger.info("blueprint sweep: no application references for %s: %s", job.app_code, exc)
+
     current = await objects.read_blueprint("application", job.app_code, "", headers)
     blueprint = current.get("blueprint") or {}
     blueprint = index_objects(blueprint, job.seen)
+    # The graph, on the application and nowhere else. `usedBy` is the half that
+    # answers the questions worth asking and no object can compute its own
+    # incoming edges — only something holding every document at once can.
+    blueprint = relations.index_relations(blueprint, job.edges)
+    # The look and the icon, neither of which is in any object's definition or
+    # in any list: the typeface is a variable on the theme and the icon is a
+    # `<link>` on the application's own properties, so nothing else in the sweep
+    # would ever have seen either one.
+    brand = await brand_facts(job.app_code, headers)
+    blueprint = index_brand(blueprint, brand)
+    blueprint = index_assets(blueprint, brand)
+    # Who the app is for and what it talks to. Neither is an object, so nothing
+    # the sweep read would ever have mentioned either.
+    blueprint = index_access(blueprint, await access_facts(job.app_code, headers))
     await objects.write_blueprint(
         "application", job.app_code, "", blueprint,
         headers, client_code, message="what the app is made of",
     )
     step.detail = f"{len(job.seen)} objects listed"
+    if job.edges:
+        step.detail += f", {len(relations.dedup(job.edges))} connections mapped"

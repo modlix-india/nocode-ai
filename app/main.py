@@ -5,8 +5,10 @@ Agentic AI service for building no-code applications through conversation.
 Integrates with nocode-saas via Eureka service discovery and Config Server.
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 from app.config import settings, initialize_settings
@@ -239,6 +241,40 @@ app.add_middleware(RateLimitMiddleware)
 
 # Add request deduplication middleware (prevents duplicate concurrent requests)
 app.add_middleware(RequestDeduplicationMiddleware)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Answer errors in the shape the platform's own toast can read.
+
+    Every Spring service in Modlix answers a failure with a FLAT body:
+
+        {"message": "...", "debugMessage": "...", "exceptionId": ..., "stackTrace": ...}
+
+    and the UI's toast renderer is built for exactly that — `Messages.tsx:103`
+    reads `msg.message` whenever the error body is an object. FastAPI's default
+    is `{"detail": ...}`, which has no `message` key, so **every HTTP error this
+    service has ever returned rendered as a completely blank toast.** Not a
+    wrong message: an empty box with an icon in it.
+
+    Nothing noticed because the agent surfaces is SSE — its errors arrive as
+    stream events and never touch this path. The blueprint routes are the first
+    plain HTTP ones a person presses a button to reach, and the button that
+    exposed it was Generate on an empty wallet: a real 402 carrying a real
+    sentence, shown as nothing at all.
+
+    `detail` is kept exactly as it was, so any existing client reading it is
+    unaffected; `message` is added beside it. When `detail` is already a dict
+    that names its own message (the validator refusals do), that one is used
+    rather than stringifying the dict.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict):
+        message = str(detail.get("message") or "").strip() or "The request was refused."
+        body: dict = {**detail, "detail": detail, "message": message}
+    else:
+        body = {"detail": detail, "message": str(detail)}
+    return JSONResponse(status_code=exc.status_code, content=body, headers=exc.headers)
 
 # API prefix - matches gateway routing: /api/ai/**
 API_PREFIX = "/api/ai"
