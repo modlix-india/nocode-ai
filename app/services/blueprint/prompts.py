@@ -38,8 +38,11 @@ APP_PLAN_SHAPE = """The application plan:
     "appType": "SITE" | "APP",
     "audience": "Who uses this and what they are trying to do.",
     "glossary": {"<uid>": {"order": 1000, "term": "Deal", "means": "..."}},
-    "brand": {"tone": "...", "typeScale": "...", "motion": "...",
+    "brand": {"tone": "...", "motion": "...",
+              "theme": "<the theme object's name>",
+              "typeface": "Figtree, system-ui, sans-serif",
               "palette": {"<name>": "#rrggbb"},
+              "typeScale": {"<name>": "14px/14px <fontFamily>"},
               "variables": {"<name>": "what it is for"}},
     "features": {"<uid>": {"order": 1000, "name": "Blog", "intent": "...",
                            "status": "planned" | "built" | "retired"}},
@@ -85,7 +88,17 @@ carries its own plan then, and a second copy here would drift from it.
 all: a favicon, a logo, a hero photograph — something to be MADE. There is no
 overridable record for a picture, so "a cinnamon roll in a circle, flat, two
 colours" is written here or it is not written anywhere. "assetId" stays null
-until the file exists, which is also how you can tell it does not yet."""
+until the file exists, which is also how you can tell it does not yet.
+
+WHAT NOT TO INVENT UNDER "brand"
+
+"theme", "typeface", "palette" and "typeScale" are READ off the site's theme
+and will be overwritten with the real values. If the context you were given
+carries them, copy them exactly; if it does not, leave them out. A palette you
+made up sits beside one that is actually in use and nothing distinguishes them.
+
+"tone" and "motion" are yours to write — they are a judgement about the brand
+and no amount of reading the theme produces them."""
 
 
 PAGE_PLAN_SHAPE = """The page plan:
@@ -100,6 +113,8 @@ PAGE_PLAN_SHAPE = """The page plan:
     "route": {"path": "/blog/{slug}", "param": "slug", "why": "..."},
     "contentSource": "plan" | "storage:<name>",
     "sections": {"<uid>": {"order": 1000,
+                           "name": "Hero",
+                           "componentKey": null,
                            "kind": "hero",
                            "variant": "split-image-right",
                            "purpose": "What this section is for.",
@@ -108,6 +123,18 @@ PAGE_PLAN_SHAPE = """The page plan:
                            "media": {"<uid>": {"order": 1000, "intent": "...", "assetId": null}}}}
   }
 }
+
+"name" IS REQUIRED ON EVERY SECTION. It is what a person reads on the board —
+two or three words, the way they would refer to it out loud: "Hero", "What we
+make", "The order form". A section with no name renders as "Untitled" and the
+whole column becomes unreadable.
+
+"componentKey" is the one link from a plan entry back into the built page, and
+it is the KEY of the component that answers to this section. Leave it null for
+a section that has not been built: null means "planned, nothing on the site
+answers to this yet", which is true and useful. NEVER invent a key — a made-up
+one claims a link to a component that does not exist and the entry then reads as
+built when it is not.
 
 "content" is the BRIEF, not the rendered output. The words that end up on screen
 live in the components; keeping them apart is what makes "rewrite the copy" and
@@ -265,10 +292,21 @@ somebody looking at a board of forty of them, so:
 
 {NO_ARRAYS}
 
-Return ONE JSON object with the part lines and ONE line for the whole object:
+Return ONE JSON object with a NAME and a line for each part, and one line for
+the whole object:
 
 {{"summary": "what this object is, in one line",
+  "names": {{"<the key you were given>": "Hero"}},
   "describes": {{"<the key you were given>": "one line"}}}}
+
+"names" is what a person would CALL each part out loud: two or three words,
+capitalised like a heading — "Hero", "What we make", "The order form", "The top
+bar". It is the title on a board, so it has to be scannable on its own.
+
+Name them from what they DO, never from what they are made of. The page editor
+leaves most sections called "Grid", and a board of "Grid 1" through "Grid 9" is
+the problem this field exists to solve — repeating the component type back is
+the one answer that is no use at all.
 
 "summary" is the object seen from outside — what a person would say this page,
 this storage or this function is, without listing its parts. It is read on a

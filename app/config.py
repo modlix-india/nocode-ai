@@ -369,7 +369,24 @@ class Settings(BaseSettings):
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
     MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
-    AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
+    # Max tokens per LLM response. Raised from 16000 (a MiniMax M3-era number)
+    # after prod session HHARS1_984fdbf5 stalled 8 times in 19 turns, every
+    # stall a call returning exactly 16000 output tokens. On a thinking model
+    # reasoning_content is billed as output and comes out of THIS budget, so a
+    # turn could spend the lot deliberating and be cut before writing a tool
+    # call. `deepseek-flash` documents 384K max output, so the ceiling is ours,
+    # not the model's; 32000 clears the largest honest turn in that session
+    # (11.6K) with room for the reasoning that shares it. The truncation itself
+    # is now recoverable (see AGENT_MAX_TRUNCATION_CONTINUATIONS) — this only
+    # makes it rare. Keep it within the smallest max-output of any provider the
+    # agent can be pointed at.
+    AGENT_MAX_TOKENS: int = 32000
+    # How many times ONE turn may be resumed after being cut off at
+    # AGENT_MAX_TOKENS. 0 restores the old behaviour (stop, say nothing).
+    # Bounded because each resume is a fresh full-context call: a model that
+    # truncates every time would otherwise burn the turn budget, and the
+    # wallet, restarting the same answer.
+    AGENT_MAX_TRUNCATION_CONTINUATIONS: int = 2
 
     # Which tools ship a FULL schema in the per-turn tools[] payload.
     #   "full" — the curated HOT_TOOLS set (64 tools, ~19.6K tok/turn).

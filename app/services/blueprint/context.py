@@ -173,6 +173,17 @@ def render_brief(blueprint: dict[str, Any], *, budget: int = BRIEF_BUDGET) -> st
     if planned:
         lines.append(f"{len(planned)} objects are planned for this app.")
 
+    busiest = _most_depended_on(plan)
+    if busiest:
+        # Not the whole graph — that is hundreds of lines and belongs behind a
+        # tool call. What belongs in every turn is the handful of objects that
+        # most of the app hangs off, because those are the ones an agent is most
+        # likely to change casually and least able to change safely.
+        lines.append(
+            "Most depended on: " + ", ".join(busiest)
+            + ". Call `blueprint_relations` before changing or removing any of them."
+        )
+
     body = "\n".join(lines)
     if len(body) > budget:
         body = body[:budget].rsplit("\n", 1)[0] + "\n…(truncated; call blueprint_get for the whole plan)"
@@ -183,7 +194,44 @@ def render_brief(blueprint: dict[str, Any], *, budget: int = BRIEF_BUDGET) -> st
         "the user says otherwise, and do not re-decide something it already decided; "
         "if you disagree, say so and ask.\n\n"
         f"{body}\n\n"
-        "Use `blueprint_get` for the full plan or for one object's, `blueprint_drift` "
-        "before assuming a page matches its plan, and `blueprint_set` when the user "
-        "states intent that should outlive this conversation."
+        "Use `blueprint_get` for the full plan or for one object's, "
+        "`blueprint_relations` to see what reaches an object before you change it, "
+        "`blueprint_drift` before assuming a page matches its plan, and "
+        "`blueprint_set` when the user states intent that should outlive this "
+        "conversation."
     )
+
+
+#: How many of the app's load-bearing objects are named in the brief.
+MAX_DEPENDED_ON = 5
+
+
+def _most_depended_on(plan: dict[str, Any]) -> list[str]:
+    """The objects the most other objects reach, by name, busiest first.
+
+    Incoming degree rather than outgoing, and the asymmetry is the point: an
+    object that reaches many things is complicated, while an object that MANY
+    THINGS REACH is load-bearing, and only the second is dangerous to change.
+
+    Ties are broken by name so the brief is stable between turns. A brief whose
+    wording shuffles is a brief that invalidates the prompt cache for nothing.
+    """
+    graph = plan.get("relations")
+    if not isinstance(graph, dict) or not graph:
+        return []
+
+    incoming: dict[str, int] = {}
+    for entry in graph.values():
+        if not isinstance(entry, dict):
+            continue
+        target = entry.get("to")
+        if isinstance(target, str) and target:
+            incoming[target] = incoming.get(target, 0) + 1
+
+    ranked = sorted(incoming.items(), key=lambda kv: (-kv[1], kv[0]))
+    # One thing reaching it is not a dependency worth a warning; it is a link.
+    return [
+        f"{address.split(':', 1)[-1]} ({count} things reach it)"
+        for address, count in ranked[:MAX_DEPENDED_ON]
+        if count > 1
+    ]

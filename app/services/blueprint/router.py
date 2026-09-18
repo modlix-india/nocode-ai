@@ -30,7 +30,8 @@ from app.core.base_auth import require_auth_context
 from app.core.base_router import stream_agent_response
 from app.core.session import AuthContext, BaseSession
 from app.services.session_manager import get_session_manager
-from app.services.blueprint import objects, plan_job, service
+from app.services.billing import CallMeter
+from app.services.blueprint import build_job, job_store, objects, plan_job, publish, service
 from app.services.blueprint.objects import BlueprintObjectError
 from app.services.blueprint.service import BlueprintGenerationError
 from app.services.blueprint.compose import (
@@ -88,6 +89,21 @@ def _headers(auth: AuthContext) -> dict[str, str]:
 
 def _object_error(exc: BlueprintObjectError) -> HTTPException:
     return HTTPException(status_code=exc.status, detail=exc.message)
+
+
+def _generation_error(exc: BlueprintGenerationError) -> HTTPException:
+    """502 for a model that failed, 402 for a wallet that is empty.
+
+    They are not the same thing and a client has to be able to tell them apart:
+    one is "try again", the other is "add money", and a screen that offers
+    Retry for an empty wallet teaches people that Retry does nothing.
+
+    402 rather than 403 because nothing here is forbidden — the caller has every
+    right to this and has run out of credit, which is precisely what 402 is for.
+    """
+    if exc.reason == "out-of-tokens":
+        return HTTPException(status_code=402, detail=exc.message)
+    return HTTPException(status_code=502, detail=exc.message)
 
 
 # ── Reads ────────────────────────────────────────────────────────────────
@@ -211,11 +227,12 @@ async def post_generate(
 
     try:
         result = await service.generate(
+            meter=CallMeter(auth, session_id=f"blueprint-generate:{body.app_code}"),
             prompt=body.prompt, kind=body.kind, app_code=body.app_code,
             context=context, existing=existing,
         )
     except BlueprintGenerationError as exc:
-        raise HTTPException(status_code=502, detail=exc.message) from exc
+        raise _generation_error(exc) from exc
 
     if body.save and result["valid"] and body.app_code:
         try:
@@ -271,14 +288,18 @@ async def post_describe(
     try:
         result = await service.describe(
             document=document, kind=body.kind, app_code=body.app_code,
+            meter=CallMeter(auth, session_id=f"blueprint-describe:{body.name}"),
         )
     except BlueprintGenerationError as exc:
-        raise HTTPException(status_code=502, detail=exc.message) from exc
+        raise _generation_error(exc) from exc
 
     if body.save and result["describes"]:
         blueprint = document.get("blueprint") or {}
         if body.seed:
-            blueprint = seed_entries(blueprint, document, body.kind, result["describes"])
+            blueprint = seed_entries(
+                blueprint, document, body.kind, result["describes"],
+                result.get("names") or {},
+            )
         blueprint = apply_describes(blueprint, result["describes"], body.kind)
         try:
             saved = await objects.write_blueprint(
@@ -297,7 +318,14 @@ async def post_describe(
 class ReconcileRequest(BaseModel):
     app_code: str
     kind: str = "page"
-    name: str
+    #: Which object. EMPTY MEANS THE WHOLE APP.
+    #:
+    #: "Update the plan from the site" is an app-level act — somebody has been
+    #: editing pages and the plan is behind across several of them — and making
+    #: it a required field meant the board's own banner could not call its own
+    #: endpoint. It sent no name, the request failed validation, and the button
+    #: reported an unknown error.
+    name: str = ""
     #: The plan entries to accept. Empty means every drifted entry on the object.
     uids: str = ""
     message: str = ""
@@ -328,6 +356,10 @@ async def post_reconcile(
     """
     await _scope(auth, body.app_code, write=True)
     headers = _headers(auth)
+
+    if not body.name:
+        return await _reconcile_app(body, auth, headers)
+
     try:
         document = await objects.read_object(body.kind, body.app_code, body.name, headers)
     except BlueprintObjectError as exc:
@@ -384,6 +416,57 @@ async def post_reconcile(
     }
 
 
+async def _reconcile_app(
+    body: ReconcileRequest, auth: AuthContext, headers: dict[str, str],
+) -> dict[str, Any]:
+    """Accept what was built, across every object of the kind, in one press.
+
+    Sequential and one write per object that actually moved. A page with no
+    drift is read and left alone rather than written with its own contents,
+    which would bump its version and, worse, show up in its history as an edit
+    nobody made.
+
+    One object failing is one object: it is named in `failed` and the rest are
+    still reconciled. The alternative — refusing the whole thing because the
+    fourth page could not be read — throws away three pages of correct work and
+    leaves the person with no way to make progress on the other three.
+    """
+    try:
+        rows = await objects.list_objects(body.kind, body.app_code, headers)
+    except BlueprintObjectError as exc:
+        raise _object_error(exc) from exc
+
+    updated: list[dict[str, Any]] = []
+    failed: dict[str, str] = {}
+    for row in rows:
+        one = ReconcileRequest(
+            app_code=body.app_code, kind=body.kind, name=row["name"],
+            message=body.message,
+        )
+        try:
+            result = await post_reconcile(one, auth)
+        except HTTPException as exc:
+            # A page with no plan entries answers 400, and that is not a
+            # failure of this sweep: most pages on most sites have no plan.
+            if exc.status_code != 400:
+                failed[row["name"]] = str(exc.detail)
+            continue
+        except BlueprintObjectError as exc:
+            failed[row["name"]] = exc.message
+            continue
+        if result.get("saved"):
+            updated.append({"name": row["name"], "reconciled": result.get("reconciled") or []})
+
+    return {
+        "app_code": body.app_code,
+        "kind": body.kind,
+        "objects": updated,
+        "reconciled": sum(len(u["reconciled"]) for u in updated),
+        "saved": bool(updated),
+        "failed": failed,
+    }
+
+
 class SuggestRequest(BaseModel):
     app_code: str
     kinds: Optional[str] = Field(
@@ -412,9 +495,12 @@ async def post_suggest_features(
             logger.info("blueprint: skipping %s for %s: %s", kind, body.app_code, exc.message)
 
     try:
-        return await service.suggest_features(objects=listed, app_code=body.app_code)
+        return await service.suggest_features(
+            objects=listed, app_code=body.app_code,
+            meter=CallMeter(auth, session_id=f"blueprint-features:{body.app_code}"),
+        )
     except BlueprintGenerationError as exc:
-        raise HTTPException(status_code=502, detail=exc.message) from exc
+        raise _generation_error(exc) from exc
 
 
 # ── Everything the app is made of, in one call ───────────────────────────
@@ -449,9 +535,23 @@ async def get_objects(
     async def listing(kind: str) -> list[dict[str, Any]]:
         return await objects.list_objects(kind, app_code, headers)
 
-    results = await asyncio.gather(
-        *(listing(kind) for kind in wanted), return_exceptions=True,
-    )
+    # The FIRST one alone, then the rest together.
+    #
+    # Every one of these makes the platform ask the security service whether
+    # this caller may read this app, and that answer is cached. Firing nine at
+    # once against a cold cache is nine concurrent identical questions, which is
+    # the shape that lets a negative answer get cached and then refuse every
+    # read of the app until something evicts it. One call first settles the
+    # answer; the other eight then read it.
+    results: list[Any] = []
+    if wanted:
+        try:
+            results.append(await listing(wanted[0]))
+        except Exception as exc:  # noqa: BLE001 — reported per kind below
+            results.append(exc)
+    results.extend(await asyncio.gather(
+        *(listing(kind) for kind in wanted[1:]), return_exceptions=True,
+    ))
 
     found: dict[str, Any] = {}
     unavailable: dict[str, str] = {}
@@ -471,7 +571,7 @@ async def get_objects(
     }
 
 
-@router.get("/object")
+@router.get("/document")
 async def get_object(
     app_code: str,
     kind: str,
@@ -479,6 +579,14 @@ async def get_object(
     auth: AuthContext = Depends(require_auth_context),
 ) -> dict[str, Any]:
     """One object's document, cut down to what the board draws from it.
+
+    `/document`, NOT `/object`. `/object` was already taken, by the route that
+    reads a plan — and FastAPI matches the first declaration, so this one was
+    dead from the moment it was written. Everything asking for a page got the
+    plan-only payload back: no component map, no schema, no steps. The board
+    then drew every column from its plan alone, so a page's cards were all
+    "planned, not built" while the page stood there fully built, and a function
+    column was simply empty. One shadowed route, and the whole board lied.
 
     The board opens a column by fetching the object behind it, and doing that
     from the page meant knowing which platform route each kind lives on — a
@@ -544,11 +652,16 @@ async def post_plan(
             prompt=body.prompt or _DEFAULT_PLAN_PROMPT,
             headers=headers,
             client_code=auth.client_code,
+            auth=auth,
             seed_app_plan=body.app_plan,
             kinds=tuple(k.strip() for k in body.kinds.split(",") if k.strip()) or None,
         )
     except BlueprintObjectError as exc:
         raise _object_error(exc) from exc
+    except BlueprintGenerationError as exc:
+        # The wallet gate, asked before the task was created. A sweep refused
+        # here has spent nothing and started nothing.
+        raise _generation_error(exc) from exc
     return {**job.progress(), "joined": False}
 
 
@@ -563,7 +676,7 @@ async def get_plan(
     "finished a while ago", not as failure: every step's work was written to its
     own object as that step completed.
     """
-    job = plan_job.get(job_id)
+    job = await _find_job(job_id, plan_job.get)
     if job is None:
         raise HTTPException(status_code=404, detail="No such planning job.")
     await _scope(auth, job.app_code, write=False)
@@ -596,15 +709,129 @@ async def stream_plan(
     and the browser, and a client that cannot open one should degrade to asking
     rather than lose the ability to watch.
     """
-    job = plan_job.get(job_id)
+    job = await _find_job(job_id, plan_job.get)
     if job is None:
         raise HTTPException(status_code=404, detail="No such planning job.")
     await _scope(auth, job.app_code, write=False)
+
+    return _progress_stream(job)
+
+
+#: How often the stream looks for a change. Not how often it writes: it writes
+#: when the progress differs, which on a sweep is once per object.
+_STREAM_TICK = 0.5
+
+#: Silence after which the stream writes a comment, to keep an idle proxy from
+#: closing a connection that is working perfectly well.
+_STREAM_KEEPALIVE = 20.0
+
+
+# ── Building: turning the plan into objects that exist ───────────────────
+
+
+class BuildRequest(BaseModel):
+    app_code: str
+    #: Author the content as well as creating the objects.
+    #:
+    #: Off is a real and useful choice: creating every planned object is fast,
+    #: cheap and reliable, and it makes the shape of the site real so somebody
+    #: can look at it before anything is spent writing copy into it.
+    fill: bool = True
+
+
+@router.post("/build")
+async def post_build(
+    body: BuildRequest,
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """Build what the plan says, and answer with the checklist.
+
+    Returns before anything is created, carrying the full step list, because
+    the plan IS the checklist — which is what lets one board be the progress
+    view, the retry unit and the failure report at the same time.
+
+    An app already building gets that build back rather than a second one. Two
+    would race on the same objects and the loser would create what the winner
+    had just created.
+    """
+    await _scope(auth, body.app_code, write=True)
+
+    running = build_job.running_for(body.app_code)
+    if running:
+        return {**running.progress(), "joined": True}
+
+    try:
+        job = await build_job.start(
+            app_code=body.app_code,
+            headers=_headers(auth),
+            auth=auth,
+            fill=body.fill,
+        )
+    except BlueprintObjectError as exc:
+        raise _object_error(exc) from exc
+    return {**job.progress(), "joined": False}
+
+
+@router.get("/build/{job_id}")
+async def get_build(
+    job_id: str,
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """Where the build has got to."""
+    job = await _find_job(job_id, build_job.get)
+    if job is None:
+        raise HTTPException(status_code=404, detail="No such build.")
+    await _scope(auth, job.app_code, write=False)
+    return job.progress()
+
+
+@router.get("/build/{job_id}/stream")
+async def stream_build(
+    job_id: str,
+    auth: AuthContext = Depends(require_auth_context),
+) -> StreamingResponse:
+    """The build's progress, pushed. Same contract as the planning stream."""
+    job = await _find_job(job_id, build_job.get)
+    if job is None:
+        raise HTTPException(status_code=404, detail="No such build.")
+    await _scope(auth, job.app_code, write=False)
+    return _progress_stream(job)
+
+
+async def _find_job(job_id: str, local: Any) -> Any | None:
+    """A job by id, from this worker or from whichever one is running it.
+
+    Production runs four workers and each registry is a dict in one process, so
+    a poll or a stream lands on the right worker about one time in four. Falling
+    back to what the owning worker published turns "no such job" — which is what
+    three people in four were told about a job running fine — into an answer.
+    """
+    job = local(job_id)
+    if job is not None:
+        return job
+    payload = await job_store.read(job_id)
+    return job_store.RemoteJob(payload) if payload else None
+
+
+def _progress_stream(job: Any) -> StreamingResponse:
+    """One SSE body for any job that can describe its own progress.
+
+    Written once rather than per job type: a build and a planning sweep report
+    the same shape on purpose, so that one renderer draws both and a second
+    copy of this loop would be a second place for the keep-alive to be wrong.
+    """
 
     async def events():
         last = ""
         idle = 0.0
         while True:
+            # A job held by ANOTHER worker only changes when it is re-read, so
+            # the remote case refreshes before each frame. `RemoteJob` exists to
+            # make that the only difference between the two: everything below
+            # is identical, because a second copy of this loop would be a second
+            # place for the keep-alive and the terminal condition to be wrong.
+            if hasattr(job, "refresh"):
+                await job.refresh()
             current = job.progress()
             encoded = json.dumps(current, sort_keys=True)
             if encoded != last:
@@ -618,7 +845,6 @@ async def stream_plan(
             idle += _STREAM_TICK
             if idle >= _STREAM_KEEPALIVE:
                 idle = 0.0
-                # A comment, which SSE ignores and every proxy counts as traffic.
                 yield ": keep-alive\n\n"
 
     return StreamingResponse(
@@ -627,20 +853,9 @@ async def stream_plan(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            # nginx buffers a response body by default, which for a stream means
-            # the browser sees nothing until the sweep ends.
             "X-Accel-Buffering": "no",
         },
     )
-
-
-#: How often the stream looks for a change. Not how often it writes: it writes
-#: when the progress differs, which on a sweep is once per object.
-_STREAM_TICK = 0.5
-
-#: Silence after which the stream writes a comment, to keep an idle proxy from
-#: closing a connection that is working perfectly well.
-_STREAM_KEEPALIVE = 20.0
 
 
 # ── The planning conversation ────────────────────────────────────────────
@@ -717,3 +932,83 @@ async def plan_chat(
             )
 
     return await stream_agent_response(await plan_agent(), body.message, session)
+
+
+# ── Putting it on the site ───────────────────────────────────────────────
+
+
+class PublishRequest(BaseModel):
+    app_code: str
+
+
+@router.get("/pending")
+async def get_pending(
+    app_code: str = Query(..., description="The app to check"),
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """What is built and not yet on the site.
+
+    Read access is enough: knowing how much is waiting is not a change, and the
+    board asks for it on every load to decide whether Publish has anything to
+    do. A button that offers to publish nothing is how people learn to distrust
+    the next one.
+    """
+    await _scope(auth, app_code, write=False)
+    return await publish.pending(app_code, _headers(auth), auth.client_code)
+
+
+@router.post("/publish")
+async def post_publish(
+    body: PublishRequest,
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """Put everything drafted for this app on the site.
+
+    The one route in this service that changes what the public can see, and it
+    exists only because a person pressed a button. Nothing calls it: not the
+    build, not the sweep, not an agent. The build deliberately creates
+    unpublished and authors onto a draft, which is right — and left the person
+    who pressed Build unable to see the result, because a page created
+    unpublished 404s on the live surface and on the draft host alike.
+    """
+    await _scope(auth, body.app_code, write=True)
+    try:
+        return await publish.publish_all(body.app_code, _headers(auth), auth.client_code)
+    except publish.PublishError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.message) from exc
+
+
+@router.get("/running")
+async def get_running(
+    app_code: str = Query(..., description="The app to ask about"),
+    auth: AuthContext = Depends(require_auth_context),
+) -> dict[str, Any]:
+    """Whatever job this app has in flight, or `{}`.
+
+    What a freshly loaded board asks, and the answer to a question it could not
+    previously ask at all. The job id lived only in the page store, written from
+    the POST that started it, so a refresh lost the id — and with it any way to
+    find a job that was still running perfectly well on the server.
+
+    Both registries are asked because a board does not know which kind it is
+    looking for: it refreshed, so it knows nothing. The payload carries `kind`,
+    which is what tells it which stream to open afterwards.
+
+    Local first, then what another worker published. Production runs four
+    workers and each registry is a dict in one process, so the local answer is
+    right about one time in four — and a wrong "nothing is running" is worse
+    than no route, because it says the build is over when it is not.
+
+    `{}` is the ordinary answer and not an error: most of the time nothing is
+    running, and a 404 for the normal case makes every caller handle a failure
+    that is not one.
+    """
+    await _scope(auth, app_code, write=False)
+
+    for registry in (build_job, plan_job):
+        job = registry.running_for(app_code)
+        if job is not None:
+            return job.progress()
+
+    published = await job_store.running_for(app_code)
+    return published or {}
