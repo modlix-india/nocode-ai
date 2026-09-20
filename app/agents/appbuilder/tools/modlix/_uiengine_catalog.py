@@ -124,8 +124,13 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '\n'
                       '## Events\n'
                       '\n'
-                      '- **output**: Triggered on successful response\n'
-                      '  - `data` (Any): The response body from the server\n'
+                      '- **output**: Triggered on successful response, and also on failure with a null '
+                      '`data`\n'
+                      '  - `data` (Any): The response body from the server, null when the request '
+                      'failed\n'
+                      '  - `headers` (Any): Response headers, lower-cased. Read them as '
+                      "`headers['x-my-header']` - a bare hyphen parses as subtraction\n"
+                      '  - `status` (Number): HTTP status code\n'
                       '- **error**: Triggered on request failure\n'
                       '  - `data` (Any): Error response body\n'
                       '  - `headers` (Any): Error response headers\n'
@@ -137,7 +142,7 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '- **Bulk Cleanup**: Delete resources matching specific criteria\n'
                       '- **Cache Invalidation**: Clear server-side caches\n'
                       '- **Session Termination**: End active sessions or revoke tokens',
-     'events': {'error': ['data', 'headers', 'status'], 'output': ['data']},
+     'events': {'error': ['data', 'headers', 'status'], 'output': ['data', 'headers', 'status']},
      'parameters': {'headers': {'hasDefault': True, 'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
                     'pathParams': {'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
                     'queryParams': {'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
@@ -220,8 +225,13 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '\n'
                       '## Events\n'
                       '\n'
-                      '- **output**: Triggered on successful response\n'
-                      '  - `data` (Any): The response body from the server\n'
+                      '- **output**: Triggered on successful response, and also on failure with a null '
+                      '`data`\n'
+                      '  - `data` (Any): The response body from the server, null when the request '
+                      'failed\n'
+                      '  - `headers` (Any): Response headers, lower-cased. Read them as '
+                      "`headers['x-my-header']` - a bare hyphen parses as subtraction\n"
+                      '  - `status` (Number): HTTP status code\n'
                       '- **error**: Triggered on request failure\n'
                       '  - `data` (Any): Error response body\n'
                       '  - `headers` (Any): Error response headers\n'
@@ -233,12 +243,53 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '- **Search and Filter**: Retrieve filtered results based on user input\n'
                       '- **API Integration**: Connect to REST APIs with automatic authentication\n'
                       '- **Data Refresh**: Re-fetch data to keep the UI up to date',
-     'events': {'error': ['data', 'headers', 'status'], 'output': ['data']},
+     'events': {'error': ['data', 'headers', 'status'], 'output': ['data', 'headers', 'status']},
      'parameters': {'headers': {'hasDefault': True, 'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
                     'pathParams': {'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
                     'queryParams': {'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
                     'url': {'type': 'string'}},
      'source': 'ui-app/client/src/functions/FetchData.ts'},
+    'GetAnalyticsConsent': {'description': '',
+     'documentation': '# UIEngine.GetAnalyticsConsent\n'
+                      '\n'
+                      'Reads the analytics consent decision stored for this browser, together with the '
+                      'application-level analytics settings that decide whether a decision is needed '
+                      'at all.\n'
+                      '\n'
+                      'The same values are mirrored at `Store.analyticsConsent`, which is usually the '
+                      "better thing to bind a component's visibility to — it updates on its own when "
+                      'the decision changes, whereas this function returns a snapshot.\n'
+                      '\n'
+                      '## Events\n'
+                      '\n'
+                      '- **output**:\n'
+                      '  - **status** (String): `granted`, `denied`, or empty when nothing has been '
+                      'decided.\n'
+                      '  - **decided** (Boolean): false while the visitor has not answered.\n'
+                      '  - **required** (Boolean): always true. Consent is unconditional — there is no '
+                      'application setting that turns asking off. Kept in the output so pages that '
+                      'bind to it keep working.\n'
+                      "  - **enabled** (Boolean): the app's `analytics.enabled`.\n"
+                      '  - **shouldAsk** (Boolean): `enabled && !decided` — the one value a consent '
+                      'page needs.\n'
+                      '  - **categories** (Object): `{ necessary, analytics, marketing }`. Once '
+                      '**decided** is true these are the stored choice. Before that they are the '
+                      'defaults a preferences panel should show — every category on, for the visitor '
+                      'to switch off what they do not want. They are not a statement that anything has '
+                      'been consented to; nothing is captured until `UIEngine.SetAnalyticsConsent` is '
+                      'called.\n'
+                      '\n'
+                      '## Use Cases\n'
+                      '\n'
+                      "- **Show the consent box**: bind the box's visibility to "
+                      '`Store.analyticsConsent.shouldAsk`, or branch on this output in an onLoad '
+                      'event.\n'
+                      '- **Pre-tick a preferences panel**: seed the toggles from `categories` when '
+                      'reopening the panel for someone who already chose.\n'
+                      '- **Hide a "manage cookies" link** on apps where `enabled` is false.',
+     'events': {'output': ['status', 'decided', 'required', 'enabled', 'shouldAsk', 'categories']},
+     'parameters': {},
+     'source': 'ui-app/client/src/functions/GetAnalyticsConsent.ts'},
     'GetStoreData': {'description': 'Retrieves data from the application store at a specified path',
      'documentation': '# UIEngine.GetStoreData\n'
                       '\n'
@@ -267,35 +318,52 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
     'InitiateSocialLogin': {'description': 'Navigates to authzump social-login (Google/Meta) for the current or specified app',
      'documentation': '# UIEngine.InitiateSocialLogin\n'
                       '\n'
-                      'Kicks off the SSO3 social-login flow by doing a top-level redirect to '
-                      "authzump's social-register evoke endpoint. The user is taken through the OAuth "
-                      "provider, and authzump's callback redirects them back to this app fully "
-                      'authenticated via the chained `/sso/{token}` flow.\n'
+                      "Starts social login by doing a top-level redirect to the platform's "
+                      'social-register evoke endpoint on authzump, which holds the Google and Meta '
+                      'OAuth credentials for every app. The user goes through the provider, and the '
+                      'callback brings them back to `redirectUrl` on THIS app with the '
+                      'provider-verified profile and a single-use state.\n'
+                      '\n'
+                      'The return leg needs no page wiring: the client bootstrap redeems that state '
+                      "against this app's own origin, signing the user in or registering them here "
+                      'first, then continues to `redirectUrl`. Do not add a `SocialLogin` step of your '
+                      'own after this one.\n'
                       '\n'
                       '## Parameters\n'
                       '\n'
                       '- **platform** (String, required): `GOOGLE` or `META`\n'
-                      '- **redirectUrl** (String, optional): Where to land after social login '
-                      'completes. Defaults to the current page URL.\n'
+                      '- **redirectUrl** (String, optional): Where to land once social login '
+                      'completes. A relative path is resolved the way page links are, so '
+                      '`/accountHome` works. Defaults to the current page URL.\n'
                       '- **appCode** (String, optional): Override the target app code. Defaults to the '
                       'current app from `Store.application.appCode`.\n'
                       '- **clientCode** (String, optional): Override the target client code. Defaults '
                       "to the current app's client code or `SYSTEM`.\n"
+                      '- **clientType** (String, optional): `BUSINESS` or `INDIVIDUAL`, for a '
+                      'first-time user who has to be registered. Same choice you make when calling the '
+                      'registration endpoint from a page, and you can bind it to whatever the user '
+                      "picked on your form. **Send it.** An app's registration rules grant profiles "
+                      'and roles per client type, so the wrong one, or none, creates an account that '
+                      'is active and signed in and granted nothing, which the user sees as "you don\'t '
+                      'have access to this page". Left empty, nothing is sent and the registration '
+                      'endpoint behaves as it does for any other caller that omits it.\n'
                       '\n'
                       '## Events\n'
                       '\n'
                       '- **output**: Fires after navigation is initiated\n'
-                      '- **error**: Fires when SSO is not configured (no `__SSO_BEACON_HOST__` '
-                      'injected) or no app code is available\n'
+                      '- **error**: Fires when social login is not configured (no '
+                      '`__SOCIAL_LOGIN_HOST__` injected) or no app code is available\n'
                       '\n'
                       '## Notes\n'
                       '\n'
-                      'Requires `application.properties.sso3 === true` so that `IndexHTMLService` '
-                      "injects the beacon host. If SSO isn't configured, this function emits an error "
-                      'event without navigating.',
+                      'Independent of `application.properties.sso3`: an app can offer social login '
+                      'without taking part in cross-app SSO. The app does need a Google or Meta '
+                      "integration registered for it, and `redirectUrl` must be one of the app's own "
+                      'hosts, which is what resolving a relative path gives you.',
      'events': {'error': ['message']},
      'parameters': {'appCode': {'hasDefault': True, 'type': 'string'},
                     'clientCode': {'hasDefault': True, 'type': 'string'},
+                    'clientType': {'hasDefault': True, 'type': 'string'},
                     'platform': {'type': 'string'},
                     'redirectUrl': {'hasDefault': True, 'type': 'string'}},
      'source': 'ui-app/client/src/functions/InitiateSocialLogin.ts'},
@@ -320,6 +388,11 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       'session\n'
                       '- **cookie** (Boolean, optional, default: false): Whether to set an '
                       'authentication cookie\n'
+                      '- **redirectUrl** (String, optional): Where to send the user on success. Pass '
+                      'this INSTEAD of a following `Navigate` step. A relative path is resolved the '
+                      'way page links are, so `/dashboard` works. When the app has SSO enabled this '
+                      'navigation is routed through the SSO beacon, which seeds the shared session at '
+                      'no extra cost, so other apps can sign the same user in without asking again.\n'
                       '\n'
                       '## Events\n'
                       '\n'
@@ -343,6 +416,7 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                     'otp': {'hasDefault': True, 'type': 'string'},
                     'password': {'hasDefault': True, 'type': 'string'},
                     'pin': {'hasDefault': True, 'type': 'string'},
+                    'redirectUrl': {'hasDefault': True, 'type': 'string'},
                     'rememberMe': {'hasDefault': True, 'type': 'boolean'},
                     'userId': {'hasDefault': True, 'type': 'any'},
                     'userName': {'type': 'string'}},
@@ -534,13 +608,19 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                     'target': {'hasDefault': True, 'type': 'string'},
                     'url': {'type': 'string'}},
      'source': 'ui-app/client/src/functions/OpenWindow.ts'},
-    'QueryAnalytics': {'description': 'Runs an analytics query against PostHog through the tenant-scoped backend proxy.',
+    'QueryAnalytics': {'description': 'Runs an analytics engine widget through the tenant-scoped backend proxy.',
      'documentation': '# UIEngine.QueryAnalytics\n'
                       '\n'
-                      'Forwards a HogQL (or other PostHog query envelope) to '
-                      '`/api/ui/analytics/query`. The backend enforces tenant scoping — every query is '
-                      'filtered by `app_code` and `url_client_code` server-side, regardless of what '
-                      'the body contains.\n'
+                      "Runs one of the analytics engine's fixed widgets through "
+                      '`/api/ui/analytics/query`. There is no query language: the widget name is the '
+                      'query, which is also the read security model — with no caller-supplied '
+                      'expression there is nothing to sanitise and no request can widen its own '
+                      'scope.\n'
+                      '\n'
+                      'The site is resolved by the server from `appCode` and `clientCode`, and any '
+                      '`site` in the body is overwritten. The timezone likewise: unset, it comes from '
+                      "the client's own configured zone, so two people in two countries reading the "
+                      'same dashboard see the same day boundaries.\n'
                       '\n'
                       'Caller must supply `appCode` and `clientCode`. The authenticated user must have '
                       'write access to the application and their own client must own or manage the '
@@ -551,25 +631,38 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '- **appCode** (String, required): Application to scope the query to.\n'
                       '- **clientCode** (String, required): URL client code (tenant) to scope the '
                       'query to.\n'
-                      '- **query** (Any, required): PostHog query envelope. Example: `{ kind: '
-                      '"HogQLQuery", query: "SELECT count() FROM events WHERE event = \'$pageview\'" '
-                      '}`. Supports `HogQLQuery`, `TrendsQuery`, `FunnelsQuery`, `RetentionQuery`, '
-                      '`PathsQuery`, `LifecycleQuery`, `StickinessQuery`.\n'
+                      '- **query** (Any, required): The widget request. Example: `{ widget: '
+                      '"topPages", from: "2026-09-01T00:00:00Z", to: "2026-09-30T00:00:00Z", limit: 10 '
+                      '}`.\n'
+                      '\n'
+                      'Widgets: `pageviewsOverTime`, `eventTimeline`, `topPages`, `topReferrers`, '
+                      '`channelBreakdown`, `deviceBreakdown`, `browserBreakdown`, `osBreakdown`, '
+                      '`geoBreakdown`, `platformBreakdown`, `appVersionBreakdown`, `topEvents`, '
+                      '`breakdownByProperty`, `funnel`, `retention`, `stickiness`, `lifecycle`.\n'
                       '\n'
                       '## Events\n'
                       '\n'
                       '- **output**: Triggered on success.\n'
-                      '  - `data` (Any): The PostHog response body.\n'
+                      '  - `data` (Any): `{ rows: [{ label, events, visitors }], visitorsApproximate, '
+                      'rawHoursScanned }`, plus `funnel`, `retention`, `stickiness` or `lifecycle` for '
+                      'those widgets.\n'
                       '- **error**: Triggered on failure.\n'
                       '  - `data` (Any): Error response body.\n'
                       '  - `status` (Number): HTTP status code.\n'
                       '\n'
+                      '## Notes\n'
+                      '\n'
+                      'Event counts are exact. Visitor counts come from sketches wherever '
+                      '`visitorsApproximate` is true — about 0.8% error on a headline number and 2.3% '
+                      'per key. Funnel, retention, stickiness and lifecycle read raw events instead, '
+                      'and their counts are exact.\n'
+                      '\n'
                       '## Use Cases\n'
                       '\n'
-                      '- **Drive AnalyticsQuery widget**: Bind the function to a widget that renders '
-                      'the result.\n'
-                      '- **Custom KPI panels**: Read a specific number into a counter or KPI tile.\n'
-                      '- **Background metric refresh**: Run on a timer to keep dashboards live.',
+                      '- **Drive a chart**: Bind the result to a Chart component rather than the '
+                      'built-in bars.\n'
+                      '- **Custom KPI panels**: Read one number into a counter or KPI tile.\n'
+                      '- **Background metric refresh**: Run on a timer to keep a dashboard live.',
      'events': {'error': ['data', 'status'], 'output': ['data']},
      'parameters': {'appCode': {'type': 'string'},
                     'clientCode': {'type': 'string'},
@@ -668,6 +761,11 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
      'events': {},
      'parameters': {'behaviour': {'hasDefault': True, 'type': 'string'}, 'gridkey': {'type': 'string'}},
      'source': 'ui-app/client/src/functions/ScrollToGrid.ts'},
+    'SelectTheme': {'description': '',
+     'documentation': '# UIEngine.SelectTheme\n\n',
+     'events': {'error': ['data'], 'output': ['theme']},
+     'parameters': {'theme': {'type': 'string'}},
+     'source': 'ui-app/client/src/functions/SelectTheme.ts'},
     'SendData': {'description': 'Sends data to the server using a specified HTTP method with support for file '
                     'uploads and downloads',
      'documentation': '# UIEngine.SendData\n'
@@ -696,8 +794,13 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '\n'
                       '## Events\n'
                       '\n'
-                      '- **output**: Triggered on successful response\n'
-                      '  - `data` (Any): The response body from the server\n'
+                      '- **output**: Triggered on successful response, and also on failure with a null '
+                      '`data`\n'
+                      '  - `data` (Any): The response body from the server, null when the request '
+                      'failed\n'
+                      '  - `headers` (Any): Response headers, lower-cased. Read them as '
+                      "`headers['x-my-header']` - a bare hyphen parses as subtraction\n"
+                      '  - `status` (Number): HTTP status code\n'
                       '- **error**: Triggered on request failure\n'
                       '  - `data` (Any): Error response body\n'
                       '  - `headers` (Any): Error response headers\n'
@@ -710,7 +813,7 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '- **File Download**: Generate and download reports, exports, or documents\n'
                       '- **API Integration**: Send data to external APIs with various HTTP methods\n'
                       '- **Bulk Operations**: Send batch update or create requests',
-     'events': {'error': ['data', 'headers', 'status'], 'output': ['data']},
+     'events': {'error': ['data', 'headers', 'status'], 'output': ['data', 'headers', 'status']},
      'parameters': {'downloadAsAFile': {'hasDefault': True, 'type': 'boolean'},
                     'downloadFileName': {'hasDefault': True, 'type': 'string'},
                     'headers': {'hasDefault': True, 'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
@@ -720,6 +823,59 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                     'queryParams': {'ref': 'UIEngine.UrlParameters', 'type': 'ref'},
                     'url': {'type': 'string'}},
      'source': 'ui-app/client/src/functions/SendData.ts'},
+    'SetAnalyticsConsent': {'description': '',
+     'documentation': '# UIEngine.SetAnalyticsConsent\n'
+                      '\n'
+                      'Records a consent decision for this browser and immediately applies it: '
+                      'granting switches the beacon on and counts the visit that was held back, '
+                      'denying switches it off and discards anything not yet sent.\n'
+                      '\n'
+                      'The decision is written to `localStorage` with a cookie fallback and survives '
+                      'sign out, because consent belongs to the browser rather than to the account. '
+                      '`Store.analyticsConsent` is refreshed, so a consent box bound to '
+                      '`Store.analyticsConsent.shouldAsk` hides itself.\n'
+                      '\n'
+                      '## Parameters\n'
+                      '\n'
+                      '- **granted** (Boolean, default false): the headline answer. True grants every '
+                      'category, false grants none; `analytics` and `marketing` below override '
+                      'individual ones.\n'
+                      '- **analytics** (Boolean, optional): override the analytics category alone. '
+                      'This is the one that gates measurement.\n'
+                      '- **marketing** (Boolean, optional): override the marketing category alone. The '
+                      'choice is stored and readable, but no advertising pixel consumes it yet.\n'
+                      '- **reset** (Boolean, default false): forget the decision instead of recording '
+                      'one, opt out, and let the consent page appear again. Use this for a "change '
+                      'your cookie preferences" link. Every other parameter is ignored.\n'
+                      '\n'
+                      '## Events\n'
+                      '\n'
+                      '- **output**:\n'
+                      '  - **status** (String): `granted`, `denied`, or empty after a reset.\n'
+                      '  - **decided** (Boolean)\n'
+                      '  - **categories** (Object): `{ necessary, analytics, marketing }`\n'
+                      '\n'
+                      '## Notes\n'
+                      '\n'
+                      'Granting with every category turned off is stored as a denial — there is '
+                      'nothing to consent to.\n'
+                      '\n'
+                      '`necessary` is always true and cannot be turned off. It exists so a preferences '
+                      'panel can show it switched on and disabled.\n'
+                      '\n'
+                      '## Use Cases\n'
+                      '\n'
+                      '- **Accept all**: `granted = true`.\n'
+                      '- **Reject all**: `granted = false`.\n'
+                      '- **Save preferences**: `granted = true, analytics = Page.prefs.analytics, '
+                      'marketing = Page.prefs.marketing`.\n'
+                      '- **Change preferences later**: `reset = true`, then show the panel again.',
+     'events': {'output': ['status', 'decided', 'categories']},
+     'parameters': {'analytics': {'hasDefault': True, 'type': 'any'},
+                    'granted': {'hasDefault': True, 'type': 'boolean'},
+                    'marketing': {'hasDefault': True, 'type': 'any'},
+                    'reset': {'hasDefault': True, 'type': 'boolean'}},
+     'source': 'ui-app/client/src/functions/SetAnalyticsConsent.ts'},
     'SetStore': {'description': 'Sets or deletes a value at a specified path in the application store',
      'documentation': '# UIEngine.SetStore\n'
                       '\n'
@@ -778,23 +934,30 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
      'events': {'output': ['id']},
      'parameters': {},
      'source': 'ui-app/client/src/functions/ShortUniqueId.ts'},
-    'TrackAnalyticsEvent': {'description': 'Sends a named analytics event to PostHog with optional properties.',
+    'SsoSeed': {'description': 'Shares the current session with the other apps on the platform, then continues to '
+                    'redirectUrl',
+     'documentation': '# UIEngine.SsoSeed\n\n',
+     'events': {'error': ['data', 'headers', 'status'], 'output': ['data']},
+     'parameters': {'redirectUrl': {'hasDefault': True, 'type': 'string'}},
+     'source': 'ui-app/client/src/functions/SsoSeed.ts'},
+    'TrackAnalyticsEvent': {'description': 'Sends a named analytics event to the analytics engine with optional properties.',
      'documentation': '# UIEngine.TrackAnalyticsEvent\n'
                       '\n'
-                      'Captures a named analytics event via the page-level PostHog client '
-                      '(`window.posthog.capture`). The event is augmented with the super properties '
-                      'already registered by the framework (`app_code`, `client_code`, '
-                      '`url_client_code`, `page_name`).\n'
+                      'Captures a named analytics event through the page beacon (`window.mlx`). The '
+                      'site, page, session and campaign context are attached by the beacon and by the '
+                      'engine — a page never names its own site, so an event cannot be filed under '
+                      'another tenant.\n'
                       '\n'
-                      'If analytics is disabled for the application, or the user has not opted in, the '
-                      'call is a no-op.\n'
+                      'If analytics is disabled for the application, or the visitor has not consented '
+                      'where consent is required, the call is a no-op.\n'
                       '\n'
                       '## Parameters\n'
                       '\n'
                       '- **eventName** (String, required): The event name to capture (e.g. '
-                      '`checkout_started`, `cta_clicked`).\n'
-                      '- **properties** (Any, optional): Object/Map of additional properties to attach '
-                      'to the event.\n'
+                      '`checkout_started`, `cta_clicked`). Stored exactly as given; only the page-view '
+                      'spellings are folded onto `$pageview`.\n'
+                      '- **properties** (Any, optional): Object/Map of additional properties to '
+                      'attach.\n'
                       '\n'
                       '## Events\n'
                       '\n'
@@ -804,10 +967,11 @@ UIENGINE_SIGNATURES: dict[str, dict[str, Any]] = {
                       '## Use Cases\n'
                       '\n'
                       '- **Funnel tracking**: Emit `signup_started`, `signup_completed`, '
-                      '`checkout_completed` from event flows.\n'
+                      '`checkout_completed` from event flows, then read them with the Conversion '
+                      'Funnel widget.\n'
                       '- **Feature instrumentation**: Tag specific KIRun-driven actions with stable '
                       'event names.\n'
-                      '- **A/B test metrics**: Pair with feature flags to measure variant impact.',
+                      '- **A/B test metrics**: Pair with an experiment and variant to measure impact.',
      'events': {},
      'parameters': {'eventName': {'type': 'string'}, 'properties': {'hasDefault': True, 'type': 'any'}},
      'source': 'ui-app/client/src/functions/TrackAnalyticsEvent.ts'},

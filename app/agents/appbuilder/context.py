@@ -269,6 +269,13 @@ The append field controls whether the title appends to the app title (true) or r
 - rootComponent is a STRING key (e.g. "root"), not an object.
 - Children are stored as: {"childKey": true} in the parent's children map.
 - Event functions cannot receive arguments — they read from Store.
+- Give every INTERACTIVE component an `analyticsLabel`: buttons, links, toggles,
+  checkboxes, radios, dropdowns and text inputs. It is a stable snake_case name for
+  what the control does (`contact_submit`, `plan_upgrade`, `filter_by_status`), not a
+  restatement of its visible text, and it is what makes autocapture and heatmaps
+  readable. Layout and display components — Grid, Text, Table — do not accept it and
+  must not be given one. Match the naming to any `UIEngine.TrackAnalyticsEvent` names
+  on the same page so labels and events read as one scheme.
 
 Same-page event references (CRITICAL — most common source of "function ran but nothing happened"):
 - Inside a step's `namespace`+`name` fields, when calling another event function on the SAME page,
@@ -580,6 +587,7 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         visuals_browser as _visuals_browser, image_ops as _image_ops,
         security as _security, app_admin as _app_admin,
         messaging as _messaging, runtime as _runtime,
+        page_routing as _page_routing,
         draft_tools as _draft_tools,
     )
     from app.agents.appbuilder.tools.meta_tools import META_TOOLS as _meta_tools  # noqa: PLC0415
@@ -620,6 +628,8 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         ("Schemas + storages + storage data (READ-ONLY rows)", [t.name for t in _schemas.TOOLS]),
         ("Messaging — notifications + connections + templates + events", [t.name for t in _messaging.TOOLS]),
         ("Runtime — personalization (READ-only)", [t.name for t in _runtime.TOOLS]),
+        ("Page routing — A/B tests + rule-based landing pages (simulate before you trust one)",
+         [t.name for t in _page_routing.TOOLS]),
         ("Security — users + roles + clients + transports", [t.name for t in _security.TOOLS]),
         ("Visuals — preview + files + uploads + image gen", [t.name for t in _visuals.TOOLS]),
         ("Browser drive — persistent Playwright sessions, screenshots", [t.name for t in _visuals_browser.TOOLS]),

@@ -150,6 +150,7 @@ _FOCUS_MOVING_TOOLS: frozenset[str] = frozenset(_RMW_TOOLS) | frozenset({
     "create_theme", "delete_theme",
     "create_uri_path", "delete_uri_path",
     "create_role", "add_app_reg_entry", "upload_static_asset",
+    "set_page_route_rule", "delete_page_route",
 })
 
 
