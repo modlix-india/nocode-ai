@@ -172,3 +172,109 @@ class LaunchRecordTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
+    """save_campaign: MySQL is the store of record, Modlix a warn-only mirror
+    without the campaign sub-object. hydrate_from_storage: MySQL first, legacy
+    Modlix fallback backfills once."""
+
+    SESSION = {
+        "product_profile": {"url": "https://springs.com"},
+        "product_data": {"product_name": "Springs", "business_type": "real estate",
+                         "summary": "villas"},
+        "campaign_spec": {"platform": "Meta", "duration": "30 days"},
+        "competitor_analysis": {"competitors": [{"name": "Sobha"}]},
+        "_session_id": "sess-1",
+    }
+    CTX = {"client_code": "GRMEL", "user_id": 7, "session_id": "sess-1"}
+
+    def _patches(self):
+        from unittest import mock
+        return (
+            mock.patch("app.agents.adzump.creative_store.upsert_product",
+                       new=mock.AsyncMock(return_value=42)),
+            mock.patch("app.agents.adzump.creative_store.upsert_flow",
+                       new=mock.AsyncMock()),
+            mock.patch("app.agents.adzump.services.business_storage._mirror_modlix_record",
+                       new=mock.AsyncMock(return_value="rec-1")),
+        )
+
+    async def test_mysql_written_then_mirror_without_campaign(self):
+        from app.agents.adzump.services import business_storage as bs
+        p_prod, p_camp, p_mirror = self._patches()
+        with p_prod as m_prod, p_camp as m_camp, p_mirror as m_mirror:
+            result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
+        self.assertEqual(result, "rec-1")
+        m_prod.assert_awaited_once()
+        draft = m_camp.await_args.args[5]
+        self.assertEqual(draft["platform"], "Meta")
+        self.assertEqual(draft["competitors"], [{"name": "Sobha"}])
+        mirror_record = m_mirror.await_args.args[0]
+        self.assertNotIn("campaign", mirror_record)
+
+    async def test_mysql_failure_raises_mirror_failure_does_not(self):
+        from unittest import mock
+        from app.agents.adzump.services import business_storage as bs
+        p_prod, p_camp, p_mirror = self._patches()
+        with p_prod, p_camp as m_camp, p_mirror:
+            m_camp.side_effect = RuntimeError("db down")
+            with self.assertRaises(RuntimeError):
+                await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
+        p_prod2, p_camp2, p_mirror2 = self._patches()
+        with p_prod2, p_camp2, p_mirror2 as m_mirror:
+            m_mirror.return_value = None  # mirror failed internally, warn-only
+            result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
+        self.assertIsNone(result)
+
+    async def test_hydrate_mysql_hit_skips_modlix(self):
+        from unittest import mock
+        from app.agents.adzump.services import business_storage as bs
+        from app.agents.adzump.models.product import Product
+        product = Product(product_name="Springs", summary="villas")
+        draft = {"location": {"address": "Hebbal, Bangalore"},
+                 "competitors": [{"name": "Sobha"}]}
+        session_ctx: dict = {}
+        with mock.patch("app.agents.adzump.creative_store.get_product",
+                        new=mock.AsyncMock(return_value=product)), \
+             mock.patch("app.agents.adzump.creative_store.product_id",
+                        new=mock.AsyncMock(return_value=42)), \
+             mock.patch("app.agents.adzump.creative_store.latest_flow",
+                        new=mock.AsyncMock(return_value=draft)), \
+             mock.patch.object(bs, "get_by_url",
+                               new=mock.AsyncMock()) as m_modlix:
+            hit = await bs.hydrate_from_storage("https://springs.com", session_ctx, dict(self.CTX))
+        self.assertTrue(hit)
+        m_modlix.assert_not_awaited()
+        self.assertEqual(session_ctx["product_data"]["product_name"], "Springs")
+        self.assertEqual(session_ctx["campaign_spec"]["location"], "Hebbal, Bangalore")
+        self.assertEqual(session_ctx["competitor_analysis"]["competitors"], [{"name": "Sobha"}])
+
+    async def test_hydrate_fallback_backfills_once(self):
+        from unittest import mock
+        from app.agents.adzump.services import business_storage as bs
+        record = {"data": {"businessUrl": "https://springs.com", "productName": "Springs",
+                           "summary": "villas", "businessType": "real estate",
+                           "competitors": [{"name": "Sobha"}],
+                           "campaign": {"location": {"address": "Hebbal"}}}}
+        session_ctx: dict = {}
+        with mock.patch("app.agents.adzump.creative_store.get_product",
+                        new=mock.AsyncMock(return_value=None)), \
+             mock.patch.object(bs, "get_by_url",
+                               new=mock.AsyncMock(return_value=record)), \
+             mock.patch.object(bs, "save_campaign",
+                               new=mock.AsyncMock()) as m_backfill:
+            hit = await bs.hydrate_from_storage("https://springs.com", session_ctx, dict(self.CTX))
+        self.assertTrue(hit)
+        m_backfill.assert_awaited_once()
+        self.assertEqual(session_ctx["product_data"]["product_name"], "Springs")
+        self.assertEqual(session_ctx["campaign_spec"]["location"], "Hebbal")
+
+    async def test_hydrate_miss_everywhere_returns_false(self):
+        from unittest import mock
+        from app.agents.adzump.services import business_storage as bs
+        with mock.patch("app.agents.adzump.creative_store.get_product",
+                        new=mock.AsyncMock(return_value=None)), \
+             mock.patch.object(bs, "get_by_url", new=mock.AsyncMock(return_value=None)):
+            hit = await bs.hydrate_from_storage("https://springs.com", {}, dict(self.CTX))
+        self.assertFalse(hit)

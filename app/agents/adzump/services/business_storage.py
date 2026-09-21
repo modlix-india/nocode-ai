@@ -98,13 +98,15 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
 async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     """Persist the user's campaign (everything assembled in session.context).
 
-    Writes to the same per-URL record `ds/chatv2` uses, alongside the
-    business-analysis fields. The `campaign` sub-object is set/overwritten
-    on each launch. Returns the storage record id (existing or new), or
-    None on failure.
+    nocode-ai MySQL is the store of record: the typed Product goes to
+    adzump_products, the campaign draft (plus the analysis competitors list,
+    for resume) to adzump_flows (flow=new_campaign) - a failure there RAISES, the save must
+    not silently lose the authoritative copy. The Modlix AISuggestedData
+    write survives only as a warn-only mirror of the ANALYSIS fields DS still
+    reads (finalSummary, siteLinks, screenshot, location...); the campaign
+    sub-object no longer rides in it - no DS code reads it.
 
-    Payload shapes match ds's `oserver.services.storage_service` - the
-    gateway expects `dataObject` / `dataObjectId` / `isPartial`.
+    Returns the Modlix record id, or None when the mirror was skipped/failed.
     """
     url = resolve_url(session_ctx)
     if not url:
@@ -127,50 +129,87 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         float((record.get("logoMeta") or {}).get("confidence") or 0.0),
         len(record.get("creativeImages") or []),
     )
-    existing = await get_by_url(url, ctx)
 
-    if existing:
-        existing_id = existing.get("_id") or existing.get("id")
-        if not existing_id:
-            logger.warning("save_campaign: existing record has no _id, falling back to create")
-        else:
-            payload = {
-                "storageName": STORAGE_NAME,
-                "appCode": APP_CODE,
-                "dataObjectId": existing_id,
-                "dataObject": record,
-                "isPartial": True,  # merge - preserves existing fields not in record
-            }
-            result = await get_saas_client().post(
-                UPDATE, headers=_storage_headers(ctx), json=payload,
-            )
-            if not result.success:
-                logger.warning("save_campaign_update_failed: url=%s err=%s",
-                               url, result.error)
-                return None
-            logger.info("save_campaign_ok: action=update url=%s id=%s", url, existing_id)
-            return existing_id
+    # Authoritative half: product + campaign draft into nocode-ai MySQL.
+    from app.agents.adzump import creative_store  # lazy: avoids import cycle
+    from app.agents.adzump.models.product import Product
 
-    # Create path
-    payload = {
-        "storageName": STORAGE_NAME,
-        "appCode": APP_CODE,
-        "dataObject": record,
-    }
-    result = await get_saas_client().post(
-        CREATE, headers=_storage_headers(ctx), json=payload,
-    )
-    if not result.success:
-        logger.warning("save_campaign_create_failed: url=%s err=%s",
-                       url, result.error)
+    campaign_draft = record.pop("campaign")
+    # The analysis competitors ride in the draft so resume can restore
+    # competitor_analysis without the Modlix record.
+    campaign_draft["competitors"] = record.get("competitors") or []
+    product = Product.model_validate(session_ctx.get("product_data") or {})
+    pid = await creative_store.upsert_product(
+        ctx.get("client_code") or "", product, url, ctx.get("user_id") or 0)
+    await creative_store.upsert_flow(
+        ctx.get("client_code") or "", pid, chat_session_id, "new_campaign",
+        campaign_draft.get("status") or "draft", campaign_draft,
+        ctx.get("user_id") or 0)
+
+    return await _mirror_modlix_record(record, url, ctx)
+
+
+async def _mirror_modlix_record(record: dict, url: str, ctx: dict) -> str | None:
+    """Warn-only mirror of the ANALYSIS fields into Modlix AISuggestedData -
+    DS's launch-time consumers (finalSummary, siteLinks, screenshot, ...) read
+    it for products DS never scraped. Dies when the last DS consumer moves
+    (retirement plan S5). The update is `isPartial` (field-merge), so DS-written
+    fields on the same record are never clobbered. Failure only logs - MySQL
+    already holds the authoritative copy.
+
+    Payload shapes match ds's `oserver.services.storage_service` - the
+    gateway expects `dataObject` / `dataObjectId` / `isPartial`.
+    """
+    try:
+        existing = await get_by_url(url, ctx)
+
+        if existing:
+            existing_id = existing.get("_id") or existing.get("id")
+            if not existing_id:
+                logger.warning(
+                    "save_campaign: existing record has no _id, falling back to create")
+            else:
+                payload = {
+                    "storageName": STORAGE_NAME,
+                    "appCode": APP_CODE,
+                    "dataObjectId": existing_id,
+                    "dataObject": record,
+                    "isPartial": True,  # merge - preserves existing fields not in record
+                }
+                result = await get_saas_client().post(
+                    UPDATE, headers=_storage_headers(ctx), json=payload,
+                )
+                if not result.success:
+                    logger.warning("save_campaign_update_failed: url=%s err=%s",
+                                   url, result.error)
+                    return None
+                logger.info("save_campaign_ok: action=update url=%s id=%s",
+                            url, existing_id)
+                return existing_id
+
+        payload = {
+            "storageName": STORAGE_NAME,
+            "appCode": APP_CODE,
+            "dataObject": record,
+        }
+        result = await get_saas_client().post(
+            CREATE, headers=_storage_headers(ctx), json=payload,
+        )
+        if not result.success:
+            logger.warning("save_campaign_create_failed: url=%s err=%s",
+                           url, result.error)
+            return None
+
+        new_records = _extract_records(result.data)
+        new_id = ""
+        if new_records:
+            new_id = (new_records[0].get("_id") or new_records[0].get("id") or "")
+        logger.info("save_campaign_ok: action=create url=%s id=%s", url, new_id)
+        return new_id or None
+    except Exception as e:
+        logger.warning("modlix_mirror_failed: url=%s %s: %s",
+                       url, type(e).__name__, str(e)[:200])
         return None
-
-    new_records = _extract_records(result.data)
-    new_id = ""
-    if new_records:
-        new_id = (new_records[0].get("_id") or new_records[0].get("id") or "")
-    logger.info("save_campaign_ok: action=create url=%s id=%s", url, new_id)
-    return new_id or None
 
 
 # ── Record construction (pure) ────────────────────────────────────────────
@@ -491,43 +530,89 @@ def _record_to_competitive(record: dict) -> dict | None:
     return {"competitors": competitors}
 
 
-async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
-    """Look up the AISuggestedData record for `url`. If found, populate
-    session.context with product_data, product_profile, and (if present)
-    competitor_analysis. Returns True on hit, False on miss.
+def _apply_hydration(
+    session_ctx: dict, product_data: dict, profile: dict,
+    location_address: str, competitors: list,
+) -> None:
+    """Fill the empty session slots from a hydration source (MySQL or the
+    legacy Modlix record). Never overwrites - callers have already done a
+    per-session cache check; we only fill empty slots. Restores spec.location
+    so the location step skips a fresh confirm_location."""
+    if not session_ctx.get("product_data"):
+        session_ctx["product_data"] = product_data
+        # Schema drift check at the durable boundary - warn-only.
+        check_product(product_data, where="hydrate_from_storage")
+        session_ctx.setdefault("product_profile", {}).update(profile)
+        if location_address:
+            session_ctx.setdefault("campaign_spec", {}).setdefault(
+                "location", location_address)
+        logger.info("hydrate: business loaded url=%s", profile.get("url", ""))
+    if not session_ctx.get("competitor_analysis") and competitors:
+        session_ctx["competitor_analysis"] = {"competitors": competitors}
+        logger.info("hydrate: %d competitors loaded url=%s",
+                    len(competitors), profile.get("url", ""))
 
-    Skips overwrite when session already has the field - the caller has
-    already done a per-session cache check; we only fill empty slots.
+
+async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
+    """Populate session.context (product_data, product_profile, spec.location,
+    competitor_analysis) for a returning product. Returns True on hit.
+
+    nocode-ai MySQL is read first (typed Product round-trip - no lossy
+    flat-field rebuild). A legacy draft falls back to the legacy Modlix
+    record and is backfilled into MySQL, so the fallback fires once per
+    draft. A MySQL ERROR is not a miss - it propagates; falling back on
+    errors could resurrect a stale Modlix draft.
     """
+    from app.agents.adzump import creative_store  # lazy: avoids import cycle
+
+    client_code = ctx.get("client_code") or ""
+    key = normalize_business_url(url)
+    product = await creative_store.get_product(client_code, key)
+    if product is not None:
+        pid = await creative_store.product_id(client_code, key)
+        draft = await creative_store.latest_flow(client_code, pid, "new_campaign")
+        if draft is None:
+            # Product row exists (creative-store write) but no campaign row
+            # yet - only the DRAFT half falls back to the legacy record.
+            record = await get_by_url(url, ctx)
+            d = _record_data(record) if record else {}
+            draft = dict(d.get("campaign") or {})
+            draft["competitors"] = d.get("competitors") or []
+        _apply_hydration(
+            session_ctx,
+            product_data=product.model_dump(),
+            profile={"url": key, "title": product.product_name,
+                     "summary": product.summary},
+            location_address=(draft.get("location") or {}).get("address") or "",
+            competitors=draft.get("competitors") or [],
+        )
+        return True
+
+    # Pre-V18 fallback: the legacy Modlix record, translated field-by-field.
     record = await get_by_url(url, ctx)
     if not record:
         return False
-
-    if not session_ctx.get("product_data"):
-        session_ctx["product_data"] = _record_to_business(record)
-        # Schema drift check at the durable boundary - warn-only.
-        check_product(session_ctx["product_data"], where="hydrate_from_storage")
-        d = _record_data(record)
-        session_ctx.setdefault("product_profile", {}).update({
-            "url": d.get("businessUrl") or url,
-            # Tolerate ds-v1 records that only set `businessName`.
-            "title": d.get("productName") or d.get("businessName", ""),
-            "summary": d.get("summary", ""),
-        })
-        # place already carries restored coords+country (_record_to_business).
-        # Restore spec.location so the location step skips a fresh confirm_location.
-        stored_address = ((d.get("campaign") or {}).get("location") or {}).get("address") or ""
-        if stored_address:
-            session_ctx.setdefault("campaign_spec", {}).setdefault("location", stored_address)
-        logger.info("hydrate_from_storage: business loaded url=%s", url)
-
-    if not session_ctx.get("competitor_analysis"):
-        comp = _record_to_competitive(record)
-        if comp:
-            session_ctx["competitor_analysis"] = comp
-            logger.info("hydrate_from_storage: %d competitors loaded url=%s",
-                        len(comp.get("competitors") or []), url)
-
+    d = _record_data(record)
+    comp = _record_to_competitive(record)
+    _apply_hydration(
+        session_ctx,
+        product_data=_record_to_business(record),
+        profile={"url": d.get("businessUrl") or url,
+                 # Tolerate ds-v1 records that only set `businessName`.
+                 "title": d.get("productName") or d.get("businessName", ""),
+                 "summary": d.get("summary", "")},
+        location_address=(
+            (d.get("campaign") or {}).get("location") or {}).get("address") or "",
+        competitors=(comp or {}).get("competitors") or [],
+    )
+    # Backfill MySQL from the hydrated session so this fallback fires once
+    # per draft. Warn-only: a failed backfill just re-fires it next resume.
+    try:
+        await save_campaign(session_ctx, ctx)
+        logger.info("hydrate: legacy draft backfilled to MySQL url=%s", url)
+    except Exception as e:
+        logger.warning("hydrate_backfill_failed: url=%s %s: %s",
+                       url, type(e).__name__, str(e)[:200])
     return True
 
 
