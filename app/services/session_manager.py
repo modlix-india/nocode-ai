@@ -356,7 +356,11 @@ class SessionManager:
                     return cursor.rowcount > 0
 
         except Exception as e:
-            logger.error(f"Failed to update session context: {e}")
+            logger.error(
+                f"Failed to update session context: {e} "
+                f"(session={session_id}, payload={len(context_json)} chars) - "
+                "the agent resumes from a STALE context until this succeeds"
+            )
             return False
 
     async def update_session_totals(

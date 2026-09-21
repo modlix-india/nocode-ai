@@ -811,6 +811,15 @@ class BaseSession:
     # left in, it sinks the whole context save and the conversation loses its
     # memory next message.
     _EPHEMERAL_CONTEXT_KEYS = {"_started_tuids"}
+    # Rebuilt-every-run bulk pruned per parent key: the analyst's raw search
+    # hits and candidate pool are re-harvested from message history by every
+    # extract_candidates call, but persisted they pushed a 9-competitor session
+    # past CONTEXT_JSON's 64KB (live 2026-09-21: 26KB of a 47KB row), and the
+    # failed save left every later request resuming a stale context.
+    # verified_competitors stays — it is the cross-request evidence base.
+    _EPHEMERAL_CONTEXT_SUBKEYS = {
+        "_research_state": ("search_results", "candidate_pool"),
+    }
 
     @staticmethod
     def _serialize_context(context: dict) -> str:
@@ -819,6 +828,11 @@ class BaseSession:
         one bad value can never again sink the entire context."""
         persistable = {k: v for k, v in context.items()
                        if k not in BaseSession._EPHEMERAL_CONTEXT_KEYS}
+        for parent, subkeys in BaseSession._EPHEMERAL_CONTEXT_SUBKEYS.items():
+            inner = persistable.get(parent)
+            if isinstance(inner, dict):
+                persistable[parent] = {k: v for k, v in inner.items()
+                                       if k not in subkeys}
         return json.dumps(persistable, default=lambda o: list(o) if isinstance(o, set) else str(o))
 
     async def _create_new_session(self) -> None:
