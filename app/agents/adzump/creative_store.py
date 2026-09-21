@@ -182,13 +182,20 @@ async def sync_competitor_profiles(
     discovery/curation time - so the table always mirrors the analyst's list,
     fetched or not. Touches only profile fields; creative stats and status
     stay whatever the creatives fetch (sync_competitor) last wrote. Rows are
-    born creative_status='pending'."""
+    born creative_status='pending'. url is stored normalized (https host+path,
+    no query/fragment - analysts hand back ad click-through urls full of
+    tracking params); VARCHAR(255) fields are clamped so one long value can't
+    abort the batch."""
+    def clamp(value: str | None) -> str | None:
+        return value[:255] if value else None
+
     async with get_connection() as conn:
         async with conn.cursor() as cur:
             for comp in competitors:
-                name = (comp.get("name") or "").strip()
+                name = (comp.get("name") or "").strip()[:255]
                 if not name:
                     continue
+                url = normalize_business_url(comp.get("url") or "") or None
                 await cur.execute(
                     """
                     INSERT INTO adzump_competitors
@@ -202,9 +209,9 @@ async def sync_competitor_profiles(
                         pricing=COALESCE(new.pricing, adzump_competitors.pricing),
                         updated_by=new.updated_by
                     """,
-                    (client_code, product_id, name, comp.get("url") or None,
-                     comp.get("logo_url") or None, comp.get("location") or None,
-                     comp.get("pricing") or None, user_id, user_id),
+                    (client_code, product_id, name, clamp(url),
+                     comp.get("logo_url") or None, clamp(comp.get("location")),
+                     clamp(comp.get("pricing")), user_id, user_id),
                 )
         await conn.commit()
 
