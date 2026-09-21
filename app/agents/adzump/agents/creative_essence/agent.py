@@ -50,9 +50,11 @@ ESSENCE_PROVIDER = "deepseek"
 ESSENCE_MODEL_TIER = "deepseek-v4-flash-vision-exp"
 ESSENCE_MODEL_OVERRIDE = "deepseek:deepseek-v4-flash-vision-exp"
 
-# One verdict is ~150-200 output tokens; the chunk cap keeps the whole batch
-# well under the ceiling so truncation (-> unparseable JSON) can't happen.
-ESSENCE_MAX_TOKENS = 4000
+# DeepSeek streams reasoning into the same output budget as the JSON, so the
+# ceiling must cover verdicts (~150-200 tokens each) PLUS the reasoning trail;
+# 4000 truncated a 5-image batch mid-JSON (all its creatives fell to
+# unknown_category and were gated out).
+ESSENCE_MAX_TOKENS = 6000
 MAX_IMAGES_PER_CALL = 12
 # Chunks are independent (fresh session per call), so they run concurrently -
 # bounded, or a 60-creative competitor would fire 5 vision calls at once on top

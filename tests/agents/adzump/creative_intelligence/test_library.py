@@ -319,6 +319,28 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual({c.creative_id for c in rec.creatives},
                          {"recent", "stale", "undated"})
 
+    def test_gate_grandfathers_stored_unknowns(self):
+        """unknown_category = essence missing THIS run, not proven irrelevance:
+        a creative the prior record already shipped survives it (a truncated
+        essence batch must never wipe a stored library). Fresh unknowns still
+        fail closed, and a real verdict is never grandfathered."""
+        grandfathered = frozenset({"stored-id", "stored-hash"})
+        by_id = _ad("stored-id")
+        by_hash = _ad("new-id", content_hash="stored-hash")
+        fresh_unknown = _ad("fresh-id")
+        real_verdict = _ad("stored-id2",
+                           essence=Essence(category="other_industry",
+                                           category_confidence=0.9))
+        kept, drops, reasons = library._gate_creatives(
+            [by_id, by_hash, fresh_unknown, real_verdict],
+            "residential_apartment", "",
+            grandfathered=grandfathered | {"stored-id2"})
+        self.assertEqual({c.creative_id for c in kept}, {"stored-id", "new-id"})
+        self.assertEqual({d["creativeId"] for d in drops},
+                         {"fresh-id", "stored-id2"})
+        self.assertEqual(reasons, {taxonomy.UNKNOWN_CATEGORY: 1,
+                                   taxonomy.NON_REAL_ESTATE: 1})
+
     def test_streaming_and_pipelining(self):
         with self.subTest("on_resolved fires per competitor, cache hits included"):
             delivered: list[str] = []

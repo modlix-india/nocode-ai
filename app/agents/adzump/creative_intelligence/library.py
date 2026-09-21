@@ -295,8 +295,16 @@ async def _process_stage(
     gate_reasons: dict[str, int] = {}
     gate = _product_gate(ctx) if enrich is not None else None
     if gate:
+        # Grandfather clause: unknown_category means "essence missing", an
+        # enrichment gap of THIS run, not a relevance verdict. A creative the
+        # prior record already shipped must not be deleted for it (live
+        # 2026-09-20: a truncated essence batch wiped a competitor's stored
+        # library). Fresh unknowns still fail closed.
+        grandfathered = frozenset(
+            key for c in (prior.creatives if prior else [])
+            for key in (c.creative_id, c.content_hash) if key)
         competitor.creatives, gate_drops, gate_reasons = _gate_creatives(
-            competitor.creatives, *gate)
+            competitor.creatives, *gate, grandfathered=grandfathered)
         drop_entries += gate_drops
 
     competitor.dropped = _dedupe_dropped(
@@ -384,17 +392,26 @@ def _product_gate(ctx: dict) -> tuple[str, str] | None:
 
 def _gate_creatives(
     creatives: list[Creative], product_category: str, product_market: str,
+    grandfathered: frozenset[str] = frozenset(),
 ) -> tuple[list[Creative], list[dict], dict[str, int]]:
     """Stage C: fail-closed relevance gate over classified creatives.
     Returns (accepted, dropped_diagnostics, reason_counts) - a rejection is
     never silent, and a broker/aggregator ad is KEPT (category-relevant),
-    only flagged via its essence.advertiser_role."""
+    only flagged via its essence.advertiser_role. ``grandfathered`` holds
+    creative_ids/content_hashes already in the stored record: those survive an
+    unknown_category verdict (missing essence, not proven irrelevance)."""
     kept: list[Creative] = []
     drops: list[dict] = []
     reasons: dict[str, int] = {}
     for c in creatives:
         ok, reason = taxonomy.gate_creative(product_category, product_market,
                                             c.essence)
+        if not ok and reason == taxonomy.UNKNOWN_CATEGORY and (
+                c.creative_id in grandfathered
+                or (c.content_hash and c.content_hash in grandfathered)):
+            logger.info("creative_intelligence: unknown_category grandfathered "
+                        "creative_id=%s", c.creative_id)
+            ok = True
         if ok:
             kept.append(c)
             continue

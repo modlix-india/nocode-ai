@@ -244,18 +244,22 @@ def _card_text(card: dict) -> str:
 
 def _mentions_brand(raw: dict, name: str) -> bool:
     """Attribution for the mention tier: the ad's OWN text (page name, title,
-    body, card titles) must name the brand - keyword search also returns ads
-    for unrelated projects sharing locality words."""
+    body, card titles) or landing urls must name the brand - keyword search
+    also returns ads for unrelated projects sharing locality words. Landing
+    urls matter because broker ads often carry the project name only in the
+    link (godrejplatinum.example.com), never in the copy."""
     brand = _compact(name)
     if not brand:
         return False
     snapshot = raw.get("snapshot") or {}
     body = snapshot.get("body")
     texts = [raw.get("page_name"), snapshot.get("title"),
-             body.get("text") if isinstance(body, dict) else body]
+             body.get("text") if isinstance(body, dict) else body,
+             snapshot.get("link_url")]
+    texts += [l for l in snapshot.get("extra_links") or [] if isinstance(l, str)]
     for card in snapshot.get("cards") or []:
         if isinstance(card, dict):
-            texts += [card.get("title"), _card_text(card)]
+            texts += [card.get("title"), _card_text(card), card.get("link_url")]
     return any(brand in _compact(t) for t in texts if t)
 
 

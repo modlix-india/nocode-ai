@@ -234,6 +234,34 @@ class SearchPolicyTests(unittest.TestCase):
                                                name="Nambiar Villas X"))
             self.assertEqual(fetched.creatives, [])
 
+    def test_mention_tier_matches_brand_in_landing_urls(self):
+        # Broker ads often carry the project name ONLY in the landing url,
+        # never in the copy (live 2026-09-20: 13 Godrej Platinum ads, all
+        # unattributed because only their links named the brand).
+        cases = {
+            "snapshot link_url": {"link_url": "https://godrej-platinum.in/offer"},
+            "extra_links": {"extra_links":
+                            ["https://fb.me/x", "https://godrejplatinum.in"]},
+            "card link_url": {"cards": [
+                {"title": "2BHK", "body": {"text": "Book now"},
+                 "link_url": "https://www.godrej-platinum.in/book"}]},
+        }
+        for label, snapshot_extra in cases.items():
+            with self.subTest(label):
+                ad = _ad(page_name="Some Broker")
+                ad["snapshot"]["body"] = {"text": "Luxury homes near you"}
+                ad["snapshot"]["title"] = "New Launch"
+                ad["snapshot"].update(snapshot_extra)
+                self.assertTrue(
+                    scrapecreators._mentions_brand(ad, "Godrej Platinum"))
+        with self.subTest("unrelated link does not match"):
+            ad = _ad(page_name="Some Broker",
+                     link_url="https://prestige-lakeside.in")
+            ad["snapshot"]["body"] = {"text": "Luxury homes near you"}
+            ad["snapshot"]["title"] = "New Launch"
+            self.assertFalse(
+                scrapecreators._mentions_brand(ad, "Godrej Platinum"))
+
     def test_carousel_expands_one_creative_per_card(self):
         # Rule 4: N cards -> N creatives, each with its OWN asset and link -
         # collapsing a carousel into one fileUrl is what produced mixed
