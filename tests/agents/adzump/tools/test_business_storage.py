@@ -16,7 +16,6 @@ import unittest
 
 from app.agents.adzump.services.business_storage import (
     normalize_business_url, _build_location_object, _build_full_record,
-    _record_to_business,
 )
 from tests.agents.adzump._fixtures import RE
 
@@ -64,35 +63,17 @@ def _rec(spec, *, competitors=None):
     return _build_full_record(sc, "https://example.com")["campaign"]["competitive"]
 
 
-class ProductCategoryRoundTripTests(unittest.TestCase):
-    """Stage A fields (taxonomy.py) survive save -> hydrate: the relevance
-    gate must see the SAME yardstick after a session restart, override
-    included - otherwise every restart re-derives and can flip decisions."""
+class ProductCategoryMirrorTests(unittest.TestCase):
+    """Stage A fields (taxonomy.py) reach the Modlix mirror record - DS
+    launch-time readers see the classification adzump derived."""
 
-    _FIELDS = {
-        "category": "residential_apartment",
-        "subcategory": "",
-        "market": "Whitefield, Bangalore",
-        "offering_stage": "pre_launch",
-        "category_source": "businessType",
-        "category_confidence": 0.9,
-        "taxonomy_version": "1",
-        "category_override": "residential_villa",
-    }
-
-    def test_save_then_hydrate_is_identity(self):
-        product = {**RE, **self._FIELDS}
+    def test_mirror_carries_classification(self):
+        product = {**RE, "category": "residential_apartment",
+                   "category_override": "residential_villa"}
         record = _build_full_record({"product_data": product},
                                     "https://example.com")
         self.assertEqual(record["category"], "residential_apartment")
         self.assertEqual(record["categoryOverride"], "residential_villa")
-        restored = _record_to_business(record)
-        self.assertEqual({k: restored[k] for k in self._FIELDS}, self._FIELDS)
-
-    def test_legacy_record_hydrates_unclassified(self):
-        restored = _record_to_business({"businessUrl": "https://old.com"})
-        self.assertEqual(restored["category"], "")
-        self.assertEqual(restored["taxonomy_version"], "")
 
 
 class CampaignStatusTests(unittest.TestCase):
@@ -177,7 +158,7 @@ if __name__ == "__main__":
 class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
     """save_campaign: MySQL is the store of record, Modlix a warn-only mirror
     without the campaign sub-object. hydrate_from_storage: MySQL first, legacy
-    Modlix fallback backfills once."""
+    MySQL miss is a fresh start (the Modlix mirror is never read back)."""
 
     SESSION = {
         "product_profile": {"url": "https://springs.com"},
@@ -250,31 +231,14 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session_ctx["campaign_spec"]["location"], "Hebbal, Bangalore")
         self.assertEqual(session_ctx["competitor_analysis"]["competitors"], [{"name": "Sobha"}])
 
-    async def test_hydrate_fallback_backfills_once(self):
-        from unittest import mock
-        from app.agents.adzump.services import business_storage as bs
-        record = {"data": {"businessUrl": "https://springs.com", "productName": "Springs",
-                           "summary": "villas", "businessType": "real estate",
-                           "competitors": [{"name": "Sobha"}],
-                           "campaign": {"location": {"address": "Hebbal"}}}}
-        session_ctx: dict = {}
-        with mock.patch("app.agents.adzump.creative_store.get_product",
-                        new=mock.AsyncMock(return_value=None)), \
-             mock.patch.object(bs, "get_by_url",
-                               new=mock.AsyncMock(return_value=record)), \
-             mock.patch.object(bs, "save_campaign",
-                               new=mock.AsyncMock()) as m_backfill:
-            hit = await bs.hydrate_from_storage("https://springs.com", session_ctx, dict(self.CTX))
-        self.assertTrue(hit)
-        m_backfill.assert_awaited_once()
-        self.assertEqual(session_ctx["product_data"]["product_name"], "Springs")
-        self.assertEqual(session_ctx["campaign_spec"]["location"], "Hebbal")
-
-    async def test_hydrate_miss_everywhere_returns_false(self):
+    async def test_hydrate_mysql_miss_is_fresh_start(self):
+        # MySQL is the ONLY hydration source: a miss returns False without
+        # ever reading the Modlix mirror (write-only for DS).
         from unittest import mock
         from app.agents.adzump.services import business_storage as bs
         with mock.patch("app.agents.adzump.creative_store.get_product",
                         new=mock.AsyncMock(return_value=None)), \
-             mock.patch.object(bs, "get_by_url", new=mock.AsyncMock(return_value=None)):
+             mock.patch.object(bs, "get_by_url", new=mock.AsyncMock()) as m_modlix:
             hit = await bs.hydrate_from_storage("https://springs.com", {}, dict(self.CTX))
         self.assertFalse(hit)
+        m_modlix.assert_not_awaited()

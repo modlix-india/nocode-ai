@@ -23,7 +23,7 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.models.product import Image, Logo, check_product
+from app.agents.adzump.models.product import check_product
 from app.agents.adzump._shared import (
     STORAGE_CREATE as CREATE,
     STORAGE_READ_PAGE as READ_PAGE,
@@ -416,126 +416,15 @@ def _account_pair(acct_id: Any, account_names: dict) -> dict | None:
     return {"id": sid, "name": (account_names.get(sid) or "").strip()}
 
 
-# ── Hydration: storage record → session.context ───────────────────────────
-
-
-def _record_data(record: dict) -> dict:
-    """Storage records nest the writable fields under `data`. Some readers
-    return them flat. Tolerate both shapes."""
-    if isinstance(record.get("data"), dict):
-        return record["data"]
-    return record
-
-
-def _record_to_assets(d: dict) -> dict:
-    """Rebuild product_data["assets"] from the stored flat asset fields.
-    Logos from the logoUrl/logoMeta pair; images by zipping the stored
-    creativeImages/creativeDisplays parallel arrays (role/source aren't
-    stored - a known one-way loss)."""
-    logos: list[dict] = []
-    logo_url = d.get("logoUrl") or ""
-    if logo_url:
-        meta = d.get("logoMeta") or {}
-        logos.append(Logo(
-            url=logo_url,
-            display=meta.get("display") or {},
-            source=meta.get("source") or "",
-            source_url=d.get("logoSourceUrl") or "",
-            reasoning=meta.get("reasoning") or "",
-            confidence=float(meta.get("confidence") or 0.0),
-        ).model_dump())
-
-    urls = d.get("creativeImages") or []
-    displays = d.get("creativeDisplays") or []
-    images = [
-        Image(url=url, display=displays[i] if i < len(displays) else {}).model_dump()
-        for i, url in enumerate(urls) if url
-    ]
-    return {"logos": logos, "images": images}
-
-
-def _extract_campaign_coords(d: dict) -> dict | None:
-    """Pull lat/lng from the stored campaign.location sub-object."""
-    loc = (d.get("campaign") or {}).get("location") or {}
-    lat, lng = loc.get("lat"), loc.get("lng")
-    if lat is not None and lng is not None:
-        return {"lat": lat, "lng": lng}
-    return None
-
-
-def _record_to_business(record: dict) -> dict:
-    """Translate AISuggestedData (camelCase) → adzump's product_data shape."""
-    d = _record_data(record)
-    # `location` was a plain string historically; nocode-ai now writes the
-    # ds-v1 object shape `{area_location, product_location, product_coordinates}`.
-    # Hydrate into product_data.place.
-    raw_loc = d.get("location") or ""
-    if isinstance(raw_loc, dict):
-        location_str = raw_loc.get("product_location") or raw_loc.get("area_location") or ""
-    else:
-        location_str = raw_loc
-    # scrapedUrls seed pages (resume keeps the scrape budget); the one stored
-    # screenshot re-attaches to the primary page.
-    primary = d.get("businessUrl") or (d.get("pagesAnalyzed") or [""])[0]
-    pages = {u: {"screenshot_url": ""} for u in d.get("scrapedUrls") or []}
-    if primary:
-        pages[primary] = {"screenshot_url": d.get("screenshot", "")}
-    contact = d.get("contact") or {}
-    # Rebuild place: address + coords, country/label from stored campaign.location.
-    campaign_loc = (d.get("campaign") or {}).get("location") or {}
-    place = {"address": location_str, **(_extract_campaign_coords(d) or {})}
-    if campaign_loc.get("country_code"):
-        place["country_code"] = campaign_loc["country_code"]
-    if campaign_loc.get("country_geo_constant"):
-        place["country_geo_constant"] = campaign_loc["country_geo_constant"]
-    if campaign_loc.get("displayName"):
-        place["display_name"] = campaign_loc["displayName"]
-    return {
-        # Tolerate ds-v1 records that only set `businessName` (we now write
-        # both - see _build_full_record).
-        "product_name": d.get("productName") or d.get("businessName", ""),
-        "business_type": d.get("businessType", ""),
-        "business_scale": d.get("businessScale", "national"),
-        "category": d.get("category", ""),
-        "subcategory": d.get("subcategory", ""),
-        "market": d.get("market", ""),
-        "offering_stage": d.get("offeringStage", ""),
-        "category_source": d.get("categorySource", ""),
-        "category_confidence": float(d.get("categoryConfidence") or 0.0),
-        "taxonomy_version": d.get("taxonomyVersion", ""),
-        "category_override": d.get("categoryOverride", ""),
-        "summary": d.get("summary", ""),
-        "place": place,
-        "unique_features": d.get("uniqueFeatures") or [],
-        "products_services": d.get("productsServices") or [],
-        "pricing": d.get("pricing", ""),
-        # Legacy records may carry contact.address - dropped; place owns location.
-        "contact": {"phone": contact.get("phone", ""), "email": contact.get("email", "")},
-        "primary_url": primary,
-        "pages": pages,
-        "pages_analyzed": d.get("pagesAnalyzed") or [],
-        "site_links": d.get("siteLinks") or [],
-        "assets": _record_to_assets(d),
-        "target_areas": (d.get("campaign") or {}).get("targetAreas") or [],
-    }
-
-
-def _record_to_competitive(record: dict) -> dict | None:
-    """Pull the competitors array out of the record. Returns None if empty -
-    so callers can distinguish 'never analyzed' from 'analyzed but empty'."""
-    d = _record_data(record)
-    competitors = d.get("competitors") or []
-    if not competitors:
-        return None
-    return {"competitors": competitors}
+# ── Hydration: MySQL store → session.context ───────────────────────────────
 
 
 def _apply_hydration(
     session_ctx: dict, product_data: dict, profile: dict,
     location_address: str, competitors: list,
 ) -> None:
-    """Fill the empty session slots from a hydration source (MySQL or the
-    legacy Modlix record). Never overwrites - callers have already done a
+    """Fill the empty session slots from the MySQL hydration source.
+    Never overwrites - callers have already done a
     per-session cache check; we only fill empty slots. Restores spec.location
     so the location step skips a fresh confirm_location."""
     if not session_ctx.get("product_data"):
@@ -557,62 +446,28 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     """Populate session.context (product_data, product_profile, spec.location,
     competitor_analysis) for a returning product. Returns True on hit.
 
-    nocode-ai MySQL is read first (typed Product round-trip - no lossy
-    flat-field rebuild). A legacy draft falls back to the legacy Modlix
-    record and is backfilled into MySQL, so the fallback fires once per
-    draft. A MySQL ERROR is not a miss - it propagates; falling back on
-    errors could resurrect a stale Modlix draft.
+    nocode-ai MySQL is the ONLY hydration source (typed Product round-trip -
+    no lossy flat-field rebuild); a miss is a fresh start. The Modlix record
+    is a write-only mirror for DS, never read back here. A MySQL ERROR is not
+    a miss - it propagates rather than silently starting fresh.
     """
     from app.agents.adzump import creative_store  # lazy: avoids import cycle
 
     client_code = ctx.get("client_code") or ""
     key = normalize_business_url(url)
     product = await creative_store.get_product(client_code, key)
-    if product is not None:
-        pid = await creative_store.product_id(client_code, key)
-        draft = await creative_store.latest_flow(client_code, pid, "new_campaign")
-        if draft is None:
-            # Product row exists (creative-store write) but no campaign row
-            # yet - only the DRAFT half falls back to the legacy record.
-            record = await get_by_url(url, ctx)
-            d = _record_data(record) if record else {}
-            draft = dict(d.get("campaign") or {})
-            draft["competitors"] = d.get("competitors") or []
-        _apply_hydration(
-            session_ctx,
-            product_data=product.model_dump(),
-            profile={"url": key, "title": product.product_name,
-                     "summary": product.summary},
-            location_address=(draft.get("location") or {}).get("address") or "",
-            competitors=draft.get("competitors") or [],
-        )
-        return True
-
-    # Pre-V18 fallback: the legacy Modlix record, translated field-by-field.
-    record = await get_by_url(url, ctx)
-    if not record:
+    if product is None:
         return False
-    d = _record_data(record)
-    comp = _record_to_competitive(record)
+    pid = await creative_store.product_id(client_code, key)
+    draft = await creative_store.latest_flow(client_code, pid, "new_campaign") or {}
     _apply_hydration(
         session_ctx,
-        product_data=_record_to_business(record),
-        profile={"url": d.get("businessUrl") or url,
-                 # Tolerate ds-v1 records that only set `businessName`.
-                 "title": d.get("productName") or d.get("businessName", ""),
-                 "summary": d.get("summary", "")},
-        location_address=(
-            (d.get("campaign") or {}).get("location") or {}).get("address") or "",
-        competitors=(comp or {}).get("competitors") or [],
+        product_data=product.model_dump(),
+        profile={"url": key, "title": product.product_name,
+                 "summary": product.summary},
+        location_address=(draft.get("location") or {}).get("address") or "",
+        competitors=draft.get("competitors") or [],
     )
-    # Backfill MySQL from the hydrated session so this fallback fires once
-    # per draft. Warn-only: a failed backfill just re-fires it next resume.
-    try:
-        await save_campaign(session_ctx, ctx)
-        logger.info("hydrate: legacy draft backfilled to MySQL url=%s", url)
-    except Exception as e:
-        logger.warning("hydrate_backfill_failed: url=%s %s: %s",
-                       url, type(e).__name__, str(e)[:200])
     return True
 
 
