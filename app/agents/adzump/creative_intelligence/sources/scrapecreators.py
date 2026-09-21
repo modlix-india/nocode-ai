@@ -96,6 +96,7 @@ class ScrapeCreatorsSource:
                 resolved_name=first.get("page_name") or "",
                 logo_url=snapshot.get("page_profile_picture_url") or "",
                 platform_ids={"page_id": first.get("page_id")} if first.get("page_id") else {},
+                search_hits=len(ads),
             )
         # Mention tier: no attributable page - broker/reseller ads ABOUT the
         # project, WITHOUT claiming a page identity (no resolved_name/logo/
@@ -114,6 +115,7 @@ class ScrapeCreatorsSource:
         return SourceFetch(
             creatives=[creative for a in mentions[:MENTION_ADS_CAP]
                        for creative in _to_creatives(a)],
+            search_hits=len(ads),
         )
 
     # -- HTTP -----------------------------------------------------------------

@@ -124,6 +124,21 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(rec.total_creatives, 0)
         self.assertEqual({d["creativeId"] for d in rec.dropped}, {"a1", "b2"})
 
+    def test_attribution_wipe_reads_as_fetched_not_missing(self):
+        # 49 real ads dropped whole by the source's attribution tier must read
+        # as "49 fetched, 49 dropped, 0 kept", never as "the library had
+        # nothing" (live 2026-09-21: Puravankara The Sound of Water showed
+        # fetched=0 while the search returned 49 ads).
+        class AttributionWipedSource(FakeSource):
+            async def fetch(self, *, domain, name, country=""):
+                return SourceFetch(creatives=[], search_hits=49)
+
+        rec = self._run(stored=None, source=AttributionWipedSource())
+        self.assertEqual(rec.fetched_count, 49)
+        self.assertEqual(rec.fetch_status, "empty")
+        self.assertEqual(rec.empty_reason, "unattributed")
+        self.assertEqual(rec.total_creatives, 0)
+
     def _run(self, *, stored, source, enrich=None, ctx=None):
         library.store.upsert_competitor.reset_mock()
         with mock.patch.object(library.store, "get_competitor",

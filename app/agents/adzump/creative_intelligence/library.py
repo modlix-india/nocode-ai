@@ -261,6 +261,9 @@ async def _process_stage(
     API. The record is built fully validated before the ONE store write, so a
     partially-verified record can never be observed (Rule 8)."""
     discovered = len(fetched.creatives)
+    # The vendor's raw hit count when the source reports it (scrapecreators
+    # does); a source that doesn't falls back to what it shipped.
+    searched = fetched.search_hits or discovered
     competitor = Competitor(
         competitor_key=key,
         name=fetched.resolved_name or name,
@@ -273,6 +276,7 @@ async def _process_stage(
         # stage: union on an augment, this fetch's names on a full refresh).
         searched_names=searched_names if searched_names is not None else [name],
         last_fetched_at=datetime.now(timezone.utc).isoformat(),
+        fetched_count=searched,
     )
     binaries = await _attach_binaries(competitor, ctx)
     rehosted = sum(1 for c in competitor.creatives if c.file_url)
@@ -326,7 +330,12 @@ async def _process_stage(
         competitor.fetch_error = ""
         competitor.empty_reason = ""
     elif discovered == 0:
+        # searched > 0 here means the vendor search DID return ads and the
+        # source's attribution tier dropped every one (none belonged to or
+        # named the brand) - say so instead of implying the library was empty.
         competitor.fetch_status = "empty"
+        if searched:
+            competitor.empty_reason = "unattributed"
     elif verified and gate_reasons:
         competitor.fetch_status = "empty"
         competitor.empty_reason = max(gate_reasons, key=gate_reasons.get)
@@ -337,9 +346,9 @@ async def _process_stage(
             + ", ".join(f"{r}={n}" for r, n in sorted(drop_reasons.items())))
 
     logger.info(
-        "creative_intelligence: ingest key=%s discovered=%d rehosted=%d "
-        "verified=%d written=%d dropped=%s gated=%s",
-        key, discovered, rehosted, verified, len(competitor.creatives),
+        "creative_intelligence: ingest key=%s searched=%d discovered=%d "
+        "rehosted=%d verified=%d written=%d dropped=%s gated=%s",
+        key, searched, discovered, rehosted, verified, len(competitor.creatives),
         (dict(sorted(drop_reasons.items())) or "{}"),
         (dict(sorted(gate_reasons.items())) or "{}"),
     )

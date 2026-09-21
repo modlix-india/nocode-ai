@@ -264,6 +264,8 @@ class Competitor(BaseModel):
     business_type: str = Field(default="", alias="businessType")
     location: str = ""
     pricing: str = ""
+    # Always OUR file-store URL - the vendor's signed page-picture URL is
+    # rehosted (_rehost_logo) before it can reach a record.
     logo_url: str = Field(default="", alias="logoUrl")
 
     creatives: list[Creative] = Field(default_factory=list)
@@ -283,6 +285,10 @@ class Competitor(BaseModel):
 
     source: str = SOURCE
     last_fetched_at: str = Field(default="", alias="lastFetchedAt")
+    # Raw ads the vendor search returned on the last fetch, BEFORE attribution,
+    # caps, dedup, verify and gate - so 0 kept creatives out of 49 real ads
+    # reads as "49 fetched, 49 dropped", never as "the library had nothing".
+    fetched_count: int = Field(default=0, alias="fetchedCount")
     fetch_status: FetchStatus = Field(default="ok", alias="fetchStatus")
     # Why fetch_status is "error" - a pipeline failure must never be disguised
     # as "this competitor has no ads".

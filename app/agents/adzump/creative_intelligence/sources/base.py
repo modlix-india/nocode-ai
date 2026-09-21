@@ -25,6 +25,10 @@ class SourceFetch(BaseModel):
     resolved_name: str = ""
     logo_url: str = ""
     platform_ids: dict[str, Any] = Field(default_factory=dict)
+    # Raw ads the vendor search returned BEFORE attribution/caps - the true
+    # "fetched" number. 0 creatives with search_hits=49 means the search found
+    # plenty and attribution dropped it all, not that the library was empty.
+    search_hits: int = 0
 
 
 class AdIntelligenceSource(Protocol):

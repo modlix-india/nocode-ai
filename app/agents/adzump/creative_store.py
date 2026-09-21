@@ -275,11 +275,12 @@ async def sync_competitor(
 
     total = len(competitor.creatives)
     active = sum(1 for c in competitor.creatives if c.is_active)
-    dropped = len(competitor.dropped)
-    # ponytail: fetched = kept + dropped-trail; the trail is bounded, so this can
-    # undercount discovery. Exact discovered count lives in library.py; wire it
-    # through if the number ever needs to be precise.
-    fetched = total + dropped
+    # fetched = the vendor's raw hit count (library wires it through as
+    # fetched_count); dropped = everything fetched that wasn't kept, attribution
+    # drops included. Old records without the field fall back to the bounded
+    # dropped-trail approximation.
+    fetched = competitor.fetched_count or (total + len(competitor.dropped))
+    dropped = max(fetched - total, 0)
     fetched_at = competitor.last_fetched_at or None
 
     async with get_connection() as conn:
