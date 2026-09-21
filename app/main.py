@@ -61,19 +61,24 @@ async def lifespan(app: FastAPI):
         else:
             logger.warning("Redis connection failed - rate limiting and caching disabled")
 
-    # 4. Initialize AI Tracking Database (if configured)
-    if settings.AI_TRACKING_ENABLED:
-        logger.info("Initializing AI tracking database...")
+    # 4. Initialize the MySQL pool + migrations whenever a DB is configured -
+    # the adzump campaign/creative store depends on it (store of record for
+    # campaign persistence), not just AI tracking.
+    if settings.MYSQL_URL:
+        logger.info("Initializing MySQL (tracking + adzump store)...")
         try:
             from app.db.connection import init_db_pool
             from app.db.migrations import run_migrations
             await init_db_pool()
             await run_migrations()
-            logger.info("AI tracking database initialized")
+            logger.info("MySQL initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize AI tracking database: {e}")
-            logger.warning("AI tracking will be disabled")
+            logger.error(f"Failed to initialize MySQL: {e}")
+            logger.warning("AI tracking disabled; adzump campaign saves will fail until the DB is reachable")
             settings.AI_TRACKING_ENABLED = False
+    elif settings.AI_TRACKING_ENABLED:
+        logger.warning("AI_TRACKING_ENABLED but MYSQL_URL not configured - tracking disabled")
+        settings.AI_TRACKING_ENABLED = False
 
     # 5. Initialize AppBuilder Agent (agentic system)
     logger.info("Initializing AppBuilder Agent...")
