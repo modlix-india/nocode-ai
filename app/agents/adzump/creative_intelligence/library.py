@@ -379,7 +379,7 @@ def _product_gate(ctx: dict) -> tuple[str, str] | None:
             "creative_intelligence: relevance gate OFF - product category "
             "unknown (businessType=%r)", (product.get("business_type") or "")[:80])
         return None
-    return category, product.get("product_market", "")
+    return category, product.get("market", "")
 
 
 def _gate_creatives(

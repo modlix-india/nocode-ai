@@ -576,7 +576,7 @@ class LibraryTests(unittest.TestCase):
         with self.subTest("override yardstick (villa) gates without Stage A"):
             ctx = {"session_context": {"product_data": {
                 "business_type": "Pre-launch high-rise apartments",
-                "product_category_override": "residential_villa",
+                "category_override": "residential_villa",
             }}}
             rec = self._run(stored=None, ctx=ctx,
                             enrich=classified({

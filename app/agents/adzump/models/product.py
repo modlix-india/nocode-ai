@@ -90,14 +90,14 @@ class Product(BaseModel):
     #    the relevance gate's yardstick for competitor creatives. Derived ONCE
     #    per record from the profile text above; the override wins and is the
     #    correction path when derivation got it wrong. ──
-    product_category: str = ""          # taxonomy enum value
-    product_subcategory: str = ""
-    product_market: str = ""            # free text from place; city-token matched
-    product_offering_stage: str = ""    # pre_launch | under_construction | ...
-    product_category_source: str = ""   # which signal decided it (audit)
-    product_category_confidence: float = 0.0
+    category: str = ""          # taxonomy enum value
+    subcategory: str = ""
+    market: str = ""            # free text from place; city-token matched
+    offering_stage: str = ""    # pre_launch | under_construction | ...
+    category_source: str = ""   # which signal decided it (audit)
+    category_confidence: float = 0.0
     taxonomy_version: str = ""          # vintage; a bump triggers re-derivation
-    product_category_override: str = ""  # manual, skips Stage A entirely
+    category_override: str = ""  # manual, skips Stage A entirely
 
     # ── Scrape state ──
     primary_url: str = ""

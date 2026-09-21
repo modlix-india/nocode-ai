@@ -7,7 +7,7 @@ Two-stage classification, then a gate:
             businessType -> productName -> summary -> siteLinks. The result is
             stored on ``product_data`` so every ad is judged against ONE
             yardstick - re-deriving per ad would drift. A manual
-            ``product_category_override`` wins and skips Stage A entirely (a
+            ``category_override`` wins and skips Stage A entirely (a
             wrong product category poisons every gate decision downstream).
   Stage B - each AD is classified by the essence analyst (vision + OCR + copy +
             landing URL; the enum lists in its prompt are generated from these
@@ -151,16 +151,16 @@ def ensure_product_classified(product_data: dict) -> str:
     written under an older taxonomy. Mutates the live session dict; the
     campaign autosave persists the fields (business_storage).
 
-    ``product_category_override`` wins unconditionally and skips derivation -
+    ``category_override`` wins unconditionally and skips derivation -
     the correction path when Stage A got it wrong (no re-fetch needed)."""
-    override = (product_data.get("product_category_override") or "").strip()
+    override = (product_data.get("category_override") or "").strip()
     if override:
-        if not product_data.get("product_market"):
-            product_data["product_market"] = _derive_market(product_data)
+        if not product_data.get("market"):
+            product_data["market"] = _derive_market(product_data)
         return override
-    if (product_data.get("product_category")
+    if (product_data.get("category")
             and product_data.get("taxonomy_version") == TAXONOMY_VERSION):
-        return product_data["product_category"]
+        return product_data["category"]
 
     signals = [
         ("businessType", product_data.get("business_type") or "", 0.9),
@@ -175,13 +175,13 @@ def ensure_product_classified(product_data: dict) -> str:
             category, source, confidence = got, signal, conf
             break
     product_data.update({
-        "product_category": category,
-        "product_subcategory": "",
-        "product_market": _derive_market(product_data),
-        "product_offering_stage": classify_offering_stage(
+        "category": category,
+        "subcategory": "",
+        "market": _derive_market(product_data),
+        "offering_stage": classify_offering_stage(
             " ".join(text for _, text, _ in signals[:3])),
-        "product_category_source": source,
-        "product_category_confidence": confidence,
+        "category_source": source,
+        "category_confidence": confidence,
         "taxonomy_version": TAXONOMY_VERSION,
     })
     return category

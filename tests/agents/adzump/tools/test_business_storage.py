@@ -70,28 +70,28 @@ class ProductCategoryRoundTripTests(unittest.TestCase):
     included - otherwise every restart re-derives and can flip decisions."""
 
     _FIELDS = {
-        "product_category": "residential_apartment",
-        "product_subcategory": "",
-        "product_market": "Whitefield, Bangalore",
-        "product_offering_stage": "pre_launch",
-        "product_category_source": "businessType",
-        "product_category_confidence": 0.9,
+        "category": "residential_apartment",
+        "subcategory": "",
+        "market": "Whitefield, Bangalore",
+        "offering_stage": "pre_launch",
+        "category_source": "businessType",
+        "category_confidence": 0.9,
         "taxonomy_version": "1",
-        "product_category_override": "residential_villa",
+        "category_override": "residential_villa",
     }
 
     def test_save_then_hydrate_is_identity(self):
         product = {**RE, **self._FIELDS}
         record = _build_full_record({"product_data": product},
                                     "https://example.com")
-        self.assertEqual(record["productCategory"], "residential_apartment")
-        self.assertEqual(record["productCategoryOverride"], "residential_villa")
+        self.assertEqual(record["category"], "residential_apartment")
+        self.assertEqual(record["categoryOverride"], "residential_villa")
         restored = _record_to_business(record)
         self.assertEqual({k: restored[k] for k in self._FIELDS}, self._FIELDS)
 
     def test_legacy_record_hydrates_unclassified(self):
         restored = _record_to_business({"businessUrl": "https://old.com"})
-        self.assertEqual(restored["product_category"], "")
+        self.assertEqual(restored["category"], "")
         self.assertEqual(restored["taxonomy_version"], "")
 
 

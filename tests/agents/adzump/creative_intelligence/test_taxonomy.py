@@ -56,9 +56,9 @@ class EnsureProductClassifiedTests(unittest.TestCase):
         }
         category = taxonomy.ensure_product_classified(product)
         self.assertEqual(category, "residential_apartment")
-        self.assertEqual(product["product_category_source"], "businessType")
-        self.assertEqual(product["product_market"], "Whitefield, Bangalore")
-        self.assertEqual(product["product_offering_stage"], "pre_launch")
+        self.assertEqual(product["category_source"], "businessType")
+        self.assertEqual(product["market"], "Whitefield, Bangalore")
+        self.assertEqual(product["offering_stage"], "pre_launch")
         self.assertEqual(product["taxonomy_version"], taxonomy.TAXONOMY_VERSION)
 
     def test_falls_through_signals_then_unknown(self):
@@ -67,21 +67,21 @@ class EnsureProductClassifiedTests(unittest.TestCase):
                        "product_name": "Nambiar Villas"}
             self.assertEqual(taxonomy.ensure_product_classified(product),
                              "residential_villa")
-            self.assertEqual(product["product_category_source"], "productName")
+            self.assertEqual(product["category_source"], "productName")
         with self.subTest("site links are the last resort"):
             product = {"site_links": [
                 {"href": "/villas-in-whitefield", "text": "Our projects"}]}
             self.assertEqual(taxonomy.ensure_product_classified(product),
                              "residential_villa")
-            self.assertEqual(product["product_category_source"], "siteLinks")
+            self.assertEqual(product["category_source"], "siteLinks")
         with self.subTest("nothing matches -> unknown, stamped anyway"):
             product = {"business_type": "artisanal candles"}
             self.assertEqual(taxonomy.ensure_product_classified(product), "unknown")
-            self.assertEqual(product["product_category_source"], "")
+            self.assertEqual(product["category_source"], "")
 
     def test_stored_classification_is_reused_until_version_bump(self):
         product = {"business_type": "villas",
-                   "product_category": "residential_apartment",  # human-visible: stale
+                   "category": "residential_apartment",  # human-visible: stale
                    "taxonomy_version": taxonomy.TAXONOMY_VERSION}
         # current vintage -> trusted as-is, NOT re-derived (once per record)
         self.assertEqual(taxonomy.ensure_product_classified(product),
@@ -92,10 +92,10 @@ class EnsureProductClassifiedTests(unittest.TestCase):
 
     def test_override_wins_and_skips_derivation(self):
         product = {"business_type": "Pre-launch high-rise apartments",
-                   "product_category_override": "residential_villa"}
+                   "category_override": "residential_villa"}
         self.assertEqual(taxonomy.ensure_product_classified(product),
                          "residential_villa")
-        self.assertNotIn("product_category", product)  # Stage A never ran
+        self.assertNotIn("category", product)  # Stage A never ran
 
 
 class MarketMatchTests(unittest.TestCase):
