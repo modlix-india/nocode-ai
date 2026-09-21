@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS `adzump_competitors` (
     `pricing`           VARCHAR(255) DEFAULT NULL COMMENT 'Pricing summary',
     `searched_names`    JSON         DEFAULT NULL COMMENT 'Ad-library names already searched for this record; an uncovered name triggers a fresh search + merge',
     `creatives_fetched_at` TIMESTAMP NULL DEFAULT NULL COMMENT 'When creatives were last fetched; drives is_stale',
-    `creative_status`   ENUM('ok','empty','error') NOT NULL DEFAULT 'ok'
-                         COMMENT 'empty is a no-ads outcome; error stays retryable',
+    `creative_status`   ENUM('pending','ok','empty','error') NOT NULL DEFAULT 'pending'
+                         COMMENT 'pending until the first creatives fetch; empty is a no-ads outcome; error stays retryable',
     `fetched_creatives` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Ads discovered in the last fetch',
     `dropped_creatives` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Removed by verify + gate',
     `total_creatives`   INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Kept',

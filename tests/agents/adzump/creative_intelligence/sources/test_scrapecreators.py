@@ -262,6 +262,32 @@ class SearchPolicyTests(unittest.TestCase):
             self.assertFalse(
                 scrapecreators._mentions_brand(ad, "Godrej Platinum"))
 
+    def test_mention_tier_matches_on_distinctive_tokens(self):
+        # 'Nambiar Villas' vs an ad for 'Nambiar District 25': generic words
+        # (villas/homes/...) carry no brand identity, so attribution needs
+        # only the distinctive tokens (live 2026-09-21: all 23 Nambiar ads
+        # dropped because no ad said the literal phrase 'Nambiar Villas').
+        cases = [
+            ("distinctive token in body", "Nambiar Villas",
+             {"body": {"text": "Nambiar District 25 - book your site visit"}},
+             True),
+            ("distinctive token in link", "Nambiar Villas",
+             {"link_url": "https://nambiar-district25.in"}, True),
+            ("no distinctive token anywhere", "Nambiar Villas",
+             {"body": {"text": "Luxury villas in South Bangalore"}}, False),
+            ("all tokens required, one missing", "Godrej Platinum",
+             {"body": {"text": "Godrej Woodland plots now open"}}, False),
+            ("all-generic name never attributes", "Pre Launch Property",
+             {"body": {"text": "Pre launch property offers!"}}, False),
+        ]
+        for label, name, snapshot_extra, expected in cases:
+            with self.subTest(label):
+                ad = _ad(page_name="Some Broker")
+                ad["snapshot"]["body"] = {"text": "Great offers"}
+                ad["snapshot"]["title"] = "New Launch"
+                ad["snapshot"].update(snapshot_extra)
+                self.assertIs(scrapecreators._mentions_brand(ad, name), expected)
+
     def test_carousel_expands_one_creative_per_card(self):
         # Rule 4: N cards -> N creatives, each with its OWN asset and link -
         # collapsing a carousel into one fileUrl is what produced mixed

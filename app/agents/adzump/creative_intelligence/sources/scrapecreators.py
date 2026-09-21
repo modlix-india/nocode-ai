@@ -242,14 +242,36 @@ def _card_text(card: dict) -> str:
     return (body.get("text") if isinstance(body, dict) else body) or ""
 
 
+# Generic real-estate words carry no brand identity - they never count as a
+# distinctive token when attributing an ad to a competitor name.
+_GENERIC_NAME_TOKENS = frozenset({
+    "villa", "villas", "home", "homes", "house", "houses", "estate",
+    "estates", "property", "properties", "project", "projects", "apartment",
+    "apartments", "flat", "flats", "residence", "residences", "residency",
+    "tower", "towers", "heights", "enclave", "county", "realty", "builders",
+    "developers", "group", "luxury", "premium", "new", "launch", "prelaunch",
+    "pre", "the", "and", "of", "in", "at", "by",
+})
+
+
+def _distinctive_tokens(name: str) -> list[str]:
+    """The brand-identifying tokens of a competitor name - everything left
+    after dropping generic real-estate words ('Nambiar Villas' -> ['nambiar'])."""
+    tokens = re.split(r"[^a-z0-9]+", (name or "").lower())
+    return [t for t in tokens if len(t) >= 2 and t not in _GENERIC_NAME_TOKENS]
+
+
 def _mentions_brand(raw: dict, name: str) -> bool:
     """Attribution for the mention tier: the ad's OWN text (page name, title,
-    body, card titles) or landing urls must name the brand - keyword search
-    also returns ads for unrelated projects sharing locality words. Landing
-    urls matter because broker ads often carry the project name only in the
-    link (godrejplatinum.example.com), never in the copy."""
-    brand = _compact(name)
-    if not brand:
+    body, card titles) or landing urls must carry EVERY distinctive token of
+    the brand name - keyword search also returns ads for unrelated projects
+    sharing locality words. Token matching (not whole-name substring) is what
+    lets a broker ad for 'Nambiar District 25' attribute to 'Nambiar Villas';
+    landing urls matter because broker ads often carry the project name only
+    in the link (godrejplatinum.example.com), never in the copy. A name with
+    no distinctive token can't be attributed at all."""
+    tokens = _distinctive_tokens(name)
+    if not tokens:
         return False
     snapshot = raw.get("snapshot") or {}
     body = snapshot.get("body")
@@ -260,7 +282,8 @@ def _mentions_brand(raw: dict, name: str) -> bool:
     for card in snapshot.get("cards") or []:
         if isinstance(card, dict):
             texts += [card.get("title"), _card_text(card), card.get("link_url")]
-    return any(brand in _compact(t) for t in texts if t)
+    fields = [_compact(t) for t in texts if t]
+    return all(any(token in field for field in fields) for token in tokens)
 
 
 def _days_running(start, end) -> int:

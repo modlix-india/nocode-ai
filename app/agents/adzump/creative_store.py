@@ -175,6 +175,40 @@ async def latest_flow(
     return raw if isinstance(raw, dict) else json.loads(raw)
 
 
+async def sync_competitor_profiles(
+    client_code: str, product_id: int, competitors: list[dict], user_id: int = 0,
+) -> None:
+    """Upsert one adzump_competitors PROFILE row per curated competitor, at
+    discovery/curation time - so the table always mirrors the analyst's list,
+    fetched or not. Touches only profile fields; creative stats and status
+    stay whatever the creatives fetch (sync_competitor) last wrote. Rows are
+    born creative_status='pending'."""
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            for comp in competitors:
+                name = (comp.get("name") or "").strip()
+                if not name:
+                    continue
+                await cur.execute(
+                    """
+                    INSERT INTO adzump_competitors
+                        (client_code, product_id, name, url, logo_url,
+                         location, pricing, created_by, updated_by)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
+                    ON DUPLICATE KEY UPDATE
+                        url=COALESCE(new.url, url),
+                        logo_url=COALESCE(new.logo_url, logo_url),
+                        location=COALESCE(new.location, location),
+                        pricing=COALESCE(new.pricing, pricing),
+                        updated_by=new.updated_by
+                    """,
+                    (client_code, product_id, name, comp.get("url") or None,
+                     comp.get("logo_url") or None, comp.get("location") or None,
+                     comp.get("pricing") or None, user_id, user_id),
+                )
+        await conn.commit()
+
+
 # ── Competitors + creatives + assets (writer) ────────────────────────────────
 
 

@@ -177,33 +177,38 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
                        new=mock.AsyncMock(return_value=42)),
             mock.patch("app.agents.adzump.creative_store.upsert_flow",
                        new=mock.AsyncMock()),
+            mock.patch("app.agents.adzump.creative_store.sync_competitor_profiles",
+                       new=mock.AsyncMock()),
             mock.patch("app.agents.adzump.services.business_storage._mirror_modlix_record",
                        new=mock.AsyncMock(return_value="rec-1")),
         )
 
     async def test_mysql_written_then_mirror_without_campaign(self):
         from app.agents.adzump.services import business_storage as bs
-        p_prod, p_camp, p_mirror = self._patches()
-        with p_prod as m_prod, p_camp as m_camp, p_mirror as m_mirror:
+        p_prod, p_camp, p_profiles, p_mirror = self._patches()
+        with p_prod as m_prod, p_camp as m_camp, \
+             p_profiles as m_profiles, p_mirror as m_mirror:
             result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
         self.assertEqual(result, "rec-1")
         m_prod.assert_awaited_once()
         draft = m_camp.await_args.args[5]
         self.assertEqual(draft["platform"], "Meta")
         self.assertEqual(draft["competitors"], [{"name": "Sobha"}])
+        # Curated competitors get profile rows at save time, not fetch time.
+        self.assertEqual(m_profiles.await_args.args[2], [{"name": "Sobha"}])
         mirror_record = m_mirror.await_args.args[0]
         self.assertNotIn("campaign", mirror_record)
 
     async def test_mysql_failure_raises_mirror_failure_does_not(self):
         from unittest import mock
         from app.agents.adzump.services import business_storage as bs
-        p_prod, p_camp, p_mirror = self._patches()
-        with p_prod, p_camp as m_camp, p_mirror:
+        p_prod, p_camp, p_profiles, p_mirror = self._patches()
+        with p_prod, p_camp as m_camp, p_profiles, p_mirror:
             m_camp.side_effect = RuntimeError("db down")
             with self.assertRaises(RuntimeError):
                 await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
-        p_prod2, p_camp2, p_mirror2 = self._patches()
-        with p_prod2, p_camp2, p_mirror2 as m_mirror:
+        p_prod2, p_camp2, p_profiles2, p_mirror2 = self._patches()
+        with p_prod2, p_camp2, p_profiles2, p_mirror2 as m_mirror:
             m_mirror.return_value = None  # mirror failed internally, warn-only
             result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
         self.assertIsNone(result)

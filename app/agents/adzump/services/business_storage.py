@@ -145,6 +145,12 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         ctx.get("client_code") or "", pid, chat_session_id, "new_campaign",
         campaign_draft.get("status") or "draft", campaign_draft,
         ctx.get("user_id") or 0)
+    # Curated competitors get their typed rows at save time (born 'pending'),
+    # not lazily at creatives-fetch time - the table mirrors the analyst's
+    # list even when the user never fetches ads.
+    await creative_store.sync_competitor_profiles(
+        ctx.get("client_code") or "", pid,
+        campaign_draft.get("competitors") or [], ctx.get("user_id") or 0)
 
     return await _mirror_modlix_record(record, url, ctx)
 
