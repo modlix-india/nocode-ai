@@ -223,16 +223,33 @@ def _normalize_market(text: str) -> str:
     return out
 
 
+# Tokens that prove nothing about shared geography (street furniture, country).
+_MARKET_GENERIC_TOKENS = frozenset({
+    "road", "main", "near", "east", "west", "north", "south", "india",
+    "phase", "layout", "extension", "cross", "block", "stage", "sector",
+})
+
+
 def market_matches(ad_market: str, product_market: str) -> bool:
-    """City-level match: the ad's city (the part before '/') must appear in the
-    product's market string, alias-normalized both ways. Locality mismatch is
-    NOT checked here - per spec it's a flag, not an auto-reject. Either side
-    empty = no evidence of mismatch = pass."""
+    """City-level match with a locality-token fallback. First try: the ad's
+    city (the part before '/') appears in the product market string,
+    alias-normalized both ways. But the product market is place.display_name -
+    free text that may not name the city at all (geocoder-dependent:
+    "Valmark Cityville, Bannerghatta Rd, Karnataka, India" carries no
+    "Bangalore", and every Bangalore ad was rejected, live 2026-09-21) - so
+    when city containment fails, any meaningful WHOLE token shared between the
+    full ad market and the product market passes. A locality-only match is
+    intentionally accepted: locality is tighter evidence than city. Either
+    side empty = no evidence of mismatch = pass."""
     city = _normalize_market(ad_market.split("/")[0])
     product = _normalize_market(product_market)
     if not city or not product:
         return True
-    return city in product or product in city
+    if city in product or product in city:
+        return True
+    ad_tokens = {t for t in _normalize_market(ad_market).split()
+                 if len(t) >= 4 and t not in _MARKET_GENERIC_TOKENS}
+    return bool(ad_tokens & set(product.split()))
 
 
 def gate_creative(

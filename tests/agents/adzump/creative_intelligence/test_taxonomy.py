@@ -107,6 +107,14 @@ class MarketMatchTests(unittest.TestCase):
             ("", "Bangalore", True),          # no ad evidence -> pass
             ("Bangalore", "", True),          # no product market -> pass
             ("Gurugram / Sector 62", "Gurgaon, Haryana", True),
+            # Locality-token fallback: display_name may lack the city entirely
+            # (live 2026-09-21 - every Bangalore ad got market_mismatch).
+            ("Bangalore / Bannerghatta Road",
+             "Valmark Cityville, Bannerghatta Rd, Karnataka, India", True),
+            ("Mumbai / Bandra West",
+             "Valmark Cityville, Bannerghatta Rd, Karnataka, India", False),
+            # Whole-token overlap only - "pura" must not match "puravankara".
+            ("Chennai / Pura", "Puravankara Towers, Bangalore", False),
         ]:
             with self.subTest(ad=ad or "(empty)", product=product or "(empty)"):
                 self.assertEqual(taxonomy.market_matches(ad, product), want)
