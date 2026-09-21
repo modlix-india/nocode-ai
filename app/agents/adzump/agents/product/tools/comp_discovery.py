@@ -248,7 +248,8 @@ async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
     research_state["verified_competitors"] = list(all_verified.values())
 
     lines = _evidence_block(verified, aggregator_drops, fetch_fails,
-                            skipped_verified, len(all_verified))
+                            skipped_verified,
+                            research_state["verified_competitors"])
     return ToolResult(
         success=True,
         data={"verified": verified,
@@ -370,11 +371,19 @@ async def _read_page_line(url: str) -> str:
     return " ".join(str(result.get("answer") or "").split())[:300]
 
 
+_FETCH_ANSWER_MAX_CHARS = 2000  # judgment evidence, not a transcript - cap the page read
+
+
 def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
                     fetch_fails: list[dict], skipped_verified: list[str],
-                    total_verified: int) -> list[str]:
+                    all_verified: list[dict]) -> list[str]:
     """ID-keyed evidence for the agent's final judgment - no segment hints,
-    no match booleans: the agent re-judges each entry on the fetched content."""
+    no match booleans: the agent re-judges each entry on the fetched content.
+    Always closes with the full citable-ID roster: the final JSON's
+    competitor_id citations are checked against exactly this set, and the
+    model hallucinates ids it can't see (live 2026-09-21: C25/C63/C53 cited,
+    none verified, each costing a bounce)."""
+    total_verified = len(all_verified)
     if not verified and total_verified:
         # A cautious re-call that added nothing (re-cited verified IDs, or
         # replacements that all dropped) must not invite another round: with
@@ -396,8 +405,10 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
             "",
             f"Your {total_verified} previously verified competitor(s) are the "
             "complete evidence base - further calls only re-confirm it. Write "
-            "the final JSON NOW, citing the existing IDs; do NOT call "
-            "fetch_candidates again.",
+            "the final JSON NOW, citing only these IDs; do NOT call "
+            "fetch_candidates again: "
+            + "; ".join(f"{c.get('cid')} = {_table_cell(c.get('name') or '?')}"
+                        for c in all_verified),
         ]
     if not verified and not skipped_verified:
         return [
@@ -425,6 +436,8 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
         answer = (c.get("fetch_answer") or "").strip()
         if answer.upper().startswith("TYPE: BRAND"):
             answer = answer[len("TYPE: BRAND"):].lstrip(":\n ").strip()
+        if len(answer) > _FETCH_ANSWER_MAX_CHARS:
+            answer = answer[:_FETCH_ANSWER_MAX_CHARS] + " …(truncated)"
         if answer:
             lines.append("")
             lines.append(f"Answer: {answer}")
@@ -451,8 +464,12 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
     if aggregator_drops:
         footer.append(f"Dropped as aggregator ({len(aggregator_drops)}): "
                       + ", ".join(c["name"] for c in aggregator_drops))
-    if footer:
-        lines += ["---", ""] + footer
+    footer.append(
+        "Citable IDs - competitor_id in the final JSON must be one of these "
+        "(anything else is stripped): "
+        + "; ".join(f"{c.get('cid')} = {_table_cell(c.get('name') or '?')}"
+                    for c in all_verified))
+    lines += ["---", ""] + footer
     return lines
 
 

@@ -115,16 +115,27 @@ def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
     return result
 
 
-_UNVERIFIED_BOUNCE_MSG = (
-    "REJECTED - some competitor entries are NOT verified (named above). Your "
-    "EXISTING fetch_candidates evidence is still valid - do NOT re-run "
-    "extract_candidates or fetch_candidates for entries you already verified. "
-    "Fix only the flagged entries: cite a verified ID in competitor_id with "
-    "url null, or drop the entry (verify NEW candidates via fetch_candidates "
-    "only if you have unfetched IDs worth including). Then re-emit the FULL "
-    "final JSON. If nothing verifies, emit competitors: [] with a note. "
-    "Unverified entries in your next answer will be stripped."
-)
+def _bounce_message(violations: list[str], research_state: dict) -> str:
+    """Repair-turn instruction: name the exact citable IDs and forbid tools.
+    The old open-ended bounce ('verify NEW candidates if worth including')
+    triggered a full re-research - another fetch round plus a multi-minute
+    final turn (live 2026-09-21: the bounce added 4m20s). All evidence is
+    already in this transcript; fixing citations needs zero tool calls."""
+    id_lines = [f"  {c.get('cid')} = {c.get('name')}"
+                for c in research_state.get("verified_competitors") or []
+                if c.get("cid")]
+    valid = ("The ONLY citable competitor_id values are:\n" + "\n".join(id_lines)
+             if id_lines else "NO candidate verified - the citable ID list is empty.")
+    return (
+        "REJECTED - these entries are not verified:\n"
+        + "\n".join(f"  {v}" for v in violations) + "\n\n"
+        + valid + "\n\n"
+        "Do NOT call any tools - every piece of evidence is already above. "
+        "Re-emit the FULL final JSON now, fixing only the flagged entries: "
+        "cite one of the IDs listed here (url null), or drop the entry. "
+        "If nothing is citable, emit competitors: [] with a note. "
+        "Unverified entries in your next answer will be stripped."
+    )
 
 
 def _discovery_violations(payload: dict | None, research_state: dict) -> list[str]:
@@ -433,7 +444,7 @@ class ProductAgent(BaseAgent):
                 logger.warning("analyst_unverified_output: bouncing once - %s",
                                violations)
                 await self.run(
-                    user_message=_UNVERIFIED_BOUNCE_MSG,
+                    user_message=_bounce_message(violations, research_state),
                     session=sub_session,
                     event_stream=wrapped_stream,
                     model_override=ANALYST_MODEL_OVERRIDE,
