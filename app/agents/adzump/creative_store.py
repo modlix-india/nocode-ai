@@ -196,10 +196,10 @@ async def sync_competitor_profiles(
                          location, pricing, created_by, updated_by)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
                     ON DUPLICATE KEY UPDATE
-                        url=COALESCE(new.url, url),
-                        logo_url=COALESCE(new.logo_url, logo_url),
-                        location=COALESCE(new.location, location),
-                        pricing=COALESCE(new.pricing, pricing),
+                        url=COALESCE(new.url, adzump_competitors.url),
+                        logo_url=COALESCE(new.logo_url, adzump_competitors.logo_url),
+                        location=COALESCE(new.location, adzump_competitors.location),
+                        pricing=COALESCE(new.pricing, adzump_competitors.pricing),
                         updated_by=new.updated_by
                     """,
                     (client_code, product_id, name, comp.get("url") or None,
