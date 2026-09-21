@@ -1,8 +1,8 @@
 """CampaignSpec - the typed model over ``session.context["campaign_spec"]``.
 
-Storage stays a plain dict (integration contract, HLD/LLD doc §4.6); this
-model is the lenient parse over it. Slice 1a types the offer fields; the
-remaining keys ride ``extra="allow"`` until slice 3 finishes the typing.
+Storage stays a plain dict (integration contract); this model is the lenient
+parse over it. The offer fields are typed; the remaining keys ride
+``extra="allow"`` until the rest of the spec is typed.
 
 ``offer_state`` is the migration-aware single read for offer fields: readers
 use it instead of key-existence checks, so legacy ``*_declined="true"``
@@ -54,7 +54,7 @@ class CampaignSpec(BaseModel):
     # offers (replace the *_declined="true" strings)
     competitive_analysis: OfferState = OfferState.UNSET
     competitor_creatives: OfferState = OfferState.UNSET
-    # only UNSET/DECLINED; linked = ig_page set (D12)
+    # only UNSET/DECLINED; linked = ig_page set
     instagram: OfferState = OfferState.UNSET
     # lifecycle (not a user answer)
     campaign_status: str = ""

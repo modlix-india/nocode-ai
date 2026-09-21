@@ -1,7 +1,7 @@
 # Adzump Orchestrator (`AdzumpAgent`)
 
-> **Status: implemented; this doc written 2026-09-11** - describes the code as
-> it is. Sub-agents have their own AGENT.md files (see the routing table).
+> Describes the code as it is. Sub-agents have their own AGENT.md files (see
+> the routing table).
 
 ## Purpose
 
@@ -40,7 +40,7 @@ drift off the funnel.
 │    elicitation resume, stale-rail expiry (STALE_RAIL_TURNS=4)        │
 │                                                                      │
 │  per-turn reminder (code):                                           │
-│    CampaignContext.from_session → missing_list(NEW_CAMPAIGN, cctx)   │
+│    AdzumpContext.from_session → missing_list(NEW_CAMPAIGN, actx)   │
 │    → the ONE prescribed next action                                  │
 │                                                                      │
 │  the LLM picks tools (registry.ALL_TOOLS):                           │
@@ -59,27 +59,33 @@ drift off the funnel.
 
 ## The journey engine (`workflow.py`)
 
-The old `next_action` if-chain is gone (rework PR-3a/3b). The funnel is a
-typed registry:
+The funnel is a typed registry, all in `workflow.py` unless noted:
 
-- **`CampaignContext`** - one frozen read of the session per turn: product,
-  spec, competitor names, offer resolutions, the open elicitation's field,
-  ask counts. Built ONCE (`from_session`) so every gate reads the same facts.
-- **`Step`** - `name`, `requires` (dependencies), `done` (predicate over the
-  context), `prescribe` (the exact instruction the model gets when this step
-  is next). Steps: product, location, platform, target_areas,
+- **`AdzumpContext`** (`workflow.py:45`) - one frozen read of the session per
+  turn: product, spec, competitor names, offer resolutions, the open
+  elicitation's field, ask counts. Built ONCE (`from_session`,
+  `workflow.py:82`) so every gate reads the same facts.
+- **`Step`** (`workflow.py:140`) - `name`, `requires` (dependencies), `done`
+  (predicate over the context), `prescribe` (the exact instruction the model
+  gets when this step is next). The step registry is `NEW_CAMPAIGN`
+  (`workflow.py:441`): product, location, platform, target_areas,
   competitive_analysis, competitor_creatives, duration, budget,
   parent_account, account, fb_page, instagram.
-- **`missing_list(journey, cctx)`** - the ordered still-missing lines; its
-  first entry is the turn's Next action.
-- **Offers** are typed resolutions (`OfferResolution`: OPEN / DECLINED /
-  FULFILLED / EXHAUSTED / MOOT) computed in `tools/campaign_data.py` -
+- **`missing_list(journey, actx)`** (`workflow.py:162`) - the ordered
+  still-missing lines; its first entry is the turn's Next action.
+- **Offers** are typed resolutions (`OfferResolution` in
+  `models/offer_state.py`: OPEN / DECLINED / FULFILLED / EXHAUSTED / MOOT)
+  computed by the `*_offer_resolution` functions in `tools/campaign_data.py`
+  (creatives: `creatives_offer_resolution`; also analysis, instagram) -
   rationale as data, so the prescription, the gates, and the turn log can
   never disagree. The creatives offer is COVERAGE-based: fulfilled only while
   every named competitor carries a fetch result, so a competitor added after
-  the fetch re-opens it (live 2026-09-11).
+  the fetch re-opens it.
 
 ## Capture rails (code owns state, the model never "remembers")
+
+All rails live in `agent.py`; the widgets they capture from are emitted by
+`tools/suggestions.py` (`present_options`).
 
 - **Layer 1 - tagged answers**: every field-tagged `present_options` option
   carries an `answer`; a chip click (or exact-match reply) is captured by
@@ -90,18 +96,20 @@ typed registry:
   against `field_candidates` - anti-invention).
 - **Prose declines** (`_record_prose_decline`) and **elicitation resume**
   (`_resume_elicitation_section`) handle "no thanks" and stale widgets; a rail
-  older than `STALE_RAIL_TURNS` user turns steps aside (R6/S1-11).
+  older than `STALE_RAIL_TURNS` user turns steps aside.
 - Every turn emits a structured **`turn_decision`** log line
   (`observability.py`): prescription, missing list, captures, offer states -
   the first thing to read when the flow misbehaves.
 
 ## Hard gates (code, not prompt)
 
-- `launch_campaign` and `fetch_competitor_creatives` are consent-gated: the
-  user's latest message (or a STORED accepted offer - the "stored-ok"
-  exception) must be a clear go-ahead; the tool refuses otherwise.
-- One question-asking tool per turn (`elicitation_break`); questions go
-  through `present_options`, never free-typed option lists.
+- `launch_campaign` (`tools/launch.py`) and `fetch_competitor_creatives`
+  (`tools/creatives.py`) are consent-gated: the user's latest message (or a
+  STORED accepted offer - the "stored-ok" exception) must be a clear
+  go-ahead; the tool refuses otherwise.
+- `present_options` (`tools/suggestions.py`) owns the whole assistant turn
+  for a discrete-choice ask - one question per turn, never free-typed option
+  lists.
 - The competitor list is user-REVIEWED before ad-library credits are spent
   (the review checkpoint between analysis and the creatives fetch).
 - Every-turn autosave writes the campaign draft to AISuggestedData
@@ -112,7 +120,7 @@ typed registry:
 
 | Setting | Default | Notes |
 |---|---|---|
-| `ADZUMP_PROVIDER` | `deepseek` | the orchestrator loop (Kailash 2026-09-08); falls back to `LLM_PROVIDER` |
+| `ADZUMP_PROVIDER` | `deepseek` | the orchestrator loop; falls back to `LLM_PROVIDER` |
 | `AGENT_MODEL_TIER` / `MAX_AGENT_TURNS` / `AGENT_MAX_TOKENS` | shared settings | see `app/config.py` |
 
 Sub-agents pin their own providers (research = Anthropic Sonnet for the server
@@ -147,16 +155,15 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
 
 ## Design decisions
 
-- **Journey engine over an if-chain** (PR-3a/3b): steps are data - dependencies,
+- **Journey engine over an if-chain**: steps are data - dependencies,
   done-predicates, and prescriptions live in one registry a test can iterate.
 - **Rationale as data**: offers resolve to a typed reason, logged per turn -
   "why did it ask X" is answerable from one `turn_decision` line.
 - **Code captures, the model acknowledges**: chip answers are stored by the
-  rail before the LLM ever runs; prompt-only capture rules drift (the
-  historic capture-ack incident).
+  rail before the LLM ever runs; prompt-only capture rules drift.
 - **Sub-agents only for genuinely different jobs** - the orchestrator's loop
   IS the interpreter for campaign construction; research/geo/vision are
   different jobs with their own loops. No sub-agent exists for a feature this
   loop already owns.
-- **The Custom chip is dead (D13)**: chip questions end with "or type your
-  own"; typed values are first-class via the layer-2 rail.
+- **No Custom chip**: chip questions end with "or type your own"; typed
+  values are first-class via the layer-2 rail.

@@ -18,8 +18,8 @@ from pathlib import Path
 from app.core.context import BaseContext
 
 
-# DRAFT-NOTE · prompt currently lives in the product agent's prompt folder.
-# When we move it (D3 in implementation-notes.md), change this path.
+# The prompt lives in the product agent's prompt folder; if it moves,
+# change this path.
 _SELECT_PROMPT_PATH = (
     Path(__file__).resolve().parent.parent
     / "product" / "prompts" / "product_assets.txt"

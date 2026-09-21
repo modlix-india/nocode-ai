@@ -1,4 +1,4 @@
-"""Turn decision record - the rework's debugging instrument (slice 1c).
+"""Turn decision record - the orchestrator's per-turn debugging instrument.
 
 One structured ``logger.info`` line per AGENTIC turn (the engine re-runs per
 LLM call, so mid-message prescription movement is visible), JSON payload.
@@ -60,8 +60,8 @@ def log_turn_decision(
         "prior_capture": prior_capture,
         "repeat_ask": prescription is not None and prescription == open_rail_field,
         "repeat_ask_unmatched": prescription is not None and open_rail_untagged,
-        # Slice 4 · WHY each offer is (or isn't) settled - the signal that was
-        # invisible when a failed analysis silently mooted the creatives offer.
+        # WHY each offer is (or isn't) settled - the signal that was invisible
+        # when a failed analysis silently mooted the creatives offer.
         "offers": offers or {},
     }
     logger.info("turn_decision %s", json.dumps(record, ensure_ascii=False, default=str))

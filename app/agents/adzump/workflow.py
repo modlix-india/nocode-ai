@@ -1,11 +1,12 @@
-"""The adzump orchestrator's workflow tree - pure decision logic.
+"""The adzump orchestrator's journey engine - pure decision logic.
 
-``CampaignContext`` is a typed, frozen read-model over ``session.context``.
-The ``NEW_CAMPAIGN`` journey declares the build as ordered, dependency-typed
-``Step``s; ``missing_list`` walks them and emits the ordered prescriptions
-(with the exact tool call per item). All pure functions - no I/O, no session
-mutation - the most test-valuable code in the orchestrator lives in a leaf
-module.
+``AdzumpContext`` is a typed, frozen read-model over ``session.context``,
+shared by every journey. A ``Journey`` declares its work as ordered,
+dependency-typed ``Step``s (``NEW_CAMPAIGN`` is the only one today; optimize/
+insights journeys plug in beside it); ``missing_list`` walks the chosen
+journey and emits the ordered prescriptions (with the exact tool call per
+item). All pure functions - no I/O, no session mutation - the most
+test-valuable code in the orchestrator lives in a leaf module.
 """
 
 from __future__ import annotations
@@ -36,13 +37,13 @@ from app.agents.adzump.tools.campaign_data import (
 )
 
 
-# R12 · a required slot asked this many times without landing switches to the
-# "help me pick" escape - the user may be unsure; never a silent default (F17).
+# A required slot asked this many times without landing switches to the
+# "help me pick" escape - the user may be unsure; never a silent default.
 ESCAPE_AFTER_ASKS = 3
 
 
 @dataclass(frozen=True)
-class CampaignContext:
+class AdzumpContext:
     """Typed read-model over ``session.context``.
 
     Shields the journey engine and the renderers from raw-dict shape drift.
@@ -61,16 +62,15 @@ class CampaignContext:
     # Detected location string when `confirm_location` has shown the map and
     # we're awaiting the user's reply. None when no map is in flight.
     pending_location: str | None
-    # v3 · F3 - True once fetch_meta_ig_accounts stored its result (the
-    # ``ig_accounts`` data key, [] when none are linked). Stops the instagram step
-    # from re-prescribing the IG fetch every turn - data-backed; the old
-    # offered marker is deleted (slice 1d).
+    # True once fetch_meta_ig_accounts stored its result (the ``ig_accounts``
+    # data key, [] when none are linked). Stops the instagram step from
+    # re-prescribing the IG fetch every turn.
     ig_accounts_fetched: bool = False
     # The open elicitation's field, if any - the CURRENT ask on screen. An
     # offer whose rail is open is waiting on the reply, never re-prescribed.
     pending_ask_field: str | None = None
     # Times each field-tagged ask has been shown (present_options counter).
-    # Drives offer exhaustion and the refused-required-slot escape (R12).
+    # Drives offer exhaustion and the ESCAPE_AFTER_ASKS escape.
     field_asks: dict[str, int] = dc_field(default_factory=dict)
     # WHY the Meta creative-inspiration offer is settled (or OPEN = still
     # owed) - the shared verdict from campaign_data, so this gate, the review
@@ -79,7 +79,7 @@ class CampaignContext:
     competitor_creatives_resolution: OfferResolution = OfferResolution.OPEN
 
     @classmethod
-    def from_session(cls, session: BaseSession) -> "CampaignContext":
+    def from_session(cls, session: BaseSession) -> "AdzumpContext":
         ctx = session.context
         competitive_raw = ctx.get("competitor_analysis")
         # Sole writer (tools/location.py) stores the detected location string.
@@ -134,7 +134,7 @@ class CampaignContext:
         )
 
 
-# ─── The dependency engine (slice 3) ────────────────────────────────────────
+# ─── The dependency engine ───────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class Step:
@@ -146,10 +146,10 @@ class Step:
     journey is NOT complete (waiting, not skipped)."""
 
     name: str
-    done: Callable[[CampaignContext], bool]
-    prescribe: Callable[[CampaignContext], str]
-    applies: Callable[[CampaignContext], bool] = lambda cctx: True
-    ready: Callable[[CampaignContext], bool] = lambda cctx: True
+    done: Callable[[AdzumpContext], bool]
+    prescribe: Callable[[AdzumpContext], str]
+    applies: Callable[[AdzumpContext], bool] = lambda actx: True
+    ready: Callable[[AdzumpContext], bool] = lambda actx: True
     requires: tuple[str, ...] = ()
 
 
@@ -159,7 +159,7 @@ class Journey:
     steps: tuple[Step, ...]
 
 
-def missing_list(journey: Journey, cctx: CampaignContext) -> list[str]:
+def missing_list(journey: Journey, actx: AdzumpContext) -> list[str]:
     """Walk the journey against the typed context; return the ordered
     prescriptions for every actionable not-done step (FIRST is the ask).
     All applicable steps done -> the review prescription. A waiting or
@@ -169,9 +169,9 @@ def missing_list(journey: Journey, cctx: CampaignContext) -> list[str]:
     suggested ``question`` for chip asks - so the LLM has nothing to
     construct, only to copy.
     """
-    applicable = [step for step in journey.steps if step.applies(cctx)]
-    satisfied = {step.name for step in journey.steps if not step.applies(cctx)}
-    satisfied |= {step.name for step in applicable if step.done(cctx)}
+    applicable = [step for step in journey.steps if step.applies(actx)]
+    satisfied = {step.name for step in journey.steps if not step.applies(actx)}
+    satisfied |= {step.name for step in applicable if step.done(actx)}
 
     lines: list[str] = []
     complete = True
@@ -181,24 +181,24 @@ def missing_list(journey: Journey, cctx: CampaignContext) -> list[str]:
         complete = False
         if any(required not in satisfied for required in step.requires):
             continue  # hidden behind an upstream ask - it is on screen instead
-        if not step.ready(cctx):
+        if not step.ready(actx):
             continue  # ask in flight - waiting on the reply, never re-prescribed
-        lines.append(step.prescribe(cctx))
+        lines.append(step.prescribe(actx))
     if complete:
         lines.append(_REVIEW_PRESCRIPTION)
     return lines
 
 
-# ─── Step prescriptions (verbatim from the retired if-chain) ─────────────────
+# ─── Step prescriptions ──────────────────────────────────────────────────────
 
-def _prescribe_product(cctx: CampaignContext) -> str:
+def _prescribe_product(actx: AdzumpContext) -> str:
     return "business URL - call `analyze_product(url=<the user's URL>)`"
 
 
-def _prescribe_location(cctx: CampaignContext) -> str:
-    if cctx.pending_location:
+def _prescribe_location(actx: AdzumpContext) -> str:
+    if actx.pending_location:
         # Map shown last turn. Branch on user reply.
-        detected = cctx.pending_location
+        detected = actx.pending_location
         return (
             f"location - map shown for **'{detected}'**. "
             f'If user said `"confirm"` → `set_campaign_spec(location="{detected}")`. '
@@ -211,7 +211,7 @@ def _prescribe_location(cctx: CampaignContext) -> str:
     return "location - call `confirm_location()` (real estate business)"
 
 
-def _prescribe_platform(cctx: CampaignContext) -> str:
+def _prescribe_platform(actx: AdzumpContext) -> str:
     return (
         "platform - use the present_options tool (field \"platform\") to ask "
         "\"Which platform should we run this on?\" with chips Google Ads / "
@@ -220,8 +220,8 @@ def _prescribe_platform(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_target_areas(cctx: CampaignContext) -> str:
-    loc_arg = cctx.spec.get("location") or ""
+def _prescribe_target_areas(actx: AdzumpContext) -> str:
+    loc_arg = actx.spec.get("location") or ""
     return (
         'target_areas - call `manage_targeting_locations(user_message="set up geo targeting")`'
         if not loc_arg
@@ -229,13 +229,13 @@ def _prescribe_target_areas(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_competitive_analysis(cctx: CampaignContext) -> str:
-    # F11 · agentic, not a hardcoded phrase ladder: the MODEL interprets the
-    # user's reply to THIS competitor offer (the old `lu in (...)` exact-match
-    # missed "No, skip competitor analysis for now" → re-ask loop). Scoped +
-    # biased to re-ask on doubt so a polarity-flip ("no, change the budget")
-    # is never read as a decline. The _field_traceable guard backstops it.
-    if offer_state(cctx.spec, "competitive_analysis") is OfferState.ACCEPTED:
+def _prescribe_competitive_analysis(actx: AdzumpContext) -> str:
+    # Agentic, not a hardcoded phrase ladder: the MODEL interprets the user's
+    # reply to THIS competitor offer (an exact-match list misses phrasings like
+    # "No, skip competitor analysis for now" and re-asks forever). Biased to
+    # re-ask on doubt so a polarity-flip ("no, change the budget") is never
+    # read as a decline. The _field_traceable guard backstops it.
+    if offer_state(actx.spec, "competitive_analysis") is OfferState.ACCEPTED:
         # Every chip writes: the Yes already landed as ACCEPTED - the ask
         # is settled, only the analysis itself is owed.
         return (
@@ -262,11 +262,11 @@ def _prescribe_competitive_analysis(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_competitor_creatives(cctx: CampaignContext) -> str:
+def _prescribe_competitor_creatives(actx: AdzumpContext) -> str:
     # Meta campaigns are creative-bound, so the competitors' running ads are
     # the seed material. Consent-gated (ad-library credits + vision tokens).
-    if offer_state(cctx.spec, "competitor_creatives") is OfferState.ACCEPTED:
-        if not cctx.competitor_names:
+    if offer_state(actx.spec, "competitor_creatives") is OfferState.ACCEPTED:
+        if not actx.competitor_names:
             return (
                 "competitor creatives - the user said YES. Run "
                 "`analyze_competitors` NOW. Do NOT fetch creatives in the "
@@ -291,7 +291,7 @@ def _prescribe_competitor_creatives(cctx: CampaignContext) -> str:
     # Active/Paused + last-seen chips).
     question = (
         "Want to see your competitors' recent ads?"
-        if cctx.competitor_names
+        if actx.competitor_names
         else "Want me to analyze your competitors and show their "
         "recent ads?"
     )
@@ -306,9 +306,9 @@ def _prescribe_competitor_creatives(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_duration(cctx: CampaignContext) -> str:
-    if cctx.field_asks.get("duration", 0) >= ESCAPE_AFTER_ASKS:
-        # R12 · refused-required-slot escape: repeated asks landed nothing.
+def _prescribe_duration(actx: AdzumpContext) -> str:
+    if actx.field_asks.get("duration", 0) >= ESCAPE_AFTER_ASKS:
+        # Refused-required-slot escape: repeated asks landed nothing.
         return (
             "duration - asked several times without an answer; the user may "
             'be unsure. Offer help via the present_options tool (field '
@@ -328,9 +328,9 @@ def _prescribe_duration(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_budget(cctx: CampaignContext) -> str:
-    currency = "₹" if cctx.is_real_estate else "$"
-    if cctx.field_asks.get("budget", 0) >= ESCAPE_AFTER_ASKS:
+def _prescribe_budget(actx: AdzumpContext) -> str:
+    currency = "₹" if actx.is_real_estate else "$"
+    if actx.field_asks.get("budget", 0) >= ESCAPE_AFTER_ASKS:
         recommended = f"{currency}10,000/day"
         return (
             "budget - asked several times without an answer; the user may "
@@ -352,10 +352,10 @@ def _prescribe_budget(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_parent_account(cctx: CampaignContext) -> str:
+def _prescribe_parent_account(actx: AdzumpContext) -> str:
     fetch = (
         "fetch_google_parent_accounts"
-        if cctx.is_google
+        if actx.is_google
         else "fetch_meta_parent_accounts"
     )
     return (
@@ -364,36 +364,36 @@ def _prescribe_parent_account(cctx: CampaignContext) -> str:
     )
 
 
-def _prescribe_account(cctx: CampaignContext) -> str:
-    fetch = "fetch_google_accounts" if cctx.is_google else "fetch_meta_accounts"
+def _prescribe_account(actx: AdzumpContext) -> str:
+    fetch = "fetch_google_accounts" if actx.is_google else "fetch_meta_accounts"
     return (
         f"account - call `{fetch}(parent_id=<stored parent>)`; result tells you "
         "the present_options call."
     )
 
 
-def _prescribe_fb_page(cctx: CampaignContext) -> str:
+def _prescribe_fb_page(actx: AdzumpContext) -> str:
     return (
         "fb_page - call `fetch_meta_fb_pages(parent_id=<stored parent>)`; "
         "result tells you the present_options call."
     )
 
 
-def _prescribe_instagram(cctx: CampaignContext) -> str:
-    # v3 · F3 - Instagram is OPTIONAL (Facebook-only is a valid campaign).
-    # Offer it once; honour skip/later; never block.
-    if is_ig_skip(cctx.last_user):
+def _prescribe_instagram(actx: AdzumpContext) -> str:
+    # Instagram is OPTIONAL (Facebook-only is a valid campaign). Offer it
+    # once; honour skip/later; never block.
+    if is_ig_skip(actx.last_user):
         return (
             "instagram - user is skipping Instagram (it's OPTIONAL). Call "
             '`set_campaign_spec(instagram="declined")` and proceed to review.'
         )
-    if cctx.ig_accounts_fetched:
-        # Already FETCHED - do NOT re-fetch (that was the live loop).
-        # v5: fetch-time ≠ render-time. The marker is set when the fetch
-        # tool returns, but the model may not have rendered the choice
-        # yet - claiming "options are on screen" made it skip
-        # present_options AND tell the user to click chips that didn't
-        # exist. Prescribe the render instead of assuming it.
+    if actx.ig_accounts_fetched:
+        # Already FETCHED - do NOT re-fetch (re-fetching loops). But
+        # fetch-time ≠ render-time: the marker is set when the fetch tool
+        # returns, and the model may not have rendered the choice yet -
+        # assuming "options are on screen" makes it skip present_options and
+        # tell the user to click chips that don't exist. Prescribe the render
+        # instead of assuming it.
         return (
             "instagram - Instagram accounts were already fetched; do NOT call "
             "fetch_meta_ig_accounts again. If you have NOT yet shown the choice, "
@@ -411,9 +411,8 @@ def _prescribe_instagram(cctx: CampaignContext) -> str:
     )
 
 
-# Slice 2 · the review card is CODE-rendered (tools/summary.py) - the model
-# stopped being a template engine; this two-step prescription replaced the
-# 35-line "reproduce VERBATIM" template.
+# The review card is CODE-rendered (tools/summary.py) - the model never
+# writes the summary itself, only a lead-in line.
 _REVIEW_PRESCRIPTION = (
     "review & publish - TWO tool calls this turn:\n"
     "(1) call `show_campaign_summary()` - it renders the campaign summary "
@@ -428,69 +427,67 @@ _REVIEW_PRESCRIPTION = (
 
 
 # ─── Journey registry ────────────────────────────────────────────────────────
-# NEW_CAMPAIGN in the retired if-chain's statement order. Coordinates restored
-# from storage count as a valid geo anchor for target-area discovery
-# (manage_targeting_locations falls back to product_data.place lat/lng), so no
-# fresh confirm is needed to prescribe it.
+# Coordinates restored from storage count as a valid geo anchor for target-area
+# discovery (manage_targeting_locations falls back to product_data.place
+# lat/lng), so no fresh confirm is needed to prescribe it.
 
-def _has_geo_anchor(cctx: CampaignContext) -> bool:
-    place = cctx.product.get("place") or {}
-    return bool(cctx.spec.get("location")) or place.get("lat") is not None
+def _has_geo_anchor(actx: AdzumpContext) -> bool:
+    place = actx.product.get("place") or {}
+    return bool(actx.spec.get("location")) or place.get("lat") is not None
 
 
 NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", steps=(
     Step("product",
-         done=lambda cctx: bool(cctx.product),
+         done=lambda actx: bool(actx.product),
          prescribe=_prescribe_product),
     Step("location", requires=("product",),
-         applies=lambda cctx: cctx.is_real_estate,
-         done=lambda cctx: bool(cctx.spec.get("location")),
+         applies=lambda actx: actx.is_real_estate,
+         done=lambda actx: bool(actx.spec.get("location")),
          prescribe=_prescribe_location),
     Step("platform", requires=("product",),
-         done=lambda cctx: bool(cctx.spec.get("platform")),
+         done=lambda actx: bool(actx.spec.get("platform")),
          prescribe=_prescribe_platform),
     Step("target_areas", requires=("product", "platform"),
          applies=_has_geo_anchor,
-         done=lambda cctx: cctx.has_mapped_geo_targets,
+         done=lambda actx: actx.has_mapped_geo_targets,
          prescribe=_prescribe_target_areas),
     Step("competitive_analysis", requires=("product",),
-         applies=lambda cctx: cctx.is_google,
-         done=lambda cctx: analysis_offer_resolution(
-             cctx.spec, cctx.competitor_analysis_attempted)
+         applies=lambda actx: actx.is_google,
+         done=lambda actx: analysis_offer_resolution(
+             actx.spec, actx.competitor_analysis_attempted)
          is not OfferResolution.OPEN,
          prescribe=_prescribe_competitive_analysis),
     Step("competitor_creatives", requires=("product",),
-         applies=lambda cctx: cctx.is_meta,
-         done=lambda cctx: cctx.competitor_creatives_resolution
+         applies=lambda actx: actx.is_meta,
+         done=lambda actx: actx.competitor_creatives_resolution
          is not OfferResolution.OPEN,
          # An open rail waits on the reply - EXCEPT once the Yes landed as
          # ACCEPTED (a capture can store it before the answered rail is
-         # reaped): the fetch is owed NOW, exactly as the retired chain
-         # ordered its branches.
-         ready=lambda cctx: (
-             cctx.pending_ask_field != "competitor_creatives"
-             or offer_state(cctx.spec, "competitor_creatives")
+         # reaped): the fetch is owed NOW.
+         ready=lambda actx: (
+             actx.pending_ask_field != "competitor_creatives"
+             or offer_state(actx.spec, "competitor_creatives")
              is OfferState.ACCEPTED),
          prescribe=_prescribe_competitor_creatives),
     Step("duration", requires=("product",),
-         done=lambda cctx: bool(cctx.spec.get("duration")),
+         done=lambda actx: bool(actx.spec.get("duration")),
          prescribe=_prescribe_duration),
     Step("budget", requires=("product",),
-         done=lambda cctx: bool(cctx.spec.get("budget")),
+         done=lambda actx: bool(actx.spec.get("budget")),
          prescribe=_prescribe_budget),
     Step("parent_account", requires=("product", "platform"),
-         done=lambda cctx: bool(cctx.spec.get("parent_account")),
+         done=lambda actx: bool(actx.spec.get("parent_account")),
          prescribe=_prescribe_parent_account),
     Step("account", requires=("product", "platform"),
-         done=lambda cctx: bool(cctx.spec.get("account")),
+         done=lambda actx: bool(actx.spec.get("account")),
          prescribe=_prescribe_account),
     Step("fb_page", requires=("product",),
-         applies=lambda cctx: cctx.is_meta,
-         done=lambda cctx: bool(cctx.spec.get("fb_page")),
+         applies=lambda actx: actx.is_meta,
+         done=lambda actx: bool(actx.spec.get("fb_page")),
          prescribe=_prescribe_fb_page),
     Step("instagram", requires=("product", "fb_page"),
-         applies=lambda cctx: cctx.is_meta,
-         done=lambda cctx: instagram_offer_resolution(cctx.spec)
+         applies=lambda actx: actx.is_meta,
+         done=lambda actx: instagram_offer_resolution(actx.spec)
          is not OfferResolution.OPEN,
          prescribe=_prescribe_instagram),
 ))

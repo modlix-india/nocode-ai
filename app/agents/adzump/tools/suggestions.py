@@ -59,7 +59,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     def _answerless_refusal(offender: str) -> ToolResult:
         # Every chip on a field-tagged ask must say what it writes - a silent
         # fall-through is the bug class where a click lands nowhere and the
-        # question re-fires. Self-healing (D13): hand back the corrected
+        # question re-fires. Self-healing: hand back the corrected
         # options (answer == value; an invented "Custom" chip - deleted from
         # the flow, but old habits linger - maps to null so a click can never
         # store the literal string) - the retry is a copy-paste, never a
@@ -96,7 +96,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
             if field and "answer" not in opt:
                 return _answerless_refusal(label)
             normalized.append({"label": label, "value": value})
-            # PR2 · a capturable option declares `answer` (the value to store on
+            # A capturable option declares `answer` (the value to store on
             # click). An explicit "answer": null is a declared fall-through
             # ("Facebook only") - absent from the map → capture defers to the
             # LLM.
@@ -116,11 +116,11 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
     session_ctx["_pending_suggestions"] = suggestions
-    # Per-field ask counter (slice 1d/1e): every field-tagged ask that goes on
+    # Per-field ask counter: every field-tagged ask that goes on
     # screen bumps its count. Consumers: the creatives resolved predicate
     # (asked twice unanswered = settled, so a digression resurfaces an offer at
     # most ONCE and review is never held hostage) and the refused-required-slot
-    # escape in the duration/budget steps (R12: repeated misses → "help me pick" chips).
+    # escape in the duration/budget steps (repeated misses → "help me pick" chips).
     if field:
         counted = LEGACY_MARKER_TO_FIELD.get(field, field)
         asks = session_ctx.setdefault("_field_asks", {})
@@ -139,7 +139,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     stream = context.get("event_stream")
     if stream is not None:
         streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
-        # Slice 1e (R7) - the acknowledgement backstop: a capture landed this
+        # The acknowledgement backstop: a capture landed this
         # turn but the model's streamed prose never named the value → prepend a
         # short visible ack. The F9 emit-skip below may skip the QUESTION,
         # never the ack - a click must never look ignored. Runs before the
@@ -162,7 +162,7 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
                 mode, field, options, question[:80])
     return ToolResult(
         success=True,
-        # PR2 · tag the elicitation so the harness captures the answer next turn.
+        # Tag the elicitation so the harness captures the answer next turn.
         # Rides _pending_elicitation via core (same channel as elicit_expects);
         # None when untagged, so this stays inert for control-flow asks.
         data=({"elicit_field": field, "elicit_answers": answer_map} if field else None),

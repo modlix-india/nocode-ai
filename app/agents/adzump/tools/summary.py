@@ -1,11 +1,10 @@
-"""Code-rendered campaign review card (rework slice 2).
+"""Code-rendered campaign review card.
 
-The model used to be the template engine: two 35-line "reproduce VERBATIM"
-prompts asked it to re-type the summary, and it rephrased fields, dropped
-bullets, and replaced real IDs with placeholders like 'Linked'. The card is
-now rendered by code from the typed context - ``show_campaign_summary``
-returns it audience="user" so the exact markdown reaches the chat, and the
-model only supplies a lead-in and the follow-up launch ask.
+The card is rendered by code from the typed context - a model re-typing it
+rephrases fields, drops bullets, and swaps real IDs for placeholders.
+``show_campaign_summary`` returns it audience="user" so the exact markdown
+reaches the chat; the model only supplies a lead-in and the follow-up
+launch ask.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.workflow import CampaignContext
+from app.agents.adzump.workflow import AdzumpContext
 from app.agents.adzump.prompt_sections import account_display, website_display
 from app.agents.adzump.tools.campaign_data import campaign_spec_complete
 
@@ -26,8 +25,8 @@ async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]
     session = context.get("_session")
     if session is None:
         return ToolResult(success=False, error="No session available.")
-    cctx = CampaignContext.from_session(session)
-    if not campaign_spec_complete(cctx.spec, session.context):
+    actx = AdzumpContext.from_session(session)
+    if not campaign_spec_complete(actx.spec, session.context):
         return ToolResult(
             success=False,
             error=(
@@ -40,7 +39,7 @@ async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]
     return ToolResult(
         success=True,
         audience="user",
-        summary=render_summary_card(cctx),
+        summary=render_summary_card(actx),
         model_summary=(
             "Summary card is on screen - do NOT write your own summary text. "
             'Now ask via the present_options tool: "Ready to launch the '
@@ -50,21 +49,21 @@ async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]
     )
 
 
-def render_summary_card(cctx: CampaignContext) -> str:
+def render_summary_card(actx: AdzumpContext) -> str:
     """Pure typed-context -> markdown card. Every bullet always present;
     account-like fields render '{Name} (ID: {id})' verbatim - never a
     placeholder."""
-    spec = cctx.spec
+    spec = actx.spec
 
     def account(field: str) -> str:
-        return account_display(spec.get(field), cctx.account_names,
+        return account_display(spec.get(field), actx.account_names,
                                spec.get("platform"))
 
     lines = [
         "Here's your campaign summary:",
         "",
-        f"  - **Product**: {cctx.product.get('product_name') or '-'}",
-        f"  - **Website**: {website_display(cctx)}",
+        f"  - **Product**: {actx.product.get('product_name') or '-'}",
+        f"  - **Website**: {website_display(actx)}",
         f"  - **Location**: {spec.get('location') or '-'}",
         f"  - **Platform**: {spec.get('platform') or '-'}",
         f"  - **Duration**: {spec.get('duration') or '-'}",
@@ -72,23 +71,23 @@ def render_summary_card(cctx: CampaignContext) -> str:
         f"  - **Manager / Business Account**: {account('parent_account')}",
         f"  - **Ad Account**: {account('account')}",
     ]
-    if cctx.is_meta:
+    if actx.is_meta:
         lines.append(f"  - **Facebook Page**: {account('fb_page')}")
         lines.append(
             f"  - **Instagram Account**: {account('ig_page')}"
             if spec.get("ig_page")
             else "  - **Instagram Account**: not linked (Facebook only)"
         )
-    lines.append(f"  - **Competitors**: {_competitors_line(cctx)}")
+    lines.append(f"  - **Competitors**: {_competitors_line(actx)}")
     return "\n".join(lines)
 
 
-def _competitors_line(cctx: CampaignContext) -> str:
-    if cctx.competitor_names:
-        return ", ".join(cctx.competitor_names)
-    if offer_state(cctx.spec, "competitive_analysis") is OfferState.DECLINED:
+def _competitors_line(actx: AdzumpContext) -> str:
+    if actx.competitor_names:
+        return ", ".join(actx.competitor_names)
+    if offer_state(actx.spec, "competitive_analysis") is OfferState.DECLINED:
         return "declined"
-    if cctx.competitor_analysis_attempted:
+    if actx.competitor_analysis_attempted:
         return "none analyzed"
     return "not analyzed"
 

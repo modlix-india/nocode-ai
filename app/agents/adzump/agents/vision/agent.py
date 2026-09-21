@@ -41,8 +41,8 @@ from app.agents.adzump.agents.vision.models import (
     ReviewResult,
 )
 
-# DRAFT-NOTE: the public types still live in the product agent's models.py.
-# See D4 in implementation-notes.md for the future cross-agent extraction.
+# The public types still live in the product agent's models.py; extract them
+# to a shared home if a third agent needs them.
 from app.agents.adzump.agents.product.models import (
     CreativeCompleteness,
     CreativeRole,

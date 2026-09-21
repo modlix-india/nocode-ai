@@ -139,7 +139,7 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "parent_account": ("account", "fb_page", "ig_page", "instagram", "ig_page_declined"),
     "fb_page": ("ig_page", "instagram", "ig_page_declined"),
     # No spec dependents, but a genuine change invalidates the geo targets in
-    # product_data (R11) - handled as a special case in _clear_dependents.
+    # product_data - handled as a special case in _clear_dependents.
     "location": (),
 }
 
@@ -344,7 +344,7 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
     # what the user said. Decline detection uses the shared substring helpers
     # (F11: comma-robust; old `"no" in lu.split()` silently rejected "no, skip
     # competitor analysis for now" → re-ask loop). Instagram takes only
-    # "declined" - linked is ig_page being set (D12).
+    # "declined" - linked is ig_page being set.
     if field in ("competitive_analysis", "competitor_creatives"):
         if v == OfferState.DECLINED.value:
             return is_decline(lu)
@@ -369,7 +369,7 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
         if v_platform is not None and Platform.from_value(lu) is v_platform:
             return True
     if field in ("duration", "budget"):
-        # Normalization-aware canonical equality (slice 1b): parse BOTH sides
+        # Normalization-aware canonical equality: parse BOTH sides
         # through field_candidates and accept on a non-empty intersection - the
         # model's value ("₹4000/day", "4k") and the user's text ("4k") trace
         # whenever they support the same canonical value. The anti-invention
@@ -420,7 +420,7 @@ async def _set_campaign_spec(
         return ToolResult(success=True, summary="")
 
     # Validate + write each field through the shared single-field helper, so
-    # this tool and PR2 tagged-answer capture can't diverge on the guard. A
+    # this tool and the tagged-answer capture can't diverge on the guard. A
     # rejected field doesn't block a valid one in the same call.
     last_user = _last_user_text(context)
     turn = _current_turn(context)
@@ -532,7 +532,7 @@ async def _set_campaign_spec(
         )
         summary_parts = parts + [f"rejected {k}={v} ({why})" for k, v, why in rejected]
         prefix = "Campaign spec updated" if stored_keys else "No changes stored"
-        # Slice 1e (S1-7) - per-slot acknowledgement on a partial accept: the
+        # Per-slot acknowledgement on a partial accept: the
         # model must visibly name what landed AND what it still needs.
         summary_parts.append(
             "In your visible reply, acknowledge each stored value by name, then "
@@ -660,7 +660,7 @@ def creatives_offer_resolution(spec: dict, session_ctx: dict) -> OfferResolution
     ask it / fulfil an accepted one. The ONE verdict shared by the creatives
     journey step, `campaign_spec_complete`, the fetch steer, and the turn
     record, so the prescription, the gate, and the log can never disagree (and
-    the log finally says WHICH signal settled it - slice 4).
+    the log says WHICH signal settled it).
       DECLINED  - the user said no to creatives, or to competitive analysis
                   itself (never re-open a consent already refused);
       FULFILLED - every CURRENT named competitor carries a fetch result
@@ -714,7 +714,7 @@ def _apply_field(
     batch_fields=frozenset(),
 ) -> tuple[bool, str]:
     """Validated single-field write - the one place a campaign_spec field is
-    checked and stored. Shared by `set_campaign_spec` (LLM path) and PR2
+    checked and stored. Shared by `set_campaign_spec` (LLM path) and
     `_capture_tagged_answer` (harness path) so they cannot diverge on the
     traceability rule. ``value`` must already be normalized + changed (callers
     filter no-ops). ``batch_fields`` names the other fields being set in the
@@ -828,7 +828,8 @@ def campaign_spec_complete(spec: dict, session_ctx: dict) -> bool:
 def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     """If every required campaign-spec field is now set, return the review
     prescription for this same turn (the start-of-turn reminder doesn't know
-    about the field just stored). The card itself is CODE-rendered - slice 2."""
+    about the field just stored). The card itself is CODE-rendered
+    (tools/summary.py)."""
     if not campaign_spec_complete(spec, session_ctx):
         return ""
     return (

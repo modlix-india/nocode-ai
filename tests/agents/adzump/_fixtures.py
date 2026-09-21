@@ -1,7 +1,7 @@
 """Shared test fixtures for Adzump agent tests.
 
 ONE place to build the scaffolding every test needs - a session stand-in, the
-`set_campaign_spec` context pair, a `CampaignContext`, and a fake event stream -
+`set_campaign_spec` context pair, a `AdzumpContext`, and a fake event stream -
 so test files stop re-rolling their own `types.SimpleNamespace` + `RE`/`SAAS`
 constants + `_ctx`/`_session` helpers (the duplication that made the suite read
 as "generated on the fly").
@@ -17,7 +17,7 @@ from __future__ import annotations
 import types
 from typing import Any
 
-from app.agents.adzump.agent import CampaignContext
+from app.agents.adzump.agent import AdzumpContext
 from app.agents.adzump.models import OfferResolution
 
 # Canonical product_data shapes. Override fields per test:
@@ -76,7 +76,7 @@ def spec_context(
     return {"session_context": session.context, "_session": session}, session.context
 
 
-def make_cctx(
+def make_actx(
     spec: dict,
     *,
     product: dict | None = None,
@@ -90,9 +90,9 @@ def make_cctx(
     pending_ask: str | None = None,
     field_asks: dict | None = None,
     pending_location: str | None = None,
-) -> CampaignContext:
-    """A `CampaignContext` for `missing_list` / prescription tests."""
-    return CampaignContext(
+) -> AdzumpContext:
+    """A `AdzumpContext` for `missing_list` / prescription tests."""
+    return AdzumpContext(
         product=dict(product if product is not None else RE),
         product_profile={},
         competitor_names=competitor_names or [],

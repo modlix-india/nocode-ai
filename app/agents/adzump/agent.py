@@ -9,7 +9,7 @@ into the **dynamic context**. Each turn renders:
 4. ``## How to respond`` - 6-case priority rule for the LLM.
 
 The static system prompt carries persona + non-negotiable rules only. The
-journey engine (``missing_list`` over a typed ``CampaignContext``) lives in
+journey engine (``missing_list`` over a typed ``AdzumpContext``) lives in
 ``workflow.py``; the section renderers live in ``prompt_sections.py``.
 This module keeps the BaseAgent overrides and the turn-start capture rails
 (tagged answers, prose declines, elicitation resume).
@@ -23,7 +23,7 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
 from app.agents.adzump.context import build_adzump_context
-from app.agents.adzump.workflow import NEW_CAMPAIGN, CampaignContext, missing_list
+from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext, missing_list
 from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.observability import log_turn_decision
 from app.agents.adzump.platform import is_mapped_for
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 # How many user turns an open elicitation may age (measured from the first
 # reply to it) before layer-1/2 auto-capture steps aside and the message is
 # handled conversationally - a forgotten chip row must never claim a fresh
-# message (R6/S1-11).
+# message.
 STALE_RAIL_TURNS = 4
 
 
@@ -128,7 +128,7 @@ class AdzumpAgent(BaseAgent):
     # ── prompt-section builders (private) ──
 
     def _capture_tagged_answer(self, session: BaseSession, turn: int = 1) -> str:
-        """PR2 · store the user's reply to a tagged ``present_options`` directly,
+        """Store the user's reply to a tagged ``present_options`` directly,
         before the LLM runs - so a forgotten ``set_campaign_spec`` follow-up
         can't drop the answer (the Bug-B family). Returns a one-line
         acknowledgement steer on a successful capture, else "".
@@ -138,8 +138,8 @@ class AdzumpAgent(BaseAgent):
         match by exact option value (chips) or a clear typed decline. Anything
         else ("Yes" / typed values / off-topic) leaves
         ``_pending_elicitation`` intact and falls through to the steered model
-        (layer 2, ``_resume_elicitation_section``) - the regex typed-parser is
-        retired (slice 1b); every model write passes the same validation."""
+        (layer 2, ``_resume_elicitation_section``); every model write passes
+        the same validation."""
         if turn != 1:
             return ""
         # A pending ack that no tool consumed last turn is stale by the time a
@@ -149,7 +149,7 @@ class AdzumpAgent(BaseAgent):
         if not pe or not pe.get("field") or pe.get("expects") != "single":
             return ""
         field = pe["field"]
-        # Stale-rail guard (R6/S1-11): a rail kept open across several user
+        # Stale-rail guard: a rail kept open across several user
         # turns must not claim an unrelated later message as its answer. Stamped on first sight - the turn the first
         # reply to this ask arrives; past the window, layers 1/2 step aside
         # and the model handles the message conversationally.
@@ -167,7 +167,7 @@ class AdzumpAgent(BaseAgent):
             return ""
         value = answers.get(last_user)  # (a) exact chip match
         if value is None and is_clear_decline_reply(last_user):
-            # (c) F17 · typed clear decline. Legacy field names ride an old
+            # (c) typed clear decline. Legacy field names ride an old
             # rail; _apply_field canonicalizes their "true" to the enum.
             if field in ("competitive_analysis", "competitor_creatives"):
                 value = OfferState.DECLINED.value
@@ -210,7 +210,7 @@ class AdzumpAgent(BaseAgent):
         # (its chips would carry no field tag → silent drop → re-ask). Lives in
         # session.context but is popped on read, so it never leaks to next turn.
         session.context["_captured_this_turn"] = field
-        # Slice 1e (R7) - consumed by present_options: if the model's visible
+        # Consumed by present_options: if the model's visible
         # prose never names the value, the tool prepends the ack itself, so a
         # click can never look ignored (emit-skip may skip the question, never
         # the ack).
@@ -233,7 +233,7 @@ class AdzumpAgent(BaseAgent):
         )
 
     def _record_prose_decline(
-        self, session: BaseSession, cctx: "CampaignContext", last_user: str, turn: int,
+        self, session: BaseSession, actx: "AdzumpContext", last_user: str, turn: int,
     ) -> bool:
         """F18 · the competitor offer is non-deterministically asked as PROSE (no
         tagged ``present_options``), so a typed decline has no elicitation for
@@ -252,9 +252,9 @@ class AdzumpAgent(BaseAgent):
             "competitive_analysis", "competitive_analysis_declined"
         ):
             return False                                     # tagged-capture owns it
-        if not (cctx.is_google
-                and not cctx.competitor_analysis_attempted
-                and offer_state(cctx.spec, "competitive_analysis")
+        if not (actx.is_google
+                and not actx.competitor_analysis_attempted
+                and offer_state(actx.spec, "competitive_analysis")
                 is OfferState.UNSET):
             return False
         if not is_clear_decline_reply(last_user):
@@ -301,7 +301,7 @@ class AdzumpAgent(BaseAgent):
         if pe_field and (session.context.get("campaign_spec") or {}).get(pe_field):
             session.context.pop("_pending_elicitation", None)
             return ""
-        # Stale rail (R6/S1-11, same window as the capture guard): layer 2 must
+        # Stale rail (same window as the capture guard): layer 2 must
         # not steer the model to select for a long-forgotten ask - pop it and
         # let the message be handled conversationally (the missing-list re-asks).
         current = _current_turn({"_session": session})
@@ -322,7 +322,7 @@ class AdzumpAgent(BaseAgent):
         session.context.pop("_pending_elicitation", None)
         tool = pe.get("tool", "the previous step")
         if pe_field and pe.get("answers"):
-            # Layer 2 (slice 1b): a typed reply to a field-tagged chip ask is
+            # Layer 2: a typed reply to a field-tagged chip ask is
             # the MODEL's to land - select the canonical value and write it.
             canonical = ", ".join(f'"{v}"' for v in dict(pe["answers"]).values())
             return (
@@ -413,27 +413,27 @@ class AdzumpAgent(BaseAgent):
         # message ARRIVED into, before capture/resume consume the rail.
         rail = session.context.get("_pending_elicitation") or {}
         open_rail_field, open_rail_untagged = rail.get("field"), bool(rail) and not rail.get("field")
-        # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
+        # Capture the user's tagged answer into campaign_spec BEFORE the
         # snapshot, so the just-answered field drops out of the missing-list
         # this turn. AFTER the migrations (its setdefault would otherwise strand
         # a legacy rename); gated to agentic turn==1 internally.
         ack = self._capture_tagged_answer(session, turn)
 
         _hydrate_location_from_product_data(session.context)
-        cctx = CampaignContext.from_session(session)
+        actx = AdzumpContext.from_session(session)
         last_user = _last_user_text({"_session": session})
         # F18 · when the competitor offer was asked as PROSE (not a tagged
         # present_options), a clear typed decline has no capture rail - record it
         # in code at turn-start so the competitive-analysis ask doesn't persist
-        # in `missing` forever. Re-derive cctx since the spec changed.
-        prose_declined = self._record_prose_decline(session, cctx, last_user, turn)
+        # in `missing` forever. Re-derive actx since the spec changed.
+        prose_declined = self._record_prose_decline(session, actx, last_user, turn)
         if prose_declined:
-            cctx = CampaignContext.from_session(session)
-        missing = missing_list(NEW_CAMPAIGN, cctx)
+            actx = AdzumpContext.from_session(session)
+        missing = missing_list(NEW_CAMPAIGN, actx)
         uploads = self._uploaded_assets_section(session)
         resume = self._resume_elicitation_section(session, turn)
 
-        # Slice 1c · the turn decision record - one line per agentic turn.
+        # The turn decision record - one line per agentic turn.
         # prior_capture rotates on agentic turn 1 (captures only happen there),
         # so the record pairs a repeat-ask with what landed the turn before.
         captures = session.context.pop("_turn_captures", [])
@@ -445,7 +445,7 @@ class AdzumpAgent(BaseAgent):
             )
         log_turn_decision(
             session_id=str(getattr(session, "session_id", "")),
-            turn=cctx.current_turn,
+            turn=actx.current_turn,
             agentic_turn=turn,
             missing=missing,
             steers=[name for name, fired in (
@@ -460,9 +460,9 @@ class AdzumpAgent(BaseAgent):
             open_rail_untagged=open_rail_untagged,
             offers={
                 "competitive_analysis": analysis_offer_resolution(
-                    cctx.spec, cctx.competitor_analysis_attempted).value,
-                "competitor_creatives": cctx.competitor_creatives_resolution.value,
-                "instagram": instagram_offer_resolution(cctx.spec).value,
+                    actx.spec, actx.competitor_analysis_attempted).value,
+                "competitor_creatives": actx.competitor_creatives_resolution.value,
+                "instagram": instagram_offer_resolution(actx.spec).value,
             },
         )
 
@@ -473,7 +473,7 @@ class AdzumpAgent(BaseAgent):
                     ack,
                     uploads,
                     resume,
-                    _state_section(cctx),
+                    _state_section(actx),
                     _user_said_section(last_user),
                     _how_to_respond_section(),
                     _missing_section(missing),
@@ -543,9 +543,9 @@ class AdzumpAgent(BaseAgent):
         has_mapped_geo_targets is already True."""
         ctx = session.context
         from app.agents.adzump.services.business_storage import resolve_url
-        cctx = CampaignContext.from_session(session)
-        platform = cctx.spec.get("platform") or ""
-        if not (platform and cctx.has_mapped_geo_targets) \
+        actx = AdzumpContext.from_session(session)
+        platform = actx.spec.get("platform") or ""
+        if not (platform and actx.has_mapped_geo_targets) \
                 or ctx.get("_last_craft_platform") == platform:
             return
         ctx["_last_craft_platform"] = platform

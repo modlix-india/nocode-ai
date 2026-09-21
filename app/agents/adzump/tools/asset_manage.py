@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def _build_brief(sctx: dict, note: str = "") -> str:
     """Context the VisionAnalyst reviews relevance against: what the product is,
     what's already on file, and what the user said about THIS upload (note) - the
-    user's own claim is the strongest identity signal we have (PR1)."""
+    user's own claim is the strongest identity signal we have."""
     pd = sctx.get("product_data") or {}
     name = pd.get("product_name") or "(unknown product)"
     summary = (pd.get("summary") or "").strip()
@@ -41,11 +41,11 @@ def _build_brief(sctx: dict, note: str = "") -> str:
 def _saved_summary(stored: list[dict]) -> list[str]:
     """The 'Saved …' receipt line(s) for stored assets + a non-blocking hedge on
     brand-defining assets (hero/logo) the model can't verify are THIS project's
-    (PR1a). Pure → unit-tested below the model."""
+    Pure → unit-tested below the model."""
     if not stored:
         return []
 
-    def _label(d: dict) -> str:  # PR4: drop redundant "(role)" when name == role / empty
+    def _label(d: dict) -> str:  # drop redundant "(role)" when name == role / empty
         r, n = d.get("role", ""), (d.get("name") or "").strip()
         return f"your {r}" if (not n or n.lower() == r) else f"{n} ({r})"
 
@@ -121,7 +121,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
     up_ctx = {**context, "session_context": sctx}  # _asset_filename reads product_data here
     stored: list[dict] = []
     rejected: list[dict] = []
-    ambiguous: list[dict] = []   # → orchestrator asks the user (slice 4 surfaces these)
+    ambiguous: list[dict] = []   # → orchestrator asks the user
 
     for v in reviewed.verdicts:
         if not (0 <= v.idx < len(images)):

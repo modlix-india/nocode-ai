@@ -2,45 +2,45 @@
 
 Pure text builders: each renders one ``##`` section of the turn reminder
 (State / User just said / What's still missing / How to respond) from the
-typed ``CampaignContext`` or plain values. No I/O, no session access -
+typed ``AdzumpContext`` or plain values. No I/O, no session access -
 split out of agent.py alongside workflow.py.
 """
 
 from __future__ import annotations
 
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.workflow import CampaignContext
+from app.agents.adzump.workflow import AdzumpContext
 from app.agents.adzump.platform import Platform
 
 
-def _state_section(cctx: CampaignContext) -> str:
+def _state_section(actx: AdzumpContext) -> str:
     lines = ["## State"]
 
-    if cctx.product:
+    if actx.product:
         parts: list[str] = []
-        if name := cctx.product.get("product_name"):
+        if name := actx.product.get("product_name"):
             parts.append(name)
-        if bt := cctx.product.get("business_type"):
+        if bt := actx.product.get("business_type"):
             parts.append(f"({bt})")
         lines.append(f"- Product: {' '.join(parts) or '(unnamed)'}")
     else:
         lines.append("- Product: - (need URL)")
 
-    url = website_display(cctx)
+    url = website_display(actx)
     if url != "-":
         lines.append(f"- Website: {url}")
 
-    if cctx.competitor_names:
-        names = ", ".join(cctx.competitor_names[:5])
+    if actx.competitor_names:
+        names = ", ".join(actx.competitor_names[:5])
         suffix = (
-            f" (+{len(cctx.competitor_names) - 5} more)"
-            if len(cctx.competitor_names) > 5
+            f" (+{len(actx.competitor_names) - 5} more)"
+            if len(actx.competitor_names) > 5
             else ""
         )
         lines.append(f"- Competitors: {names}{suffix} ✓")
     elif (
-        cctx.competitor_analysis_attempted
-        or offer_state(cctx.spec, "competitive_analysis") is OfferState.DECLINED
+        actx.competitor_analysis_attempted
+        or offer_state(actx.spec, "competitive_analysis") is OfferState.DECLINED
     ):
         lines.append("- Competitors: none analyzed")
 
@@ -50,19 +50,19 @@ def _state_section(cctx: CampaignContext) -> str:
         ("duration", "Duration"),
         ("budget", "Budget"),
     ):
-        val = cctx.spec.get(key)
-        prov = _provenance(key, cctx.set_at, cctx.current_turn)
+        val = actx.spec.get(key)
+        prov = _provenance(key, actx.set_at, actx.current_turn)
         if val:
             lines.append(f"- {label}: {val} ✓{prov}")
         else:
             lines.append(f"- {label}: -")
 
-    target_areas = cctx.product.get("target_areas") or []
+    target_areas = actx.product.get("target_areas") or []
     if target_areas:
         area_names = [a.get("name") for a in target_areas if a.get("name")]
         lines.append(f"- Target Areas: {', '.join(area_names)} ✓")
 
-    account_block = _ad_account_summary(cctx.spec, cctx.account_names)
+    account_block = _ad_account_summary(actx.spec, actx.account_names)
     if account_block.strip():
         lines.append(account_block.rstrip())
 
@@ -154,13 +154,13 @@ def _how_to_respond_section() -> str:
         "name or `tool(...)` call syntax into the chat."
     )
 
-def website_display(cctx: CampaignContext) -> str:
+def website_display(actx: AdzumpContext) -> str:
     """The analyzed business URL - the ONE fallback chain (profile url ->
     first analyzed page -> '-') shared by the State block and the review card
     so the two renderings can never drift."""
     return (
-        cctx.product_profile.get("url")
-        or (cctx.product.get("pages_analyzed") or [None])[0]
+        actx.product_profile.get("url")
+        or (actx.product.get("pages_analyzed") or [None])[0]
         or "-"
     )
 

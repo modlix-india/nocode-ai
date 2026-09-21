@@ -35,10 +35,10 @@ A name should mean something to someone with zero memory of the fix.
 ## 3. Use the shared fixtures — don't re-roll scaffolding
 
 `tests/agents/adzump/_fixtures.py` is the one place for sessions, the
-`set_campaign_spec` context pair, `CampaignContext`, `RE`/`SAAS`, and `FakeStream`.
+`set_campaign_spec` context pair, `AdzumpContext`, `RE`/`SAAS`, and `FakeStream`.
 
 ```python
-from tests.agents.adzump._fixtures import make_session, spec_context, make_cctx, RE, SAAS
+from tests.agents.adzump._fixtures import make_session, spec_context, make_actx, RE, SAAS
 
 ctx, sc = spec_context({"duration": "30 days"}, last_user="no wait, make it 60")
 r = asyncio.run(_set_campaign_spec({"duration": "60 days"}, ctx))

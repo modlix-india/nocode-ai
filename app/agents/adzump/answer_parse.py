@@ -3,8 +3,8 @@
 ``field_candidates`` reads EVERY canonical value a user message genuinely
 supports for a field; ``_field_traceable`` (campaign_data) accepts a write iff
 the model's value parses to one of them. The model normalizes, the framework
-validates - never the reverse (rework slice 1b): the old ``parse_typed_answer``
-auto-capture parser is retired, typed replies land via the steered model.
+validates - never the reverse: typed replies land via the steered model,
+never an auto-capture regex parser.
 
 High precision over recall: budget requires a money marker LOCAL to the
 amount; a bare number is never money. Anti-invention is canonical equality,
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-# Real-estate detection mirrors CampaignContext.is_real_estate / the budget step's
+# Real-estate detection mirrors AdzumpContext.is_real_estate / the budget step's
 # currency pick (agent.py). Kept here (not imported from agent.py) to avoid a
 # circular import - campaign_data + agent both import this module.
 _RE_KEYWORDS = (

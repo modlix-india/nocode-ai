@@ -1,4 +1,4 @@
-"""Three-valued offer lifecycle (HLD/LLD doc D8).
+"""Three-valued offer lifecycle.
 
 An offer (competitive analysis, competitor creatives, Instagram) is UNSET
 until the user answers, then ACCEPTED or DECLINED. Replaces the legacy
@@ -32,12 +32,12 @@ class OfferState(str, Enum):
 
 
 class OfferResolution(str, Enum):
-    """WHY an offer no longer needs asking (slice 4). OfferState records the
-    user's answer; resolution is the derived verdict the journey step, the
-    review gate, and the turn record all read - typed, with the reason kept,
-    so a wrongly-settled offer is visible in one grep (live 2026-09-08: a
-    failed analysis stored an empty list, the offer silently went moot, and
-    the boolean predicate hid which of five signals had fired)."""
+    """WHY an offer no longer needs asking. OfferState records the user's
+    answer; resolution is the derived verdict the journey step, the review
+    gate, and the turn record all read - typed, with the reason kept, so a
+    wrongly-settled offer is visible in one grep (a boolean predicate once
+    hid which of five signals fired when a failed analysis stored an empty
+    list and the offer silently went moot)."""
 
     OPEN = "open"            # still owed: ask it (or fulfil an accepted one)
     DECLINED = "declined"    # user said no (to it, or to its prerequisite)

@@ -10,7 +10,7 @@ from app.agents.adzump.tools.summary import (
     _show_campaign_summary,
     render_summary_card,
 )
-from tests.agents.adzump._fixtures import SAAS, make_cctx, make_session
+from tests.agents.adzump._fixtures import SAAS, make_actx, make_session
 
 ACCOUNT_NAMES = {"1112223334": "Acme Manager", "5556667778": "Acme Ads",
                  "pg-9": "Acme FB", "ig-7": "Acme IG"}
@@ -30,7 +30,7 @@ class RenderSummaryCardTests(unittest.TestCase):
     """S2-1 · card correctness across the three platform variants."""
 
     def _card(self, spec, **kwargs):
-        return render_summary_card(make_cctx(
+        return render_summary_card(make_actx(
             spec, product=SAAS, account_names=ACCOUNT_NAMES, **kwargs))
 
     def test_variant_rows(self):

@@ -165,10 +165,10 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             ),
             display_error="Competitor ads are available on Meta campaigns.",
         )
-    # Stored-ok exception (HLD/LLD §4.5): the fetch is metered but internal and
+    # Stored-ok exception: the fetch is metered but internal and
     # reversible, so a stored ACCEPTED passes - the user's Yes must not expire
-    # because a digression moved the "latest message" (the F-bug where a
-    # consented fetch died on the way to the analyze step).
+    # because a digression moved the "latest message" (a consented fetch once
+    # died on the way to the analyze step).
     stored_yes = (
         offer_state(spec, "competitor_creatives") is OfferState.ACCEPTED
     )

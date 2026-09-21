@@ -4,7 +4,7 @@ The S0 rows were written against the retired if-chain and passed UNCHANGED
 across the slice-3 conversion - they are the equivalence referee (D6:
 membership, order, tool named - never prose wording). Invariant #6 goes
 through the REAL ``from_session`` lenient path with raw legacy dicts, not the
-``make_cctx`` fixture shortcut. S3 adds the registry-discipline lint and the
+``make_actx`` fixture shortcut. S3 adds the registry-discipline lint and the
 engine's one deliberate semantic: waiting (an ask in flight) blocks review.
 """
 from __future__ import annotations
@@ -12,10 +12,10 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from app.agents.adzump.workflow import NEW_CAMPAIGN, CampaignContext, missing_list
+from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext, missing_list
 from app.agents.adzump.tools.launch import _launch_campaign
 from app.agents.adzump.models import OfferResolution
-from tests.agents.adzump._fixtures import SAAS, make_cctx, make_session
+from tests.agents.adzump._fixtures import SAAS, make_actx, make_session
 
 
 def _entry(missing: list[str], prefix: str) -> str | None:
@@ -39,19 +39,19 @@ class NextActionInvariants(unittest.TestCase):
     # S0-1 · offer-once: a settled offer never re-enters the missing-list
     def test_settled_offer_absent_from_missing(self):
         rows = [
-            ("analysis accepted", make_cctx(
+            ("analysis accepted", make_actx(
                 {"platform": "Google Ads"}, product=SAAS, attempted=True),
                 "competitive analysis"),
-            ("analysis declined", make_cctx(
+            ("analysis declined", make_actx(
                 {"platform": "Google Ads", "competitive_analysis_declined": "true"},
                 product=SAAS), "competitive analysis"),
-            ("creatives settled", make_cctx(
+            ("creatives settled", make_actx(
                 {"platform": "Meta"}, product=SAAS, creatives_resolved=True),
                 "competitor creatives"),
         ]
-        for label, cctx, prefix in rows:
+        for label, actx, prefix in rows:
             with self.subTest(label):
-                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, cctx), prefix))
+                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, actx), prefix))
 
     # S0-2 · decline honored through the REAL from_session/predicate wiring
     def test_decline_honored_from_raw_session(self):
@@ -71,16 +71,16 @@ class NextActionInvariants(unittest.TestCase):
         for label, spec, extra, prefix in rows:
             with self.subTest(label):
                 session = make_session(spec=spec, product=SAAS, **extra)
-                cctx = CampaignContext.from_session(session)
-                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, cctx), prefix))
+                actx = AdzumpContext.from_session(session)
+                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, actx), prefix))
 
     # S0-3 · chip asks invite typing; no Custom chip is ever prescribed (D13)
     def test_chip_asks_invite_typing_no_custom_chip(self):
         for field in ("duration", "budget"):
             with self.subTest(field):
-                cctx = make_cctx({"platform": "Google Ads"}, product=SAAS,
+                actx = make_actx({"platform": "Google Ads"}, product=SAAS,
                                  attempted=True)
-                line = _entry(missing_list(NEW_CAMPAIGN, cctx), field)
+                line = _entry(missing_list(NEW_CAMPAIGN, actx), field)
                 self.assertIsNotNone(line)
                 self.assertIn("type your own", line)
                 self.assertNotIn("Custom", line)
@@ -93,10 +93,10 @@ class NextActionInvariants(unittest.TestCase):
         ]
         for label, names, tool in rows:
             with self.subTest(label):
-                cctx = make_cctx(
+                actx = make_actx(
                     {"platform": "Meta", "competitor_creatives": "accepted"},
                     product=SAAS, competitor_names=names, last_user="Yes")
-                line = _entry(missing_list(NEW_CAMPAIGN, cctx), "competitor creatives")
+                line = _entry(missing_list(NEW_CAMPAIGN, actx), "competitor creatives")
                 self.assertIsNotNone(line)
                 self.assertIn(tool, line)
                 self.assertNotIn("offer it ONCE", line)
@@ -105,15 +105,15 @@ class NextActionInvariants(unittest.TestCase):
     # is CODE-rendered (tools/summary.py) - no VERBATIM template remains.
     def test_review_block_shape(self):
         rows = [
-            ("google", make_cctx(GOOGLE_DONE, product=SAAS, attempted=True)),
-            ("meta+ig", make_cctx({**META_DONE, "ig_page": "ig-7"},
+            ("google", make_actx(GOOGLE_DONE, product=SAAS, attempted=True)),
+            ("meta+ig", make_actx({**META_DONE, "ig_page": "ig-7"},
                                   product=SAAS, creatives_resolved=True)),
-            ("fb-only", make_cctx({**META_DONE, "ig_page_declined": "true"},
+            ("fb-only", make_actx({**META_DONE, "ig_page_declined": "true"},
                                   product=SAAS, creatives_resolved=True)),
         ]
-        for label, cctx in rows:
+        for label, actx in rows:
             with self.subTest(label):
-                missing = missing_list(NEW_CAMPAIGN, cctx)
+                missing = missing_list(NEW_CAMPAIGN, actx)
                 self.assertEqual(len(missing), 1)
                 block = missing[0]
                 self.assertTrue(block.startswith("review & publish"))
@@ -132,19 +132,19 @@ class NextActionInvariants(unittest.TestCase):
             _ig_offered=True,  # dead legacy marker rides along, ignored
             competitor_analysis={"competitors": [{"name": "Lodha"}]},
         )
-        cctx = CampaignContext.from_session(session)
-        self.assertIs(cctx.competitor_creatives_resolution,
+        actx = AdzumpContext.from_session(session)
+        self.assertIs(actx.competitor_creatives_resolution,
                       OfferResolution.DECLINED)
-        missing = missing_list(NEW_CAMPAIGN, cctx)
+        missing = missing_list(NEW_CAMPAIGN, actx)
         self.assertEqual(len(missing), 1)
         self.assertTrue(missing[0].startswith("review & publish"))
 
     # S0-7 · offers are never load-bearing: required asks proceed past declines
     def test_offers_never_load_bearing(self):
-        cctx = make_cctx(
+        actx = make_actx(
             {"platform": "Google Ads", "duration": "30 days",
              "competitive_analysis_declined": "true"}, product=SAAS)
-        missing = missing_list(NEW_CAMPAIGN, cctx)
+        missing = missing_list(NEW_CAMPAIGN, actx)
         self.assertIsNotNone(_entry(missing, "budget"))
         self.assertIsNone(_entry(missing, "competitive analysis"))
 
@@ -174,30 +174,30 @@ class JourneyEngineTests(unittest.TestCase):
         # if-chain prescribed review here). The missing-section prompt must
         # not claim review-readiness either.
         from app.agents.adzump.prompt_sections import _missing_section
-        cctx = make_cctx({**META_DONE, "ig_page": "ig-7"}, product=SAAS,
+        actx = make_actx({**META_DONE, "ig_page": "ig-7"}, product=SAAS,
                          pending_ask="competitor_creatives")
-        self.assertEqual(missing_list(NEW_CAMPAIGN, cctx), [])
+        self.assertEqual(missing_list(NEW_CAMPAIGN, actx), [])
         section = _missing_section([])
         self.assertNotIn("review", section)
         self.assertIn("pending on screen", section)
 
     def test_accepted_answer_beats_the_open_rail(self):
-        # A capture can store ACCEPTED while the rail is still open (cctx is
+        # A capture can store ACCEPTED while the rail is still open (actx is
         # built before the answered rail is reaped): the fetch is owed NOW -
         # the waiting gate must not swallow the said-YES prescription (the
         # retired chain checked ACCEPTED before the rail, in that order).
-        cctx = make_cctx(
+        actx = make_actx(
             {**META_DONE, "ig_page": "ig-7", "competitor_creatives": "accepted"},
             product=SAAS, competitor_names=["Rival"],
             pending_ask="competitor_creatives")
-        missing = missing_list(NEW_CAMPAIGN, cctx)
+        missing = missing_list(NEW_CAMPAIGN, actx)
         self.assertEqual(len(missing), 1)
         self.assertIn("fetch_competitor_creatives", missing[0])
 
     def test_upstream_ask_hides_dependents(self):
         # No product: every later step requires it, so the URL ask is the
         # ONLY line (the old early-return, now expressed as dependencies).
-        missing = missing_list(NEW_CAMPAIGN, make_cctx({}, product={}))
+        missing = missing_list(NEW_CAMPAIGN, make_actx({}, product={}))
         self.assertEqual(len(missing), 1)
         self.assertIn("analyze_product", missing[0])
 
