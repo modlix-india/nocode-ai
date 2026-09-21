@@ -154,6 +154,22 @@ class Essence(BaseModel):
     colors: list[str] = Field(default_factory=list)              # dominant palette
 
 
+class Rendition(BaseModel):
+    """One alternate placement version of a creative - the same ad rendered at
+    another aspect ratio (feed 1:1, link 1.91:1, story 9:16). Advertisers often
+    recompose the layout per placement, so a rendition is grouped structurally
+    (same ad + same copy + distinct ratio), never by pixel similarity."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    file_url: str = Field(default="", alias="fileUrl")
+    width: int = 0
+    height: int = 0
+    aspect_ratio: float = Field(default=0.0, alias="aspectRatio")
+    content_hash: str = Field(default="", alias="contentHash")
+    perceptual_hash: str = Field(default="", alias="perceptualHash")
+
+
 class Creative(BaseModel):
     """One competitor ad creative. Vendor-agnostic: an adapter maps its raw
     payload onto these fields, so nothing downstream knows which source it came
@@ -208,6 +224,10 @@ class Creative(BaseModel):
     # because which keys a source exposes differs per vendor.
     metrics: dict[str, Any] = Field(default_factory=dict)
     essence: Essence | None = None
+    # Alternate placement versions of THIS creative (grouped post-verify by
+    # library._group_renditions); the UI shows one tile, the store writes one
+    # asset row per ratio.
+    renditions: list[Rendition] = Field(default_factory=list)
 
     @computed_field(alias="winnerSignal")
     @property

@@ -37,6 +37,7 @@ from app.agents.adzump.creative_intelligence.models import (
     Competitor,
     Creative,
     MAX_CREATIVES_PER_COMPETITOR,
+    Rendition,
 )
 from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibrarySource
 from app.agents.adzump.creative_intelligence.sources.scrapecreators import (
@@ -284,6 +285,12 @@ async def _process_stage(
         competitor.creatives)
     verified = len(competitor.creatives)
 
+    # One logical creative per placement-version set: same ad + same copy at
+    # distinct standard ratios folds into a primary with renditions (runs after
+    # verify so real dimensions exist, before essence so only primaries pay for
+    # the vision pass).
+    competitor.creatives = _group_renditions(competitor.creatives)
+
     _carry_forward_essence(prior, competitor)
     await _enrich_essence(competitor, binaries, enrich)
 
@@ -372,6 +379,54 @@ async def _verify_creatives(
     order = {id(c): i for i, c in enumerate(creatives)}
     kept.sort(key=lambda c: order[id(c)])
     return kept, drop_entries, reasons
+
+
+def _group_renditions(creatives: list[Creative]) -> list[Creative]:
+    """Fold one ad's placement versions into a single logical creative.
+
+    Meta serves the same ad recomposed per placement (feed 1:1, link 1.91:1,
+    story 9:16) as separate cards; card expansion turns those into 3 creatives.
+    Grouping is STRUCTURAL only: same base ad id, identical copy, and every
+    member at a DISTINCT standard aspect ratio. Pixel similarity is deliberately
+    not consulted - placement versions are often recomposed layouts (canvas
+    extended, text panels moved), which defeats crop-robust hashing, and a
+    true carousel arrives as same-ratio cards so it can never group. Videos
+    are left alone (poster ratios are unreliable). Primary = first card in
+    source order (Meta's default rendering); the rest become its renditions.
+    """
+    from app.agents.adzump.creative_store import _aspect_ratio_bucket
+
+    def copy_key(c: Creative) -> str:
+        return "|".join(re.sub(r"\s+", " ", (t or "").strip().lower())
+                        for t in (c.headline, c.primary_text, c.cta))
+
+    groups: dict[tuple[str, str], list[Creative]] = {}
+    for c in creatives:
+        base_ad = c.creative_id.split(":", 1)[0]
+        groups.setdefault((base_ad, copy_key(c)), []).append(c)
+
+    out: list[Creative] = []
+    folded: set[int] = set()
+    for members in groups.values():
+        if len(members) < 2 or any(c.media_type != "image" for c in members):
+            continue
+        buckets = [_aspect_ratio_bucket(c.aspect_ratio) for c in members]
+        if "other" in buckets or len(set(buckets)) != len(buckets):
+            continue  # unknown or repeated ratio: could be a carousel - keep apart
+        primary = members[0]
+        primary.renditions = [
+            Rendition(file_url=c.file_url, width=c.width, height=c.height,
+                      aspect_ratio=c.aspect_ratio, content_hash=c.content_hash,
+                      perceptual_hash=c.perceptual_hash)
+            for c in members if c is not primary
+        ]
+        folded.update(id(c) for c in members if c is not primary)
+        logger.info("creative_intelligence: renditions folded ad=%s kept=%s ratios=%s",
+                    primary.creative_id.split(":", 1)[0], primary.creative_id, buckets)
+    for c in creatives:
+        if id(c) not in folded:
+            out.append(c)
+    return out
 
 
 def _product_gate(ctx: dict) -> tuple[str, str] | None:

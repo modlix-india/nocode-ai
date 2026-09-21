@@ -319,6 +319,41 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual({c.creative_id for c in rec.creatives},
                          {"recent", "stale", "undated"})
 
+    def test_renditions_fold_structurally(self):
+        """Same ad + same copy at distinct standard ratios = ONE logical
+        creative with renditions (Meta placement versions); same-ratio cards
+        (a true carousel), copy changes, videos, and cross-ad pairs never
+        fold. Structural only - recomposed layouts defeat pixel hashing."""
+        def card(cid, w, h, *, headline="Waterfall", media="image"):
+            return _ad(cid, media, headline=headline, primary_text="Book now",
+                       width=w, height=h, aspect_ratio=round(w / h, 4),
+                       file_url=f"https://files/{cid}.jpg")
+
+        renditions = [card("ad1:0", 1200, 1200), card("ad1:1", 1200, 628),
+                      card("ad1:2", 1080, 1920)]
+        carousel = [card("ad2:0", 1080, 1080), card("ad2:1", 1080, 1080)]
+        copy_differs = [card("ad3:0", 1200, 1200),
+                        card("ad3:1", 1200, 628, headline="Other hook")]
+        videos = [card("ad4:0", 1200, 1200, media="video"),
+                  card("ad4:1", 1080, 1920, media="video")]
+        cross_ad = [card("ad5", 1200, 1200), card("ad6", 1080, 1920)]
+
+        out = library._group_renditions(
+            renditions + carousel + copy_differs + videos + cross_ad)
+        by_id = {c.creative_id: c for c in out}
+
+        self.assertNotIn("ad1:1", by_id)
+        self.assertNotIn("ad1:2", by_id)
+        primary = by_id["ad1:0"]  # first card in source order wins
+        self.assertEqual({r.aspect_ratio for r in primary.renditions},
+                         {round(1200 / 628, 4), round(1080 / 1920, 4)})
+        # Everything else survives untouched, rendition-less.
+        untouched = [c for group in (carousel, copy_differs, videos, cross_ad)
+                     for c in group]
+        for c in untouched:
+            self.assertIn(c.creative_id, by_id)
+            self.assertEqual(by_id[c.creative_id].renditions, [])
+
     def test_gate_grandfathers_stored_unknowns(self):
         """unknown_category = essence missing THIS run, not proven irrelevance:
         a creative the prior record already shipped survives it (a truncated

@@ -246,6 +246,7 @@ def _creative_content(creative: Creative) -> dict:
         "winnerSignal": creative.winner_signal,
         "variants": creative.variants,
         "metrics": creative.metrics,
+        "renditions": [r.model_dump(by_alias=True) for r in creative.renditions],
     }
 
 
@@ -349,6 +350,25 @@ async def sync_competitor(
                          creative.content_hash or None, creative.perceptual_hash or None,
                          json.dumps(essence) if essence is not None else None),
                     )
+                    # Placement versions: one asset row per rendition ratio
+                    # (grouping guarantees the buckets are distinct - the
+                    # (creative_id, slide_index, aspect_ratio) key holds).
+                    for rendition in creative.renditions:
+                        await cur.execute(
+                            """
+                            INSERT INTO adzump_creative_assets
+                                (creative_id, slide_index, aspect_ratio,
+                                 media_type, file_url, width, height,
+                                 content_hash, perceptual_hash)
+                            VALUES (%s,0,%s,'image',%s,%s,%s,%s,%s)
+                            """,
+                            (creative_row_id,
+                             _aspect_ratio_bucket(rendition.aspect_ratio),
+                             rendition.file_url, rendition.width or None,
+                             rendition.height or None,
+                             rendition.content_hash or None,
+                             rendition.perceptual_hash or None),
+                        )
             await conn.commit()
         except Exception:
             await conn.rollback()
