@@ -36,10 +36,11 @@ ANALYST_PROVIDER = "anthropic"
 ANALYST_MODEL_TIER = "balanced"  # kept for the BaseAgent constructor
 ANALYST_MODEL_OVERRIDE = "anthropic:claude-sonnet-4-6"
 ANALYST_MAX_TURNS = 25  # 1 scrape + multiple web_search + 3-5 web_fetch + final JSON turn + slack
-# The final-JSON turn emits 6-12 competitors with segments, positioning,
-# USPs, and narratives - easily 3-5K output tokens. 4K truncated mid-JSON
-# and left us with unparseable output (stop_reason=max_tokens).
-ANALYST_MAX_TOKENS = 16384
+# Adaptive thinking shares this budget with the answer: a 9-candidate
+# re-judge spent all 16384 tokens THINKING and emitted zero JSON
+# (stop_reason=max_tokens, text_chunks=0) - twice. The JSON itself is
+# capped ~2K by the output contract; the headroom is for the reasoning.
+ANALYST_MAX_TOKENS = 32768
 
 
 def _build_minimal_result(primary_url: str, session_ctx: dict) -> dict | None:
