@@ -151,6 +151,7 @@ async def _run_product_agent(
         parent_tool_use_id=tool_use_id,
         auth=auth,
         parent_session_context=session_ctx,
+        fresh_scrape=True,
         user_message=f"Analyze this business website: {url}\n\n"
             f"SCOPE: Scrape the homepage ONCE and generate a product profile. "
             f"Do NOT scrape sub-pages - one scrape_url call only. "

@@ -161,7 +161,8 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
     MySQL miss is a fresh start (the Modlix mirror is never read back)."""
 
     SESSION = {
-        "product_profile": {"url": "https://springs.com"},
+        "product_profile": {"url": "https://springs.com",
+                            "summary": "The rich SummaryAgent profile text."},
         "product_data": {"product_name": "Springs", "business_type": "real estate",
                          "summary": "villas"},
         "campaign_spec": {"platform": "Meta", "duration": "30 days"},
@@ -191,6 +192,12 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
             result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
         self.assertEqual(result, "rec-1")
         m_prod.assert_awaited_once()
+        # The display profile persists on the typed Product; the machine brief
+        # (product_data.summary) stays its own field.
+        saved_product = m_prod.await_args.args[1]
+        self.assertEqual(saved_product.profile_summary,
+                         "The rich SummaryAgent profile text.")
+        self.assertEqual(saved_product.summary, "villas")
         draft = m_camp.await_args.args[5]
         self.assertEqual(draft["platform"], "Meta")
         self.assertEqual(draft["competitors"], [{"name": "Sobha"}])
@@ -217,7 +224,8 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         from unittest import mock
         from app.agents.adzump.services import business_storage as bs
         from app.agents.adzump.models.product import Product
-        product = Product(product_name="Springs", summary="villas")
+        product = Product(product_name="Springs", summary="villas",
+                          profile_summary="The rich SummaryAgent profile text.")
         draft = {"location": {"address": "Hebbal, Bangalore"},
                  "competitors": [{"name": "Sobha"}]}
         session_ctx: dict = {}
@@ -233,6 +241,9 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(hit)
         m_modlix.assert_not_awaited()
         self.assertEqual(session_ctx["product_data"]["product_name"], "Springs")
+        # The panel resumes with the display profile, not the machine brief.
+        self.assertEqual(session_ctx["product_profile"]["summary"],
+                         "The rich SummaryAgent profile text.")
         self.assertEqual(session_ctx["campaign_spec"]["location"], "Hebbal, Bangalore")
         self.assertEqual(session_ctx["competitor_analysis"]["competitors"], [{"name": "Sobha"}])
 

@@ -385,6 +385,7 @@ class ProductAgent(BaseAgent):
         parent_session_context: dict | None = None,
         user_message: str | None = None,
         enforce_verified_competitors: bool = False,
+        fresh_scrape: bool = False,
     ) -> AnalysisOutput:
         """Run one analysis and return structured output.
 
@@ -412,10 +413,15 @@ class ProductAgent(BaseAgent):
         # accidentally touch campaign_data or other chat-agent-owned state.
         if parent_session_context is not None:
             product_data = parent_session_context.setdefault("product_data", {})
-            product_data["primary_url"] = url
-            # Reset the scrape budget + per-page state; the parent may reuse
-            # its session context across multiple analyses.
-            product_data["pages"] = {}
+            if url:  # add-by-name passes "" - must not blank the primary_url
+                product_data["primary_url"] = url
+            if fresh_scrape:
+                # Reset the scrape budget + per-page state so a re-profile can
+                # scrape again. PROFILE runs only: a competitor-research run
+                # never re-scrapes the product, and wiping pages here destroyed
+                # the stored screenshot (pages[primary].screenshot_url) on the
+                # next autosave (live 2026-09-23: resumed product had no image).
+                product_data["pages"] = {}
 
             sub_session.context = {
                 "product_data": product_data,

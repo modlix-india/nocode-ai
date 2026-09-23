@@ -79,7 +79,11 @@ class Product(BaseModel):
     product_name: str = ""
     business_type: str = ""
     business_scale: Literal["local", "regional", "national", "international"] = "national"  # picks the geo tool
-    summary: str = ""
+    summary: str = ""  # the analyst's compact machine brief (prompt context, classification signal)
+    # The SummaryAgent's rich display profile (the panel's "Product Summary").
+    # Session home is product_profile["summary"]; persisted here so a resumed
+    # product shows the text the user originally saw, not the machine brief.
+    profile_summary: str = ""
     place: Place = Field(default_factory=Place)  # where the business IS; ads go to target_areas
     pricing: str = ""
     contact: Contact = Field(default_factory=Contact)

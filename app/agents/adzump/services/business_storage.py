@@ -138,7 +138,13 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     # The analysis competitors ride in the draft so resume can restore
     # competitor_analysis without the Modlix record.
     campaign_draft["competitors"] = record.get("competitors") or []
-    product = Product.model_validate(session_ctx.get("product_data") or {})
+    # The SummaryAgent's rich profile lives in product_profile, not
+    # product_data - fold it into the persisted Product so resume can show it.
+    product = Product.model_validate({
+        **(session_ctx.get("product_data") or {}),
+        "profile_summary":
+            (session_ctx.get("product_profile") or {}).get("summary") or "",
+    })
     pid = await creative_store.upsert_product(
         ctx.get("client_code") or "", product, url, ctx.get("user_id") or 0)
     await creative_store.upsert_flow(
@@ -470,7 +476,9 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
         session_ctx,
         product_data=product.model_dump(),
         profile={"url": key, "title": product.product_name,
-                 "summary": product.summary},
+                 # Display profile when we have it; the machine brief is the
+                 # fallback for records saved before profile_summary existed.
+                 "summary": product.profile_summary or product.summary},
         location_address=(draft.get("location") or {}).get("address") or "",
         competitors=draft.get("competitors") or [],
     )
