@@ -71,17 +71,23 @@ Prefer the smallest real seam over poking privates. Avoid:
 
 ## Running
 
-`unittest` only (pytest is **not** installed — do not add it):
+`pytest` (pinned in requirements.txt). It runs both styles in the suite:
+`unittest.TestCase` classes and the plain pytest functions most AppBuilder
+tests use. `unittest discover` finds only the first kind and silently skips
+the rest (about 2/3 of the suite).
 
 ```
-cd nocode-ai && ./venv/bin/python -m unittest discover -s tests -p "test_*.py"
+cd nocode-ai && ./venv/bin/python -m pytest tests -q
 ```
 
 Or a focused set (see CLAUDE.md for the AdPilot loop):
 
 ```
-./venv/bin/python -m unittest tests.agents.adzump.tools.test_campaign_data -v
+./venv/bin/python -m pytest tests/agents/adzump/tools/test_campaign_data.py -q
 ```
+
+New tests: `unittest.TestCase` + table-driven `subTest` (the adzump style), so
+the file also runs on its own with `python -m unittest`.
 
 ## Layout (target)
 
