@@ -250,7 +250,7 @@ class Creative(BaseModel):
 
 class Competitor(BaseModel):
     """A competitor's creative record as stored in the library, keyed by
-    ``competitor_key`` (normalized host). The renderable image URL for each
+    ``competitor_key`` (canonical website, else ``name:<slug>``). The renderable image URL for each
     creative is chosen by ``Creative`` field precedence, not by a second stats
     structure."""
 
@@ -277,11 +277,6 @@ class Competitor(BaseModel):
     # under 'Puravankara The Sound of Water' was served, junk ads and all, to
     # 'Purva Sparkling Springs' without any search ever running for it).
     searched_names: list[str] = Field(default_factory=list, alias="searchedNames")
-
-    # Normalized businessUrls (AISuggestedData keys) of the products whose
-    # research surfaced this competitor - how the creatives page groups the
-    # shared library by product. Grows by union, never replaced.
-    business_urls: list[str] = Field(default_factory=list, alias="businessUrls")
 
     source: str = SOURCE
     last_fetched_at: str = Field(default="", alias="lastFetchedAt")

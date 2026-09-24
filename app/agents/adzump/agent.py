@@ -43,7 +43,7 @@ from app.agents.adzump.tools.campaign_data import (
     instagram_offer_resolution,
     is_clear_decline_reply,
 )
-from app.agents.adzump._shared import primary_screenshot_url
+from app.agents.adzump._shared import primary_screenshot_url, resolve_url
 from app.agents.adzump.tools.registry import ALL_TOOLS
 from app.agents.adzump.tools.suggestions import infer_suggestions
 from app.config import settings
@@ -221,10 +221,18 @@ class AdzumpAgent(BaseAgent):
             value,
             last_user[:80],
         )
+        # The write's side effects (saved accounts reused, stale ones cleared)
+        # must reach the model, or a platform click silently picks the ad
+        # account the money goes through (live 2026-09-24).
+        side_effects = (
+            f"The write also did: {info}. Name any reused accounts in your "
+            "acknowledgement so the user knows where the campaign will run. "
+            if info != field else ""
+        )
         return (
             "## You just captured the user's answer\n"
             f"Their last message set **{field} = {value}**. It is already stored - "
-            "do NOT call set_campaign_spec for it. Your visible reply MUST begin "
+            f"do NOT call set_campaign_spec for it. {side_effects}Your visible reply MUST begin "
             f'with a one-short-phrase acknowledgement naming the value (e.g. "Got '
             f'it - {value}."), then CALL the next tool from the missing-list (a '
             "fetch tool or present_options) - do NOT write the next question as "
@@ -506,7 +514,7 @@ class AdzumpAgent(BaseAgent):
     async def _autosave_campaign(self, session: BaseSession) -> None:
         """Every-turn durable save of whatever the spec holds (draft status)."""
         ctx = session.context
-        from app.agents.adzump.services.business_storage import save_campaign, resolve_url
+        from app.agents.adzump.services.product_service import save_campaign
         if not resolve_url(ctx):
             return
         try:
@@ -542,7 +550,6 @@ class AdzumpAgent(BaseAgent):
         appears - manage_targeting_locations won't fire because
         has_mapped_geo_targets is already True."""
         ctx = session.context
-        from app.agents.adzump.services.business_storage import resolve_url
         actx = AdzumpContext.from_session(session)
         platform = actx.spec.get("platform") or ""
         if not (platform and actx.has_mapped_geo_targets) \

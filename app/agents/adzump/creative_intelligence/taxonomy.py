@@ -149,7 +149,7 @@ def ensure_product_classified(product_data: dict) -> str:
     """Stage A, idempotent: return the product's effective category, deriving
     and stamping the classification fields onto ``product_data`` when absent or
     written under an older taxonomy. Mutates the live session dict; the
-    campaign autosave persists the fields (business_storage).
+    campaign autosave persists the fields (product_service).
 
     ``category_override`` wins unconditionally and skips derivation -
     the correction path when Stage A got it wrong (no re-fetch needed)."""

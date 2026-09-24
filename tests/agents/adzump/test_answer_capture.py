@@ -76,6 +76,12 @@ class TraceabilityTests(unittest.TestCase):
             ("competitive_analysis", "declined", "No"),              # chip decline
             ("competitive_analysis", "declined",
              "No, skip competitor analysis for now"),               # F11: comma broke exact-match
+            # creatives decline is the model's call unless the user asked for
+            # the ads (live 2026-09-23: this reply stuck the offer OPEN)
+            ("competitor_creatives", "declined",
+             "skip fetching their ads for now, let's continue with the campaign"),
+            ("competitor_creatives", "declined", "let's move on"),
+            ("competitor_creatives", "declined", "don't fetch their ads"),
         ]:
             with self.subTest(field=field, msg=msg):
                 self.assertTrue(_field_traceable(field, value, msg, SC))
@@ -95,6 +101,8 @@ class TraceabilityTests(unittest.TestCase):
             ("competitive_analysis", "declined",
              "no, change the budget to 20k"),                 # polarity flip
             ("competitive_analysis", "unset", "no"),          # only accepted/declined store
+            ("competitor_creatives", "declined", "show me their ads"),  # asked for them
+            ("competitor_creatives", "declined", "Yes"),
         ]:
             with self.subTest(field=field, value=value, msg=msg):
                 self.assertFalse(_field_traceable(field, value, msg, SC))

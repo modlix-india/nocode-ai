@@ -67,7 +67,7 @@ def _url_matches_entry_name(comp_name: str, url: str, candidate_name: str) -> bo
     shipped cityville.in - that wrong-domain key then hijacked Valmark's ad
     search (one search per domain, first entry's name wins). No token
     overlap = the citation is dropped, never trusted."""
-    from app.agents.adzump.competitor_urls import normalize_business_name
+    from app.agents.adzump.agents.product.competitor_urls import normalize_business_name
 
     tokens = [t for t in normalize_business_name(comp_name).split()
               if len(t) >= 4 and t not in _NAME_MATCH_STOPWORDS]
@@ -82,7 +82,7 @@ def _vetted_fallback(entry: dict) -> str | None:
     vetting the options passed - a hallucinated pick or old-shape output must
     never ship a host the options gathering refused (broker-style TLD,
     aggregator). Link-less beats a refused host."""
-    from app.agents.adzump.competitor_urls import (
+    from app.agents.adzump.agents.product.competitor_urls import (
         is_aggregator_or_google_host,
         is_broker_style_tld,
     )
@@ -202,7 +202,7 @@ def _same_project(name_a: str, name_b: str) -> bool:
     the other's); 'Purva Sparkling Springs' and 'Purva Sound of Water' are
     TWO (same brand, disjoint project tokens - sibling projects always keep
     separate entries)."""
-    from app.agents.adzump.competitor_urls import normalize_business_name
+    from app.agents.adzump.agents.product.competitor_urls import normalize_business_name
 
     a = normalize_business_name(name_a)
     b = normalize_business_name(name_b)
@@ -509,7 +509,7 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
-            from app.agents.adzump.services.business_storage import hydrate_from_storage
+            from app.agents.adzump.services.product_service import hydrate_from_storage
 
             if url:
                 hit = await hydrate_from_storage(url, session_ctx, context)

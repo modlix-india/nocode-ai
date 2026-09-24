@@ -387,7 +387,7 @@ Invariants:
 | Google Maps (geocode/reverse-geocode) | business pin, radial scan, area coords | `adapters/google/maps.py` |
 | Google Ads `suggest_geo_targets` | geo-target-constant resolution | `adapters/google/client.py` |
 | Meta Marketing `/search` adgeolocation | Meta key/type resolution | `adapters/meta/client.py` |
-| AISuggestedData | persistence + session-restart hydration | `services/business_storage.py` |
+| adzump MySQL (`db.py`) | persistence + session-restart hydration | `services/product_service.py` |
 | LLM provider - default `LOCATION_PROVIDER="deepseek"` | the whole LocationAgent loop | `services/llm_provider.py` |
 | LLM provider (Anthropic / OpenAI) | optional switch via the constant | `services/llm_provider.py` |
 

@@ -1,38 +1,22 @@
-"""Unit: app/agents/adzump/services/business_storage.py - pure record/helper builders.
+"""Unit: app/agents/adzump/services/product_service.py - pure record/helper builders.
 
-Covers `normalize_business_url` (the storage key - http→https, www-strip, trailing-slash),
-`_build_location_object` (legacy ds-v1 location precedence: map-confirmed →
+Covers `_build_location_object` (legacy ds-v1 location precedence: map-confirmed →
 user-typed → scraped), and `_build_full_record`'s competitive-block honesty
 (attempted-wins-over-stale-declined backstop).
 
 Run:
     cd nocode-ai && ./venv/bin/python -m unittest \\
-        tests.agents.adzump.tools.test_business_storage -v
+        tests.agents.adzump.services.test_product_service -v
 """
 
 from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.services.business_storage import (
-    normalize_business_url, _build_location_object, _build_full_record,
+from app.agents.adzump.services.product_service import (
+    _build_location_object, _build_full_record,
 )
 from tests.agents.adzump._fixtures import RE
-
-
-class NormalizeUrlLock(unittest.TestCase):
-
-    def test_canonicalises_for_storage_key(self):
-        cases = [
-            ("http://www.PurvaSparklingSpring.com/villas/", "https://purvasparklingspring.com/villas"),
-            ("https://sobha.com", "https://sobha.com"),
-            ("http://x.com/", "https://x.com"),
-            ("https://www.earthenambience.in/", "https://earthenambience.in"),
-            ("", ""),
-        ]
-        for raw, expected in cases:
-            with self.subTest(raw=raw):
-                self.assertEqual(normalize_business_url(raw), expected)
 
 
 class BuildLocationObjectLock(unittest.TestCase):
@@ -174,22 +158,22 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
     def _patches(self):
         from unittest import mock
         return (
-            mock.patch("app.agents.adzump.creative_store.upsert_product",
+            mock.patch("app.agents.adzump.stores.products.upsert_product",
                        new=mock.AsyncMock(return_value=42)),
-            mock.patch("app.agents.adzump.creative_store.upsert_flow",
+            mock.patch("app.agents.adzump.stores.flows.upsert_flow",
                        new=mock.AsyncMock()),
-            mock.patch("app.agents.adzump.creative_store.sync_competitor_profiles",
+            mock.patch("app.agents.adzump.stores.competitors.sync_competitor_profiles",
                        new=mock.AsyncMock()),
-            mock.patch("app.agents.adzump.services.business_storage._mirror_modlix_record",
+            mock.patch("app.agents.adzump.services.product_service._mirror_modlix_record",
                        new=mock.AsyncMock(return_value="rec-1")),
         )
 
     async def test_mysql_written_then_mirror_without_campaign(self):
-        from app.agents.adzump.services import business_storage as bs
+        from app.agents.adzump.services import product_service
         p_prod, p_camp, p_profiles, p_mirror = self._patches()
         with p_prod as m_prod, p_camp as m_camp, \
              p_profiles as m_profiles, p_mirror as m_mirror:
-            result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
+            result = await product_service.save_campaign(dict(self.SESSION), dict(self.CTX))
         self.assertEqual(result, "rec-1")
         m_prod.assert_awaited_once()
         # The display profile persists on the typed Product; the machine brief
@@ -207,37 +191,36 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("campaign", mirror_record)
 
     async def test_mysql_failure_raises_mirror_failure_does_not(self):
-        from unittest import mock
-        from app.agents.adzump.services import business_storage as bs
+        from app.agents.adzump.services import product_service
         p_prod, p_camp, p_profiles, p_mirror = self._patches()
         with p_prod, p_camp as m_camp, p_profiles, p_mirror:
             m_camp.side_effect = RuntimeError("db down")
             with self.assertRaises(RuntimeError):
-                await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
+                await product_service.save_campaign(dict(self.SESSION), dict(self.CTX))
         p_prod2, p_camp2, p_profiles2, p_mirror2 = self._patches()
         with p_prod2, p_camp2, p_profiles2, p_mirror2 as m_mirror:
             m_mirror.return_value = None  # mirror failed internally, warn-only
-            result = await bs.save_campaign(dict(self.SESSION), dict(self.CTX))
+            result = await product_service.save_campaign(dict(self.SESSION), dict(self.CTX))
         self.assertIsNone(result)
 
     async def test_hydrate_mysql_hit_skips_modlix(self):
         from unittest import mock
-        from app.agents.adzump.services import business_storage as bs
+        from app.agents.adzump.services import product_service
         from app.agents.adzump.models.product import Product
         product = Product(product_name="Springs", summary="villas",
                           profile_summary="The rich SummaryAgent profile text.")
         draft = {"location": {"address": "Hebbal, Bangalore"},
                  "competitors": [{"name": "Sobha"}]}
         session_ctx: dict = {}
-        with mock.patch("app.agents.adzump.creative_store.get_product",
+        with mock.patch("app.agents.adzump.stores.products.get_product",
                         new=mock.AsyncMock(return_value=product)), \
-             mock.patch("app.agents.adzump.creative_store.product_id",
+             mock.patch("app.agents.adzump.stores.products.product_id",
                         new=mock.AsyncMock(return_value=42)), \
-             mock.patch("app.agents.adzump.creative_store.latest_flow",
+             mock.patch("app.agents.adzump.stores.flows.latest_flow",
                         new=mock.AsyncMock(return_value=draft)), \
-             mock.patch.object(bs, "get_by_url",
+             mock.patch.object(product_service, "get_by_url",
                                new=mock.AsyncMock()) as m_modlix:
-            hit = await bs.hydrate_from_storage("https://springs.com", session_ctx, dict(self.CTX))
+            hit = await product_service.hydrate_from_storage("https://springs.com", session_ctx, dict(self.CTX))
         self.assertTrue(hit)
         m_modlix.assert_not_awaited()
         self.assertEqual(session_ctx["product_data"]["product_name"], "Springs")
@@ -251,10 +234,10 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         # MySQL is the ONLY hydration source: a miss returns False without
         # ever reading the Modlix mirror (write-only for DS).
         from unittest import mock
-        from app.agents.adzump.services import business_storage as bs
-        with mock.patch("app.agents.adzump.creative_store.get_product",
+        from app.agents.adzump.services import product_service
+        with mock.patch("app.agents.adzump.stores.products.get_product",
                         new=mock.AsyncMock(return_value=None)), \
-             mock.patch.object(bs, "get_by_url", new=mock.AsyncMock()) as m_modlix:
-            hit = await bs.hydrate_from_storage("https://springs.com", {}, dict(self.CTX))
+             mock.patch.object(product_service, "get_by_url", new=mock.AsyncMock()) as m_modlix:
+            hit = await product_service.hydrate_from_storage("https://springs.com", {}, dict(self.CTX))
         self.assertFalse(hit)
         m_modlix.assert_not_awaited()

@@ -22,7 +22,7 @@ from app.agents.adzump._shared import (
     emit_progress,
     host_of,
 )
-from app.agents.adzump.competitor_urls import (
+from app.agents.adzump.agents.product.competitor_urls import (
     cached_business_listing,
     cached_business_listings,
     is_aggregator_or_google_host,

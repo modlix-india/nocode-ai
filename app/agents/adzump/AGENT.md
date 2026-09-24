@@ -57,6 +57,87 @@ drift off the funnel.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
+## File structure
+
+```
+app/agents/adzump/
+│   the loop
+├── agent.py                  AdzumpAgent - the loop, capture rails, per-turn context
+├── context.py                static system prompt (persona + non-negotiables, cached)
+├── prompt_sections.py        per-turn section renderers (State / User said / Missing / How to respond)
+├── workflow.py               journey engine - AdzumpContext, Step, NEW_CAMPAIGN, missing_list
+├── observability.py          the per-turn `turn_decision` record
+├── router.py                 POST /chat (SSE) + the folded-in location search route
+│
+│   domain rules everyone reads
+├── platform.py               single source of truth for the campaign ad-platform
+├── answer_parse.py           canonical duration/budget reading for write-boundary validation
+├── config.py                 agent-level credential config
+│
+│   leading underscore = shared helpers, no domain decisions of their own
+├── _shared.py                tool utilities (headers, JSON extraction, host parsing)
+├── _uploads.py               image upload + rehost pipeline
+│
+├── stores/                   data access - SQL only, typed models in and out (migration V17)
+│   ├── products.py           adzump_products
+│   ├── flows.py              adzump_flows - per-flow draft state, resume source
+│   └── competitors.py        adzump_competitors + creatives + creative_assets
+│
+├── models/                   the typed state the orchestrator owns
+│   ├── product.py            product_data
+│   ├── place.py              the ONE campaign location
+│   ├── campaign_spec.py
+│   ├── competitor_profile.py session competitor entries (+ attached creatives)
+│   └── offer_state.py        OfferResolution - OPEN/DECLINED/FULFILLED/EXHAUSTED/MOOT
+│
+├── tools/                    the orchestrator's own tools (registry.ALL_TOOLS)
+│   ├── registry.py           every tool registered here
+│   ├── campaign_data.py      set_campaign_spec, field validation, offer resolutions
+│   ├── suggestions.py        present_options - chip widgets, one ask per turn
+│   ├── product.py            analyze_product
+│   ├── competitor.py         analyze_competitors + competitor-list curation
+│   ├── creatives.py          fetch_competitor_creatives (consent-gated)
+│   ├── research.py           research helpers
+│   ├── location.py           manage_targeting_locations, confirm_location
+│   ├── accounts.py           ad-account / page selection
+│   ├── asset_manage.py       manage_assets (uploads)
+│   ├── craft.py              craft-panel emits
+│   ├── summary.py            show_campaign_summary
+│   └── launch.py             launch_campaign (consent-gated)
+│
+├── agents/                   sub-agents - each has its own loop and AGENT.md
+│   ├── product/              Product Analyst: scrape, profile, assets, competitor discovery
+│   │   ├── adapters/         playwright_adapter, web_fetch_adapter, html_parser
+│   │   ├── prompts/          product_profile.txt, product_assets.txt
+│   │   └── tools/            scrape/ (tool, profile, assets, receipts) + comp_discovery
+│   ├── location/             Location Agent: geo discovery, geocoding, platform mapping
+│   │   └── tools/            discover_neighborhoods, geocode_recommendations, edit_locations
+│   ├── creative_essence/     Essence Analyst: typed Essence off competitor creatives
+│   ├── vision/               Vision Analyst: image review + selection
+│   ├── summary/              Profile Writer: the streamed product summary
+│   ├── campaign/             scaffold only (README)
+│   └── optimization/         scaffold only (README)
+│
+├── creative_intelligence/    competitor-creative ingest - no LLM loop of its own
+│   ├── library.py            fetch → dedupe → verify → gate → store orchestration
+│   ├── freshness.py          when a stored record is too old to serve
+│   ├── models.py             Competitor / Creative / Essence
+│   ├── dedup.py, phash.py    3-tier dedup (creative id, exact hash, perceptual)
+│   ├── verify.py             asset verification
+│   ├── taxonomy.py           the category relevance gate (fails closed)
+│   ├── enrich.py             the EssenceAnalyst seam
+│   ├── sweep.py              repair sweep
+│   └── sources/              adlibrary, scrapecreators (vendor adapters)
+│
+├── adapters/                 external platform clients
+│   ├── meta/                 client, accounts
+│   ├── google/               client, accounts, maps
+│   └── connections.py
+│
+└── services/
+    └── product_service.py    saves + restores the product and campaign draft (via db.py)
+```
+
 ## The journey engine (`workflow.py`)
 
 The funnel is a typed registry, all in `workflow.py` unless noted:
@@ -112,8 +193,8 @@ All rails live in `agent.py`; the widgets they capture from are emitted by
   lists.
 - The competitor list is user-REVIEWED before ad-library credits are spent
   (the review checkpoint between analysis and the creatives fetch).
-- Every-turn autosave writes the campaign draft to AISuggestedData
-  (`services/business_storage.py`); `campaign.status` mirrors the launch
+- Every-turn autosave writes the product + campaign draft to MySQL
+  (`services/product_service.py`); `campaign.status` mirrors the launch
   flag, never asserts it.
 
 ## Provider configuration

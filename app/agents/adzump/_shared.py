@@ -24,8 +24,8 @@ def build_ds_headers(context: dict) -> dict[str, str]:
     return headers
 
 
-# CoreServices.Storage endpoints - one home for the gateway contract, shared by
-# every storage-backed module (business_storage, creative_intelligence.store).
+# CoreServices.Storage endpoints - the gateway contract behind product_service's
+# Modlix AISuggestedData mirror (its only user since the MySQL move).
 STORAGE_READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
 STORAGE_CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
 STORAGE_UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
@@ -46,8 +46,7 @@ def storage_headers(ctx: dict, app_code: str, client_code: str | None = None) ->
 def extract_storage_records(raw: Any) -> list[dict]:
     """Unwrap CoreServices.Storage's response envelope into a flat record list.
     The gateway wraps the storage result in two ``result`` levels, then either
-    has ``content`` (paged) or returns records directly. Tolerates both. Shared
-    by every storage-backed module (business_storage, creative_intelligence)."""
+    has ``content`` (paged) or returns records directly. Tolerates both."""
     if raw is None:
         return []
     data = raw
@@ -74,7 +73,7 @@ def short_url(url: str, max_len: int = 55) -> str:
     - Hard-caps length, end-truncates with ``…``.
 
     Display-only - never persist this form. Stored URLs always use the full
-    URL (see business_storage.normalize_business_url for the storage-canonical form).
+    URL (see normalize_business_url for the storage-canonical form).
     """
     from urllib.parse import urlparse
     if not url:
@@ -105,7 +104,7 @@ def clean_input_url(raw) -> str | None:
     Trims whitespace, defaults the scheme to ``https://`` if missing,
     and returns ``None`` when the input is empty or whitespace-only.
     Leaves explicit ``http://`` alone - caller decides whether to keep
-    or force-upgrade to https (see business_storage.normalize_business_url
+    or force-upgrade to https (see normalize_business_url
     for the storage-canonicalization concern).
     """
     url = (raw or "").strip()
@@ -114,6 +113,22 @@ def clean_input_url(raw) -> str | None:
     if not url.startswith("http"):
         url = f"https://{url}"
     return url
+
+
+def normalize_business_url(url: str) -> str:
+    """The storage-canonical business URL - the key for adzump_products.url,
+    adzump_competitors.url and the Modlix businessUrl. Forces https (http/https
+    never split one business into two records), lowercases the host, strips
+    ``www.``, the trailing slash, and any query/fragment (tracking params)."""
+    from urllib.parse import urlparse
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    # urlparse needs "//" to populate netloc; a bare "www.x.com/p" lands in path.
+    p = urlparse(raw if "//" in raw else f"//{raw}")
+    host = (p.netloc or "").lower().removeprefix("www.")
+    path = (p.path or "").rstrip("/")
+    return f"https://{host}{path}"
 
 
 import json as _json
@@ -208,6 +223,18 @@ def primary_screenshot_url(product_data: dict) -> str:
     pages = product_data.get("pages") or {}
     page = pages.get(product_data.get("primary_url") or "") or {}
     return page.get("screenshot_url") or ""
+
+
+def resolve_url(session_ctx: dict) -> str:
+    """Find the business URL across the various places it can live."""
+    profile = session_ctx.get("product_profile") or {}
+    if profile.get("url"):
+        return profile["url"]
+    product = session_ctx.get("product_data") or {}
+    pages = product.get("pages_analyzed") or []
+    if pages:
+        return pages[0]
+    return ""
 
 
 # ─── Shared progress emission ────────────────────────────────────────────

@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.models.product import check_product
-from app.agents.adzump.services.business_storage import _build_full_record
+from app.agents.adzump.services.product_service import _build_full_record
 
 
 class MirrorRecordProjectionTests(unittest.TestCase):

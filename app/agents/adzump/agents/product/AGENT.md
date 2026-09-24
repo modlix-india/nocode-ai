@@ -57,6 +57,9 @@ app/agents/adzump/agents/product/
 ├── product_assets.py   candidate prefilter + thumbnail fetch + VisionAnalyst
 │                       pick + persistence of picked assets
 ├── scrape_stages.py    per-stage progress narration for the scrape card
+├── competitor_urls.py  competitor URL evidence helpers (GBP lookup, name
+│                       match, aggregator/broker-host guards, liveness,
+│                       project-page extraction) for comp_discovery
 ├── prompts/            product_profile.txt, product_assets.txt
 ├── adapters/           playwright_adapter (render+screenshot), web_fetch_adapter,
 │                       html_parser (links/images/structured-data extraction)
@@ -158,6 +161,7 @@ popped off the sub-session context, never stored in product_data).
 |---|---|
 | `tests/agents/adzump/agents/product/test_agent.py` | analyze() wiring, verified-output contract |
 | `tests/agents/adzump/agents/product/test_product_assets.py` | candidate prefilter + pick resolution + persistence |
+| `tests/agents/adzump/agents/product/test_competitor_urls.py` | GBP guards, broker-TLD prior, project-page extraction, session memo |
 | `tests/agents/adzump/agents/product/tools/test_comp_discovery.py` | extract/fetch candidates: pooling, dedupe, aggregator-follow, official-URL options |
 | `tests/agents/adzump/agents/product/adapters/test_html_image_parse.py` | html_parser image/link extraction |
 

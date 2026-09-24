@@ -15,7 +15,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from app.agents.adzump.creative_intelligence import store, verify
+from app.agents.adzump import stores
+from app.agents.adzump.creative_intelligence import verify
 from app.agents.adzump.creative_intelligence.library import MAX_DROPPED_ENTRIES
 from app.agents.adzump.creative_intelligence.models import Competitor
 
@@ -32,11 +33,13 @@ async def sweep_library(ctx: dict, *, dry_run: bool = False) -> dict:
         "removed_by_reason": {},
         "dry_run": dry_run,
     }
-    for competitor in await store.list_competitors(ctx):
+    client_code = ctx.get("client_code") or ""
+    for product_url, competitor in await stores.competitors.list_competitors(client_code):
         report["records_scanned"] += 1
         changed = await _repair_record(competitor, report)
         if changed and not dry_run:
-            if await store.upsert_competitor(competitor, ctx):
+            if await stores.competitors.sync_competitor(
+                    client_code, product_url, competitor):
                 report["records_updated"] += 1
         elif changed:
             report["records_updated"] += 1  # would have written

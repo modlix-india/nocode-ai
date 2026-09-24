@@ -17,13 +17,14 @@ from app.agents.adzump.models.competitor_profile import (
     competitor_profiles,
 )
 from app.agents.adzump.models.offer_state import OfferResolution, OfferState
-from app.agents.adzump.models.place import Place
+from app.agents.adzump.models.place import LocationProposal, Place
 
 __all__ = [
     "CampaignSpec",
     "CompetitorProfile",
     "LEGACY_DECLINED_KEYS",
     "LEGACY_MARKER_TO_FIELD",
+    "LocationProposal",
     "OFFER_FIELDS",
     "OfferResolution",
     "OfferState",

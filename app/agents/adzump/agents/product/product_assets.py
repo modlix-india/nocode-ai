@@ -42,10 +42,12 @@ FETCH_TIMEOUT_S = 8.0
 MAX_BYTES_PER_IMAGE = 5 * 1024 * 1024
 MIN_USEFUL_BYTES = 2 * 1024  # below this is almost always a decorative icon
 
-# LLM-input thumbnail size - small enough to keep token cost low but big
-# enough that a vision model can read the gist (testimonial vs villa vs award).
-THUMB_LONG_EDGE = 256
-THUMB_JPEG_QUALITY = 75
+# LLM-input thumbnail size. These thumbs ARE the asset picker's primary signal
+# (logo vs product photo vs award badge), so 256 px was too small - the model's
+# own reasoning showed it guessing at unreadable tiles. 512 px keeps text and
+# on-image detail legible; token cost is still modest at this count.
+THUMB_LONG_EDGE = 512
+THUMB_JPEG_QUALITY = 85
 
 # Source-quality priority for pre-filtering when we have more candidates than TOP_N.
 _SOURCE_PRIORITY = {
@@ -96,8 +98,8 @@ def _prefilter_candidates(images: list[SiteImage], top_n: int) -> list[SiteImage
     by DOM/insertion order within each priority tier - so the LLM sees
     candidates in roughly the order they appear on the page.
 
-    v9 (2026-05-22, Shift 6): SVG-penalty branch retired. SVGs are filtered
-    upstream in html_parser; no SVG candidates reach the prefilter."""
+    SVGs are filtered upstream in html_parser; no SVG candidates reach the
+    prefilter."""
     if len(images) <= top_n:
         return list(images)
 
@@ -374,8 +376,8 @@ async def _fetch_one(client, url: str) -> dict | None:
 # 5000–15000 px tall; we cap at 2000 px long-edge so the vision LLM input
 # stays predictable and the storage upload doesn't blow up. Decided via the
 # grilling session - Q1: "scaled full-page" (≤ 2000 px) was the user pick.
-SCREENSHOT_LONG_EDGE = 2000
-SCREENSHOT_JPEG_QUALITY = 75
+SCREENSHOT_LONG_EDGE = 3000  # full-page = vision context only (panel shows the hero); more px = less width-collapse on tall pages
+SCREENSHOT_JPEG_QUALITY = 90
 
 
 def _downscale_screenshot_to_jpeg_bytes(image_bytes: bytes) -> bytes | None:

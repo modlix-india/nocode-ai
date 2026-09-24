@@ -286,6 +286,21 @@ class TaggedCaptureTests(unittest.TestCase):
                     self.assertEqual(ack, "")
                     self.assertIsNotNone(s.context.get("_pending_elicitation"))
 
+    def test_platform_chip_names_reused_accounts(self):
+        # A click that silently picks the ad account the money goes through
+        # must tell the model, so the reply names it (live 2026-09-24).
+        product = {**RE, "ad_accounts": {"meta": {
+            "parent_account": "B1", "account": "A1",
+            "names": {"B1": "AdZump Dummy", "A1": "my campaign"}}}}
+        s = make_session(last_user="Meta", product=product,
+                         pending_elicitation=elicitation("platform", {"Meta": "Meta"}))
+        ack = _cap(s)
+        self.assertEqual(s.context["campaign_spec"]["account"], "A1")
+        self.assertIn("reused saved accounts: AdZump Dummy, my campaign", ack)
+        with self.subTest("a plain capture adds nothing"):
+            s = make_session(last_user="30 days", pending_elicitation=_dur_pe())
+            self.assertNotIn("also did", _cap(s))
+
     def test_stale_rail_steps_aside(self):
         # S1-11/R6 - a rail kept open across turns must not claim a
         # much-later exact-match message as its answer.

@@ -10,7 +10,8 @@ import asyncio
 import unittest
 from unittest import mock
 
-from app.agents.adzump.creative_intelligence import store, sweep, verify
+from app.agents.adzump import stores
+from app.agents.adzump.creative_intelligence import sweep, verify
 from app.agents.adzump.creative_intelligence.models import Competitor, Creative
 
 
@@ -30,15 +31,19 @@ def _run_sweep(competitors, verdicts: dict[str, bool], *, dry_run=False):
 
     upserts: list[Competitor] = []
 
-    async def fake_upsert(competitor, ctx):
+    async def fake_sync(client_code, product_url, competitor, user_id=0):
+        # Each record goes back to the product it was read from.
+        assert (client_code, product_url) == ("GRMEL", "https://springs.com")
         upserts.append(competitor)
-        return "id1"
+        return 1
 
-    with mock.patch.object(store, "list_competitors",
-                           new=mock.AsyncMock(return_value=competitors)), \
-         mock.patch.object(sweep.store, "upsert_competitor", new=fake_upsert), \
+    records = [("https://springs.com", c) for c in competitors]
+    with mock.patch.object(stores.competitors, "list_competitors",
+                           new=mock.AsyncMock(return_value=records)), \
+         mock.patch.object(stores.competitors, "sync_competitor", new=fake_sync), \
          mock.patch.object(sweep.verify, "verify_creative", new=fake_verify):
-        report = asyncio.run(sweep.sweep_library({}, dry_run=dry_run))
+        report = asyncio.run(sweep.sweep_library({"client_code": "GRMEL"},
+                                                 dry_run=dry_run))
     return report, upserts
 
 

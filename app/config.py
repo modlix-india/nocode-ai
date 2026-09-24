@@ -438,8 +438,8 @@ class Settings(BaseSettings):
 
         # Agent-level config - adzump credentials under ai.adzump.*
         try:
-            from app.agents.adzump.config import load_from_config_server as _load_adzump
-            _load_adzump(config)
+            from app.agents.adzump.config import load_adzump_config
+            load_adzump_config(config)
             logger.info("Applied config server values for adzump credentials")
         except Exception as e:
             logger.warning(f"Failed to load adzump config: {e}")
@@ -463,8 +463,8 @@ async def initialize_settings():
     else:
         # No config server - still load adzump config from env vars alone.
         try:
-            from app.agents.adzump.config import load_from_config_server as _load_adzump
-            _load_adzump({})
+            from app.agents.adzump.config import load_adzump_config
+            load_adzump_config({})
         except Exception as e:
             logger.warning(f"Failed to load adzump config from env: {e}")
 

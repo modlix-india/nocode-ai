@@ -17,6 +17,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.agents.adzump.models.offer_state import OfferState
 from app.agents.adzump.models.place import Place
 from app.agents.adzump.agents.location.models import TargetArea
 from app.agents.adzump.agents.product.models import SiteLink
@@ -69,6 +70,18 @@ class Assets(BaseModel):
     images: list[Image] = Field(default_factory=list)
 
 
+class AdAccounts(BaseModel):
+    """One platform's account picks. Business-level, not campaign-level: a new
+    campaign for this product reuses them (Kailash 2026-09-23)."""
+
+    parent_account: str = ""
+    account: str = ""
+    fb_page: str = ""
+    ig_page: str = ""
+    instagram: OfferState = OfferState.UNSET  # DECLINED = Facebook-only
+    names: dict[str, str] = Field(default_factory=dict)  # id -> display name
+
+
 class Product(BaseModel):
     """``extra="allow"`` - unknown keys never reject a live dict; they surface
     via ``model_extra`` (warned at runtime, failed in tests)."""
@@ -116,6 +129,9 @@ class Product(BaseModel):
     # ── Geo targeting - written by finalize_targets ──
     # Platform handle nested per-area; "mapped" = handle presence (platform.is_mapped_for)
     target_areas: list[TargetArea] = Field(default_factory=list)
+
+    # ── Ad accounts per platform (Platform value) - reused by the next campaign ──
+    ad_accounts: dict[str, AdAccounts] = Field(default_factory=dict)
 
 
 def check_product(product_data: dict, where: str) -> None:

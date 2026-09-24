@@ -178,7 +178,6 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
         self.assertEqual(self.calls[0]["country"], "IN")
         self.assertEqual(len(fetched.creatives), 1)
-        self.assertEqual(fetched.resolved_name, "Purva Sparkling Springs")
         self.assertEqual(fetched.logo_url, "https://cdn/logo.jpg")
         self.assertEqual(fetched.platform_ids, {"page_id": "p1"})
 
@@ -223,7 +222,6 @@ class SearchPolicyTests(unittest.TestCase):
         ])
         fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas X"))
         self.assertEqual(len(fetched.creatives), scrapecreators.MENTION_ADS_CAP)
-        self.assertEqual(fetched.resolved_name, "")
         self.assertEqual(fetched.logo_url, "")
         self.assertEqual(fetched.platform_ids, {})
         with self.subTest("no ad names the brand -> nothing ships"):
@@ -279,6 +277,11 @@ class SearchPolicyTests(unittest.TestCase):
              {"body": {"text": "Godrej Woodland plots now open"}}, False),
             ("all-generic name never attributes", "Pre Launch Property",
              {"body": {"text": "Pre launch property offers!"}}, False),
+            ("tokens scattered across pieces never attribute", "Godrej United",
+             {"title": "Godrej & Boyce",
+              "body": {"text": "United by design"}}, False),
+            ("all tokens in one piece attributes", "Godrej United",
+             {"body": {"text": "Godrej United - 3 BHK in Whitefield"}}, True),
         ]
         for label, name, snapshot_extra, expected in cases:
             with self.subTest(label):

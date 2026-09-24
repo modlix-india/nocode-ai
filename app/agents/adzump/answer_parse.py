@@ -16,14 +16,6 @@ from __future__ import annotations
 
 import re
 
-# Real-estate detection mirrors AdzumpContext.is_real_estate / the budget step's
-# currency pick (agent.py). Kept here (not imported from agent.py) to avoid a
-# circular import - campaign_data + agent both import this module.
-_RE_KEYWORDS = (
-    "real estate", "realty", "villa", "apartment", "residential",
-    "property", "housing", "homes", "realtor", "township", "builder", "developer",
-)
-
 _DURATION = re.compile(r"\b(\d+)\s*(days?|weeks?|months?|years?|yrs?|mo|wk)\b", re.I)
 _DURATION_ONE = re.compile(r"\b(a|one)\s+(day|week|month|year)\b", re.I)
 _UNIT = {"day": "day", "week": "week", "month": "month", "year": "year",
@@ -42,12 +34,6 @@ _SYMBOLS = [  # (detector, canonical symbol) - order: longest/specific first
 _BARE_INT = re.compile(r"\b\d{1,3}\b")
 _TIME_UNIT_AFTER = re.compile(r"\s*(days?|weeks?|months?|years?|yrs?|mo|wk)\b", re.I)
 _SUFFIX_AFTER = re.compile(r"\s*(k|l|lac|lakh|cr|crore|m|mn)\b", re.I)
-
-
-def currency_for(session_ctx: dict | None) -> str:
-    """₹ for real-estate sessions, else $ - matches the budget step's chip presets."""
-    bt = ((session_ctx or {}).get("product_data") or {}).get("business_type", "")
-    return "₹" if any(kw in bt.lower() for kw in _RE_KEYWORDS) else "$"
 
 
 def _canonical_duration(text: str) -> str | None:

@@ -18,6 +18,7 @@ campaign (platform, budget, duration, accounts, etc.) into
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import unicodedata
@@ -28,13 +29,15 @@ from app.agents.adzump.models import (
     LEGACY_DECLINED_KEYS,
     LEGACY_MARKER_TO_FIELD,
     OFFER_FIELDS,
+    LocationProposal,
     OfferResolution,
     OfferState,
     competitor_profiles,
     offer_state,
 )
+from app.agents.adzump.models.product import AdAccounts
 from app.agents.adzump.platform import Platform
-from app.agents.adzump.answer_parse import currency_for, field_candidates
+from app.agents.adzump.answer_parse import field_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +61,12 @@ def is_real_estate(business_type: str) -> bool:
     """Return True if business_type indicates a real-estate category."""
     bt = (business_type or "").lower()
     return any(kw in bt for kw in _REAL_ESTATE_KEYWORDS)
+
+
+def currency_for(session_ctx: dict | None) -> str:
+    """₹ for real-estate sessions, else $ - matches the budget step's chip presets."""
+    product = (session_ctx or {}).get("product_data") or {}
+    return "₹" if is_real_estate(product.get("business_type", "")) else "$"
 
 
 # Post-NFKC folding collapses fullwidth digits + most Unicode dashes to ASCII.
@@ -117,7 +126,7 @@ _USER_TEXT_FIELDS = {
 # v3 · F2 - when a campaign field that OTHERS depend on is *changed*, those
 # dependents are now stale and must be cleared. Without this a Google→Meta
 # switch leaks the old platform's account ids into the launch payload
-# (business_storage builds `accounts` straight from spec), and the forward-only
+# (product_service builds `accounts` straight from spec), and the forward-only
 # journey engine never re-asks a field that still looks "set". Keyed by the
 # field that changed → the fields it invalidates.
 _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
@@ -232,8 +241,24 @@ def is_clear_affirmative_reply(text: str) -> bool:
 
 
 # Creative-specific go-ahead verbs, ORed onto the shared yes-core: "show me
-# their ads" is consent even without a bare "yes".
+# their ads" is consent even without a bare "yes" - but "don't fetch their ads"
+# is not, so any negation cue voids the verb match.
 _CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)\b")
+_NEGATION_RE = re.compile(r"\b(no|not|don'?t|do not|never|skip|without|stop|cancel|later)\b")
+
+
+# The review step between the competitor list landing and credits being spent
+# (Kailash 2026-09-09). Shared by the creatives step and the analysis result.
+CREATIVES_REVIEW_ASK = (
+    "Do NOT fetch creatives yet - the user reviews the list first. Ask via the "
+    "present_options tool (no field - control-flow): \"Here are your "
+    "competitors - fetch their ads now, or adjust the list first?\" with options "
+    "[\"Fetch their ads\", \"I'll adjust the list first\"]. Fetch only on their "
+    "go-ahead; handle add/update/delete requests via analyze_competitors, then "
+    "re-ask. If they skip the ads or move on without them, call "
+    "set_campaign_spec(competitor_creatives=\"declined\") and continue with the "
+    "next step."
+)
 
 
 def wants_competitor_creatives(text: str) -> bool:
@@ -244,44 +269,32 @@ def wants_competitor_creatives(text: str) -> bool:
     lu = (text or "").strip().lower()
     if not lu or is_clear_decline_reply(lu):
         return False
-    return is_clear_affirmative_reply(lu) or bool(_CREATIVE_VERBS_RE.search(lu))
+    return is_clear_affirmative_reply(lu) or (
+        bool(_CREATIVE_VERBS_RE.search(lu)) and not _NEGATION_RE.search(lu))
 
 
 def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:
-    """Model-only line appended to analyze_competitors results when a consented
-    creative fetch is still owed THIS turn. Live 2026-07-29: the model burned
-    the user's Yes on a pre-analysis fetch attempt (refused: no competitors),
-    ran the analysis as told, then skipped ahead to the duration question -
-    the fetch never happened. The analysis result itself now carries the
-    reminder, so the chain can't be dropped between tools."""
+    """Model-only line appended to analyze_competitors results while a consented
+    creative fetch is still owed. Live 2026-07-29: the model burned the user's
+    Yes on a pre-analysis fetch attempt, then skipped ahead - so the analysis
+    result itself carries the next step and the chain can't be dropped. The
+    next step is ALWAYS the review ask: the list just landed and the user
+    reviews it before credits are spent (Kailash 2026-09-09). A fetch-NOW
+    variant here contradicted that step's prescription and the model
+    deliberated for 50s over which to obey (live 2026-09-23)."""
     session_ctx = context.get("session_context") or {}
     spec = session_ctx.get("campaign_spec") or {}
     if Platform.from_value(spec.get("platform")) is not Platform.META:
         return ""
     if creatives_offer_resolution(spec, session_ctx) is not OfferResolution.OPEN:
         return ""
-    fresh_go = wants_competitor_creatives(_last_user_text(context))
     if offer_state(
         spec, "competitor_creatives"
-    ) is not OfferState.ACCEPTED and not fresh_go:
+    ) is not OfferState.ACCEPTED and not wants_competitor_creatives(
+        _last_user_text(context)
+    ):
         return ""
-    if fresh_go:
-        return (
-            " The user just asked for the competitor ads - call "
-            "`fetch_competitor_creatives` NOW, in this same turn, before "
-            "asking anything else."
-        )
-    # Consented but the list just landed: the user REVIEWS it before credits
-    # are spent (Kailash 2026-09-09) - add/update/delete first, fetch on go.
-    return (
-        " The competitor list is now on screen. Do NOT fetch creatives yet - "
-        "the user reviews the list first. Ask via the present_options tool "
-        '(no field - control-flow): "Here are your competitors - fetch their '
-        'ads now, or adjust the list first?" with options '
-        '["Fetch their ads", "I\'ll adjust the list first"]. Fetch only on '
-        "their go-ahead; handle add/update/delete requests via "
-        "analyze_competitors, then re-ask."
-    )
+    return " The competitor list is now on screen. " + CREATIVES_REVIEW_ASK
 
 
 def _last_user_text(context: dict[str, Any]) -> str:
@@ -346,7 +359,13 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
     # competitor analysis for now" → re-ask loop). Instagram takes only
     # "declined" - linked is ig_page being set.
     if field in ("competitive_analysis", "competitor_creatives"):
+        # A creatives decline is the model's call (Kailash 2026-09-23): any
+        # phrasing stands unless the user clearly asked for the ads. A strict
+        # phrase check here left "skip fetching their ads for now" unrecordable
+        # and the offer stuck OPEN at the top of every turn.
         if v == OfferState.DECLINED.value:
+            if field == "competitor_creatives":
+                return not wants_competitor_creatives(last_user)
             return is_decline(lu)
         if v == OfferState.ACCEPTED.value:
             return is_clear_affirmative_reply(lu) or (
@@ -576,23 +595,57 @@ def _store_confirmed_location(
     session_ctx: dict, location_value: Any, last_user: str
 ) -> None:
     """Write the confirmed location onto product_data.place + clear the confirm
-    marker. Map-pin carries coords; typed-city clears them → next run re-geocodes."""
-    session_ctx.pop("_pending_location_confirm", None)
-    from app.agents.adzump.services.business_storage import parse_location_update
+    marker. Map-pin carries coords; typed-city clears them → next run re-geocodes.
+    A pin confirmed where the backend placed it keeps the detected address: the
+    map reverse-geocodes on confirm, which turned "Near ITPB (Whitefield)" into
+    a street address nobody picked (live 2026-09-23)."""
+    proposal = LocationProposal.from_stored(
+        session_ctx.pop("_pending_location_confirm", None))
 
     product = session_ctx.setdefault("product_data", {})
     place = product.setdefault("place", {})
-    loc_payload = parse_location_update(last_user)
+    loc_payload = _parse_location_update(last_user)
     if loc_payload:
-        place["address"] = loc_payload["address"] or str(location_value)
+        if proposal and proposal.address and proposal.pin_unmoved(
+                loc_payload["lat"], loc_payload["lng"]):
+            place["address"] = proposal.address
+        else:
+            place["address"] = loc_payload["address"] or str(location_value)
         place["lat"] = loc_payload["lat"]
         place["lng"] = loc_payload["lng"]
+        session_ctx.setdefault("campaign_spec", {})["location"] = place["address"]
     else:
         place["address"] = str(location_value)
         place["lat"] = None
         place["lng"] = None
     name = product.get("product_name") or ""
     place["display_name"] = f"{name}, {place['address']}" if name and place["address"] else ""
+
+
+_LOCATION_UPDATE_RE = re.compile(r'"type"\s*:\s*"location_update"')
+
+
+def _parse_location_update(user_message: str) -> dict | None:
+    """If the user's message is a `location_update` JSON callback, return
+    ``{address, lat, lng}``. Returns None for plain "confirm" or anything
+    else.
+    """
+    if not user_message:
+        return None
+    msg = user_message.strip()
+    if not msg.startswith("{") or not _LOCATION_UPDATE_RE.search(msg):
+        return None
+    try:
+        payload = json.loads(msg)
+    except (ValueError, json.JSONDecodeError):
+        return None
+    if payload.get("type") != "location_update":
+        return None
+    return {
+        "address": (payload.get("address") or "").strip(),
+        "lat": payload.get("lat"),
+        "lng": payload.get("lng"),
+    }
 
 
 def _clear_dependents(field: str, session_ctx: dict, batch_fields) -> list[str]:
@@ -764,13 +817,65 @@ def _apply_field(
     # or an idempotent re-send (prior empty / equal → no clear). This is what
     # makes a Google→Meta switch drop the stale Google ids while a re-fire of
     # the same value is a safe no-op.
+    info = field
     if prior not in (None, "") and str(prior) != str(value):
         cleared = _clear_dependents(field, session_ctx, batch_fields)
         info = f"{field} (was {prior} → {value})"
         if cleared:
             info += f"; cleared stale {', '.join(cleared)}"
-        return (True, info)
-    return (True, field)
+    # Accounts are the business's, not the campaign's: remember each pick on
+    # the product, and a platform choice reuses that platform's saved picks.
+    if field in _ACCOUNT_LIKE_FIELDS or field == "instagram":
+        _remember_ad_accounts(session_ctx)
+    elif field == "platform":
+        reused = _reuse_ad_accounts(session_ctx, turn, batch_fields)
+        if reused:
+            info += f"; reused saved accounts: {reused}"
+    return (True, info)
+
+
+def _remember_ad_accounts(session_ctx: dict) -> None:
+    """Snapshot the current platform's account picks onto product_data - the
+    product row persists them, so the next campaign's resume carries them."""
+    spec = session_ctx.get("campaign_spec") or {}
+    platform = Platform.from_value(spec.get("platform"))
+    if platform is None:
+        return
+    names = session_ctx.get("account_names") or {}
+    ids = {field: str(spec.get(field) or "") for field in _ACCOUNT_LIKE_FIELDS}
+    accounts = AdAccounts(
+        **ids, instagram=offer_state(spec, "instagram"),
+        names={acct: names[acct] for acct in ids.values() if acct in names})
+    product = session_ctx.setdefault("product_data", {})
+    product.setdefault("ad_accounts", {})[platform.value] = accounts.model_dump(mode="json")
+
+
+def _reuse_ad_accounts(session_ctx: dict, turn: int, batch_fields) -> str:
+    """Fill the chosen platform's saved picks into empty account fields (never
+    one this same write is setting). Returns the reused names for the delta."""
+    spec = session_ctx.setdefault("campaign_spec", {})
+    platform = Platform.from_value(spec.get("platform"))
+    saved = ((session_ctx.get("product_data") or {}).get("ad_accounts") or {}).get(
+        platform.value if platform else "")
+    if not saved:
+        return ""
+    accounts = AdAccounts.model_validate(saved)
+    set_at = session_ctx.setdefault("_spec_set_at", {})
+    names = session_ctx.setdefault("account_names", {})
+    reused: list[str] = []
+    for field in ("parent_account", "account", "fb_page", "ig_page"):  # hierarchy order
+        acct = getattr(accounts, field)
+        if acct and not spec.get(field) and field not in batch_fields:
+            spec[field] = acct
+            set_at[field] = turn
+            if acct in accounts.names:
+                names[acct] = accounts.names[acct]
+            reused.append(accounts.names.get(acct) or acct)
+    if (accounts.instagram is OfferState.DECLINED
+            and offer_state(spec, "instagram") is OfferState.UNSET):
+        spec["instagram"] = OfferState.DECLINED.value
+        set_at["instagram"] = turn
+    return ", ".join(reused)
 
 
 def campaign_spec_complete(spec: dict, session_ctx: dict) -> bool:
@@ -915,6 +1020,17 @@ set_campaign_spec = ToolDefinition(
             description="Set \"true\" when the user declines the competitive analysis step so the journey stops offering it.",
             required=False,
             enum=["true"],
+        ),
+        ToolParameter(
+            name="competitor_creatives",
+            type="string",
+            description=(
+                "Meta only - the user's answer to seeing competitors' ads, when they "
+                "TYPE it (a chip answer is recorded for you). \"declined\" when they "
+                "skip the ads or move on without them - including at the list review."
+            ),
+            required=False,
+            enum=["accepted", "declined"],
         ),
         ToolParameter(
             name="ig_page",

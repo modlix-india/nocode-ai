@@ -8,7 +8,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from app.agents.adzump.competitor_urls import (
+from app.agents.adzump.agents.product.competitor_urls import (
     cached_business_listing,
     is_broker_style_tld,
     listing_name_matches,

@@ -1,17 +1,17 @@
 """The public read API for competitor creatives: cache-or-fetch-or-stale.
 
     for each competitor:
-        key = competitor_key(domain)
-        record = store.get_competitor(key)
+        key = competitor_key(url)
+        record = stores.competitors.get_competitor(client, product, key)
         if record fresh (within freshness window):  serve it
         else:                                        source.fetch(),
                                                      rehost binaries,
                                                      store it, serve it
 
-Because the store is shared, a competitor any client fetched recently is already
-warm for everyone - so most calls are cache hits and cost nothing. Misses/stale
-entries hit the source (rate-limited, metered), so we run competitors
-sequentially and never let one failure abort the batch.
+A competitor fetched recently for this product is served from the store - so
+repeat calls are cache hits and cost nothing. Misses/stale entries hit the
+source (rate-limited, metered), so we run competitors sequentially and never
+let one failure abort the batch.
 
 The source is injected (defaults to adlibrary) so a test drives the whole policy
 with no network, and a second vendor is a one-line swap.
@@ -28,8 +28,9 @@ import httpx
 from typing import Awaitable, Callable
 
 from app.config import settings
-from app.agents.adzump import _uploads
-from app.agents.adzump.creative_intelligence import store, taxonomy
+from app.agents.adzump import _uploads, stores
+from app.agents.adzump._shared import host_of, normalize_business_url, resolve_url
+from app.agents.adzump.creative_intelligence import freshness, taxonomy
 from app.agents.adzump.models import CompetitorProfile
 from app.agents.adzump.creative_intelligence.dedup import dedupe
 from app.agents.adzump.creative_intelligence.enrich import CreativeImage, EnrichCreatives
@@ -47,11 +48,6 @@ from app.agents.adzump.creative_intelligence.sources.base import (
     AdIntelligenceSource,
     SourceFetch,
 )
-from app.agents.adzump.services.business_storage import (
-    normalize_business_url,
-    resolve_url,
-)
-
 logger = logging.getLogger(__name__)
 
 # Rehost every creative we keep, so all of them get a content + perceptual hash
@@ -99,15 +95,18 @@ def _campaign_country(ctx: dict) -> str:
     return ((product.get("place") or {}).get("country_code") or "").strip()
 
 
-def _business_url(ctx: dict) -> str:
-    """Normalized businessUrl of the session's product (the AISuggestedData
-    storage key), or empty when the session has no product yet."""
-    return normalize_business_url(resolve_url(ctx.get("session_context") or {}))
+def _product_scope(ctx: dict) -> tuple[str, str]:
+    """(client_code, product_url) of the session's product - the url normalized
+    the way adzump_products stores it, so the competitor FK lookup matches."""
+    session_ctx = ctx.get("session_context") or {}
+    return (ctx.get("client_code") or "",
+            normalize_business_url(resolve_url(session_ctx)))
 
 
 def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
-    """Pull (key, name) from a competitor profile. ``key`` is the normalized
-    domain when the profile has a URL, else a name-scoped key.
+    """Pull (key, name) from a competitor profile. ``key`` is the canonical
+    website (host + path) when the profile has a URL, else a name-scoped key -
+    the same identity the curated adzump_competitors row carries.
 
     The ad search is NAME-driven, so a link-less competitor (an honest no-URL
     entry - pre-launch projects often have no site) must still fetch and cache
@@ -115,10 +114,8 @@ def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
     dropped from every fetch while the user asked for its ads 23 times). Once
     a URL settles, the domain key takes over and the entry refetches fresh."""
     name = comp.name.strip()
-    key = store.competitor_key(comp.url or "")
-    if not key and name:
-        key = "name:" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-    return key, name
+    return (stores.competitors.competitor_key(comp.url or "")
+            or stores.competitors.name_key(name)), name
 
 
 async def creatives_for(
@@ -140,8 +137,6 @@ async def creatives_for(
     fetched, prior, searched = await _fetch_stage(
         key=key, names=[name], ctx=ctx, force=force, source=source)
     if fetched is None:
-        if prior:
-            await _stamp_business_url(prior, ctx)
         return prior
     return await _process_stage(key=key, name=name, ctx=ctx,
                                 fetched=fetched, prior=prior, enrich=enrich,
@@ -173,10 +168,11 @@ async def _fetch_stage(
     project own the key for a whole TTL)."""
     src = source or _default_source()
 
-    record = await store.get_competitor(key, ctx)
+    client_code, product_url = _product_scope(ctx)
+    record = await stores.competitors.get_competitor(client_code, product_url, key)
     to_search = list(names)
     augment = False
-    if record and not force and not store.is_stale(record):
+    if record and not force and not freshness.is_stale(record):
         to_search = _uncovered_names(record, names)
         if not to_search:
             logger.info("creative_intelligence: cache hit key=%s", key)
@@ -189,9 +185,9 @@ async def _fetch_stage(
            else "forced" if force else ("stale" if record else "miss"))
     logger.info("creative_intelligence: fetching key=%s reason=%s names=%d",
                 key, why, len(to_search))
-    # A name-scoped key is not a host - advertiser attribution then runs on
-    # name match alone (domain-link matching needs a real domain).
-    search_domain = "" if key.startswith("name:") else key
+    # Advertiser attribution matches ad links by HOST; a name-scoped key has
+    # none, so attribution then runs on name match alone.
+    search_domain = "" if key.startswith("name:") else host_of(key)
     fetched: SourceFetch | None = None
     searched_ok: list[str] = []
     for name in to_search:
@@ -212,7 +208,6 @@ async def _fetch_stage(
         else:
             fetched.creatives.extend(got.creatives)
             # Identity fields: first name that resolved them wins.
-            fetched.resolved_name = fetched.resolved_name or got.resolved_name
             fetched.logo_url = fetched.logo_url or got.logo_url
             fetched.platform_ids = fetched.platform_ids or got.platform_ids
     if fetched is None:  # every name's fetch failed
@@ -264,14 +259,16 @@ async def _process_stage(
     # The vendor's raw hit count when the source reports it (scrapecreators
     # does); a source that doesn't falls back to what it shipped.
     searched = fetched.search_hits or discovered
+    # The curated name, never the vendor's page name: the row is found by the
+    # identity both writers share (live 2026-09-23: "Brigade Group" replaced
+    # "Brigade Avalon" and the ads landed on a second, duplicate row).
     competitor = Competitor(
         competitor_key=key,
-        name=fetched.resolved_name or name,
-        domain="" if key.startswith("name:") else key,
-        logo_url=fetched.logo_url,
+        name=name,
+        domain="" if key.startswith("name:") else host_of(key),
+        logo_url=await _rehost_logo(fetched.logo_url, name, prior, ctx),
         platform_ids=fetched.platform_ids,
         creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],
-        business_urls=_merged_business_urls(prior, ctx),
         # What this record's creatives can answer for (computed by the fetch
         # stage: union on an augment, this fetch's names on a full refresh).
         searched_names=searched_names if searched_names is not None else [name],
@@ -353,7 +350,9 @@ async def _process_stage(
         (dict(sorted(gate_reasons.items())) or "{}"),
     )
 
-    await store.upsert_competitor(competitor, ctx)
+    client_code, product_url = _product_scope(ctx)
+    await stores.competitors.sync_competitor(
+        client_code, product_url, competitor, ctx.get("user_id") or 0)
     return competitor
 
 
@@ -403,8 +402,6 @@ def _group_renditions(creatives: list[Creative]) -> list[Creative]:
     are left alone (poster ratios are unreliable). Primary = first card in
     source order (Meta's default rendering); the rest become its renditions.
     """
-    from app.agents.adzump.creative_store import _aspect_ratio_bucket
-
     def copy_key(c: Creative) -> str:
         return "|".join(re.sub(r"\s+", " ", (t or "").strip().lower())
                         for t in (c.headline, c.primary_text, c.cta))
@@ -419,7 +416,8 @@ def _group_renditions(creatives: list[Creative]) -> list[Creative]:
     for members in groups.values():
         if len(members) < 2 or any(c.media_type != "image" for c in members):
             continue
-        buckets = [_aspect_ratio_bucket(c.aspect_ratio) for c in members]
+        buckets = [stores.competitors.aspect_ratio_bucket(c.aspect_ratio)
+                   for c in members]
         if "other" in buckets or len(set(buckets)) != len(buckets):
             continue  # unknown or repeated ratio: could be a carousel - keep apart
         primary = members[0]
@@ -505,34 +503,6 @@ def _dedupe_dropped(entries: list[dict]) -> list[dict]:
             seen.add(cid)
         out.append(entry)
     return out
-
-
-def _merged_business_urls(prior: Competitor | None, ctx: dict) -> list[str]:
-    """The prior record's product associations plus the current session's
-    product - a shared record accretes every product that researched it."""
-    urls = list(prior.business_urls) if prior else []
-    url = _business_url(ctx)
-    if url and url not in urls:
-        urls.append(url)
-    return urls
-
-
-async def _stamp_business_url(record: Competitor, ctx: dict) -> None:
-    """Backfill the current product onto a record served straight from the store
-    (cache hit / stale-serve / kept-prior). Only real ingests write, so without
-    this a product whose competitors are all cache-warm would never appear in
-    ``businessUrls`` - and the creatives page groups the library by that field.
-    At most one write per product-competitor pair; a failed stamp only logs,
-    the serve itself must never break on it."""
-    url = _business_url(ctx)
-    if not url or url in record.business_urls:
-        return
-    record.business_urls.append(url)
-    try:
-        await store.upsert_competitor(record, ctx)
-    except Exception as e:
-        logger.warning("creative_intelligence: businessUrl stamp failed key=%s: %s: %s",
-                       record.competitor_key, type(e).__name__, str(e)[:200])
 
 
 async def creatives_for_all(
@@ -636,7 +606,6 @@ async def creatives_for_all(
         if fetched is None:
             if prior:
                 await _stage(key, names[0], "already in the library")
-                await _stamp_business_url(prior, ctx)
                 await _deliver(key, prior)
             continue
         await _stage(key, names[0],
@@ -648,6 +617,25 @@ async def creatives_for_all(
         await asyncio.gather(*tasks)  # each task handles its own failure
     logger.info("creative_intelligence: resolved=%d skipped_no_domain=%d", len(results), skipped)
     return results
+
+
+async def _rehost_logo(source_url: str, name: str, prior: Competitor | None,
+                       ctx: dict) -> str:
+    """The competitor's page logo, on our file store. Same reason as the
+    creative binaries: the vendor hands back a signed URL with an undocumented
+    expiry (Meta's ``page_profile_picture_url``), so the raw one must never
+    reach the row. On failure the prior record's already-rehosted logo stands;
+    a competitor is never dropped over a thumbnail."""
+    carried = (prior.logo_url if prior else "") or ""
+    if not source_url:
+        return carried
+    res = await _uploads.rehost_image(
+        source_url, "competitor_logo", ctx, name=f"{name}-logo")
+    if res and res.get("url"):
+        return res["url"]
+    logger.info("creative_intelligence: logo rehost failed name=%r (kept=%s)",
+                name, bool(carried))
+    return carried
 
 
 async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple[bytes, str]]:
@@ -693,7 +681,7 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
             if attempt:
                 await asyncio.sleep(0.5 * (2 ** (attempt - 1)))
             res = await _uploads.rehost_image(
-                src, "competitor_creative", ctx, name=f"{key}-{c.creative_id}",
+                src, "competitor_creative", ctx, name=f"{competitor.name or key}-{c.creative_id}",
                 perceptual=True,
             )
             if res and res.get("url"):
@@ -717,7 +705,7 @@ async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple
                 await asyncio.sleep(0.5 * (2 ** (attempt - 1)))
             url = await _uploads.rehost_video(
                 c.source_asset_url, "competitor_creative", ctx,
-                name=f"{key}-{c.creative_id}",
+                name=f"{competitor.name or key}-{c.creative_id}",
             )
             if url:
                 break

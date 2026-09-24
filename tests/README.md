@@ -9,7 +9,7 @@ Mirror `app/`. The test for `app/agents/adzump/tools/campaign_data.py` lives at
 `tests/agents/adzump/tools/test_campaign_data.py` — one file per unit, found by
 path.
 
-- ✅ `test_campaign_data.py`, `test_answer_parse.py`, `test_agent_loop.py`
+- ✅ `test_campaign_data.py`, `test_asset_manage.py`, `test_agent_loop.py`
 - ❌ `test_v3_fixes.py`, `test_v6_fixes.py`, `test_f27_*.py` (a bug number is not a code unit)
 
 A regression for bug F27 goes in the test file for **the unit it touches**, as a
@@ -96,10 +96,11 @@ tests/
       _fixtures.py              # shared scaffolding (NOT a test)
       tools/
         test_campaign_data.py   # _field_traceable, _set_campaign_spec, clear_competitor_decline …
-        test_answer_parse.py    # parse_typed_answer, field_candidates
         test_suggestions.py     # present_options, _advance_chip, get_pending_suggestions
         test_competitor.py
-        test_business_storage.py
+      services/
+        test_product_service.py # save_campaign, hydrate_from_storage, record builders
+      test_answer_capture.py    # field_candidates + _field_traceable + Custom two-turn path
       test_agent.py             # AdzumpAgent: _capture_tagged_answer, _record_prose_decline, the journey engine
       agents/{vision,product}/  # sub-agents
     appbuilder/                 # currently MISSING — add coverage

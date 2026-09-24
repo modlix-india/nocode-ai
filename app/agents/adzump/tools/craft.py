@@ -343,8 +343,7 @@ async def rerender_craft(
 
     Does NOT persist - callers must save before calling this. No-op when the
     stream/craft/url plumbing isn't in place (e.g. unit tests)."""
-    from app.agents.adzump._shared import primary_screenshot_url
-    from app.agents.adzump.services.business_storage import resolve_url
+    from app.agents.adzump._shared import primary_screenshot_url, resolve_url
 
     stream = context.get("event_stream")
     craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")

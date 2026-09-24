@@ -17,7 +17,8 @@ import re
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.platform import to_enum_value as platform_enum_value
-from app.agents.adzump.services.business_storage import resolve_url, save_campaign
+from app.agents.adzump._shared import resolve_url
+from app.agents.adzump.services.product_service import save_campaign
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
     is_clear_affirmative_reply,

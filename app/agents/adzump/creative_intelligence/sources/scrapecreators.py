@@ -93,14 +93,13 @@ class ScrapeCreatorsSource:
                          for creative in _to_creatives(a)]
             return SourceFetch(
                 creatives=creatives,
-                resolved_name=first.get("page_name") or "",
                 logo_url=snapshot.get("page_profile_picture_url") or "",
                 platform_ids={"page_id": first.get("page_id")} if first.get("page_id") else {},
                 search_hits=len(ads),
             )
         # Mention tier: no attributable page - broker/reseller ads ABOUT the
-        # project, WITHOUT claiming a page identity (no resolved_name/logo/
-        # page_id). Attribution gate (Rule 5): the ad's own text must name the
+        # project, WITHOUT claiming a page identity (no logo/page_id).
+        # Attribution gate (Rule 5): the ad's own text must name the
         # brand - a keyword search also returns ads for OTHER projects that
         # merely share locality words, and shipping those mixes competitors'
         # creatives (live 2026-09-10: an unrelated ad landed under Shriram).
@@ -264,10 +263,13 @@ def _distinctive_tokens(name: str) -> list[str]:
 
 
 def _mentions_brand(raw: dict, name: str) -> bool:
-    """Attribution for the mention tier: the ad's OWN text (page name, title,
-    body, card titles) or landing urls must carry EVERY distinctive token of
-    the brand name - keyword search also returns ads for unrelated projects
-    sharing locality words. Token matching (not whole-name substring) is what
+    """Attribution for the mention tier: ONE piece of the ad's own text (page
+    name, title, body, a card) or a landing url must carry EVERY distinctive
+    token of the brand name - keyword search also returns ads for unrelated
+    projects sharing locality words, and tokens scattered across pieces are
+    coincidence, not a mention (live 2026-09-23: 'Godrej' in a "Godrej & Boyce"
+    page name plus 'United' in its copy shipped 14 unrelated ads for
+    "Godrej United"). Token matching (not whole-name substring) is what
     lets a broker ad for 'Nambiar District 25' attribute to 'Nambiar Villas';
     landing urls matter because broker ads often carry the project name only
     in the link (godrejplatinum.example.com), never in the copy. A name with
@@ -285,7 +287,7 @@ def _mentions_brand(raw: dict, name: str) -> bool:
         if isinstance(card, dict):
             texts += [card.get("title"), _card_text(card), card.get("link_url")]
     fields = [_compact(t) for t in texts if t]
-    return all(any(token in field for field in fields) for token in tokens)
+    return any(all(token in field for token in tokens) for field in fields)
 
 
 def _days_running(start, end) -> int:

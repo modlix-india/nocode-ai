@@ -13,7 +13,7 @@ from app.agents.adzump.tools.campaign_data import (
     _apply_field, _clear_dependents, _set_campaign_spec,
     clear_competitor_decline, is_clear_decline_reply, is_decline, is_real_estate,
 )
-from app.agents.adzump.services.business_storage import _build_full_record
+from app.agents.adzump.services.product_service import _build_full_record
 from tests.agents.adzump._fixtures import RE, spec_context
 
 
@@ -421,6 +421,89 @@ class CreativesOfferResolutionTests(unittest.TestCase):
 
 
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────
+class AdAccountsReuseTests(unittest.TestCase):
+    """Account picks are the business's: every pick is remembered on the product
+    per platform, and choosing that platform again reuses them - budget and
+    duration are asked fresh (Kailash 2026-09-23)."""
+
+    META_NAMES = {"B1": "AdZump Dummy", "A1": "Main ad account", "P1": "Misty Shores"}
+
+    def _write(self, ctx, field, value, user, batch=frozenset()):
+        from app.agents.adzump.tools.campaign_data import _apply_field
+        return _apply_field(field, value, user, ctx, 1, batch)
+
+    def test_picks_are_remembered_per_platform(self):
+        ctx = {"campaign_spec": {"platform": "Meta"}, "account_names": dict(self.META_NAMES)}
+        for field, acct in (("parent_account", "B1"), ("account", "A1"), ("fb_page", "P1")):
+            stored, _ = self._write(ctx, field, acct, acct)
+            self.assertTrue(stored, field)
+        self._write(ctx, "instagram", "declined", "skip instagram")
+        saved = ctx["product_data"]["ad_accounts"]["meta"]
+        self.assertEqual((saved["parent_account"], saved["account"], saved["fb_page"]),
+                         ("B1", "A1", "P1"))
+        self.assertEqual(saved["names"], self.META_NAMES)
+        self.assertEqual(saved["instagram"], "declined")
+
+    def test_platform_choice_reuses_saved_picks(self):
+        saved = {"meta": {"parent_account": "B1", "account": "A1", "fb_page": "P1",
+                          "instagram": "declined", "names": self.META_NAMES}}
+        rows = [  # (case, platform, batch, expected spec account, reused note?)
+            ("same platform reuses", "Meta", frozenset(), "A1", True),
+            ("other platform reuses nothing", "Google Ads", frozenset(), None, False),
+            ("a pick in the same write wins", "Meta", frozenset({"account"}), None, True),
+        ]
+        for case, platform, batch, account, noted in rows:
+            with self.subTest(case):
+                ctx = {"campaign_spec": {}, "product_data": {"ad_accounts": saved}}
+                stored, info = self._write(ctx, "platform", platform, platform, batch)
+                spec = ctx["campaign_spec"]
+                self.assertTrue(stored)
+                self.assertEqual(spec.get("account"), account)
+                self.assertEqual("reused saved accounts" in info, noted)
+                if platform == "Meta":
+                    self.assertEqual(spec["parent_account"], "B1")
+                    self.assertEqual(spec["instagram"], "declined")
+                    self.assertEqual(ctx["account_names"]["B1"], "AdZump Dummy")
+
+
+class StoreConfirmedLocationTests(unittest.TestCase):
+    """A pin confirmed where the backend put it keeps the detected address; a
+    moved pin takes the map's street address (live 2026-09-23: an untouched
+    pin renamed "Near ITPB (Whitefield)" to a street nobody picked)."""
+
+    DETECTED = "Near ITPB (Whitefield), Bangalore"
+    MAP_ADDRESS = "Pattandur Agrahara ECC Rd, Whitefield"
+
+    def _confirm(self, proposal, lat, lng, value=None):
+        import json
+        from app.agents.adzump.tools.campaign_data import _store_confirmed_location
+        session_ctx = {"product_data": {"product_name": "Misty Shores", "place": {}},
+                       "_pending_location_confirm": proposal}
+        reply = json.dumps({"type": "location_update", "lat": lat, "lng": lng,
+                            "address": self.MAP_ADDRESS})
+        _store_confirmed_location(session_ctx, value or self.MAP_ADDRESS, reply)
+        return session_ctx
+
+    def test_table(self):
+        sent = {"address": self.DETECTED, "lat": 12.97, "lng": 77.73}
+        rows = [  # (case, proposal, pin lat, pin lng, expected address)
+            ("untouched pin keeps detected", sent, 12.97, 77.73, self.DETECTED),
+            ("moved pin takes the map address", sent, 12.99, 77.70, self.MAP_ADDRESS),
+            ("no sent coords: map address", {"address": self.DETECTED}, 12.97, 77.73,
+             self.MAP_ADDRESS),
+            ("legacy string proposal: map address", self.DETECTED, 12.97, 77.73,
+             self.MAP_ADDRESS),
+        ]
+        for case, proposal, lat, lng, expected in rows:
+            with self.subTest(case):
+                ctx = self._confirm(proposal, lat, lng)
+                place = ctx["product_data"]["place"]
+                self.assertEqual(place["address"], expected)
+                self.assertEqual((place["lat"], place["lng"]), (lat, lng))
+                self.assertEqual(ctx["campaign_spec"]["location"], expected)
+                self.assertNotIn("_pending_location_confirm", ctx)
+
+
 class WantsCompetitorCreativesTests(unittest.TestCase):
     """The ONE consent predicate behind fetch_competitor_creatives' hard gate
     and the creatives step's said-yes prescription - they must never disagree."""
@@ -435,6 +518,8 @@ class WantsCompetitorCreativesTests(unittest.TestCase):
             ("no thanks", False),                           # clear decline wins
             ("what will this cost me?", False),             # question, no consent
             ("show me the budget options", False),          # verb without ad noun
+            ("don't fetch their ads", False),               # negation voids the verb
+            ("skip fetching their ads for now", False),
         ]
         for text, expected in cases:
             with self.subTest(text=text):
@@ -526,12 +611,13 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
             with self.subTest(case=name):
                 steer = pending_creatives_fetch_steer(context)
                 self.assertEqual(bool(steer), owed)
-        # A fresh explicit ask fetches NOW; a stored ACCEPTED with the list
-        # just posted goes through the user's REVIEW first (Kailash 2026-09-09).
-        self.assertIn("NOW", pending_creatives_fetch_steer(ctx()))
-        self.assertIn("adjust the list",
-                      pending_creatives_fetch_steer(
-                          ctx(accepted=True, last_user="what about targeting?")))
+        # Owed always means the REVIEW ask, never a same-turn fetch: the list
+        # just posted and the user reviews it first (Kailash 2026-09-09). A
+        # fetch-NOW variant contradicted the step's prescription (2026-09-23).
+        for context in (ctx(), ctx(accepted=True, last_user="what about targeting?")):
+            steer = pending_creatives_fetch_steer(context)
+            self.assertIn("adjust the list", steer)
+            self.assertNotIn("NOW", steer)
 
 
 class ClearHelperTests(unittest.TestCase):

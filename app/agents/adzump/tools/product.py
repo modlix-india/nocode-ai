@@ -88,7 +88,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         if elicited:
             # deferred elicit → break loop, yield turn. multi = uploads span msgs.
             # requirements ride elicit_payload → _pending_elicitation.payload;
-            # _asset_store decrements.
+            # asset_manage store_* decrements.
             result_data["elicited"] = True
             result_data["elicit_expects"] = "multi"
             if analysis.asset_requirements:
@@ -203,7 +203,7 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
     re-render the craft panel (same UI as a fresh scrape) and return the reuse
     ToolResult. Returns None on miss/error - caller falls through to a fresh scrape."""
     try:
-        from app.agents.adzump.services.business_storage import hydrate_from_storage
+        from app.agents.adzump.services.product_service import hydrate_from_storage
         from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
         if not await hydrate_from_storage(url, session_memory, context):
             return None
@@ -226,19 +226,47 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
             except Exception as e:
                 logger.warning("storage_hydrate_craft_failed: %s: %s",
                                type(e).__name__, str(e)[:200])
+        facts = _restored_facts(session_memory)
         return ToolResult(
             success=True,
             data={"product": product, "from_storage": True},
-            summary=(
-                f"Reused prior analysis for {name} from storage. "
-                f"Type: {product.get('business_type', '')}. "
-                f"Location: {product.get('location', '')}. "
-                "Tell the user we're picking up where things left off."
+            summary=f"Loaded the saved profile for {name}.",
+            model_summary=(
+                f"Restored from storage (the side panel already shows it): "
+                f"{'; '.join(facts)}. Platform, duration and budget are asked "
+                "fresh for this campaign; the saved accounts fill in once the "
+                "user picks their platform. Acknowledge the reuse in ONE short "
+                "sentence without listing it again, then do the next step."
             ),
         )
     except Exception as e:
         logger.warning("storage_hydrate_skipped: %s: %s", type(e).__name__, str(e)[:200])
         return None
+
+
+def _restored_facts(session_memory: dict) -> list[str]:
+    """What a resume brought back, for the model to acknowledge - read from the
+    hydrated session, so it can only name what the store actually held."""
+    product = session_memory.get("product_data") or {}
+    place = product.get("place") or {}
+    competitors = (session_memory.get("competitor_analysis") or {}).get("competitors") or []
+    facts = [f"product {product.get('product_name', '')} ({product.get('business_type', '')})"]
+    if place.get("address"):
+        confirmed = " - map-confirmed" if place.get("lat") is not None else ""
+        facts.append(f"location {place['address']}{confirmed}")
+    if competitors:
+        with_ads = sum(1 for c in competitors if c.get("creatives"))
+        facts.append(f"{len(competitors)} competitors ({with_ads} with ads fetched)")
+    if product.get("target_areas"):
+        facts.append(f"{len(product['target_areas'])} target areas")
+    for platform, accounts in (product.get("ad_accounts") or {}).items():
+        names = accounts.get("names") or {}
+        picked = [names.get(accounts.get(f)) or accounts.get(f)
+                  for f in ("parent_account", "account", "fb_page", "ig_page")
+                  if accounts.get(f)]
+        if picked:
+            facts.append(f"saved {platform} accounts: {', '.join(picked)}")
+    return facts
 
 
 async def _emit_asset_upload_prompt(stream, requirements, session_memory: dict, url: str) -> bool:

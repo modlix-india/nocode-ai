@@ -158,7 +158,7 @@ class ScrapeResult(BaseModel):
     """Result from any scraping adapter."""
     success: bool
     content: PageContent | None = None
-    screenshot: str | None = None  # base64 encoded PNG
+    screenshot: str | None = None  # base64 full-page JPEG - vision spatial context
     error: str | None = None
     # Optional per-stage timing (Playwright adapter only); None on adapters that
     # don't track it. Read by the eval harness; ignored by the production caller.

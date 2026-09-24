@@ -18,11 +18,10 @@ from app.agents.adzump.creative_intelligence.models import Creative
 
 class SourceFetch(BaseModel):
     """What a source returns for one competitor: the creatives plus the identity
-    fields it could resolve from the batch (logo, cleaner name, platform ids).
-    Identity fields default empty when the vendor doesn't expose them."""
+    fields it could resolve from the batch (logo, platform ids). Identity fields
+    default empty when the vendor doesn't expose them."""
 
     creatives: list[Creative] = Field(default_factory=list)
-    resolved_name: str = ""
     logo_url: str = ""
     platform_ids: dict[str, Any] = Field(default_factory=dict)
     # Raw ads the vendor search returned BEFORE attribution/caps - the true

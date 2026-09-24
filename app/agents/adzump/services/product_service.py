@@ -1,35 +1,33 @@
-"""Persist business + campaign data to nocode-saas storage.
+"""Product service - saves and restores the user's product and campaign draft.
 
-Single record per businessUrl in the shared `AISuggestedData` collection
-(appCode `marketingai`). Adds a `campaign` sub-object alongside the existing
-analysis fields. Latest-launch-wins per URL - no history (yet).
-
-Reuses:
-- `app.agents.appbuilder.tools._shared.get_saas_client` (shared SaasClient singleton)
-- `app.agents.adzump._shared.storage_headers` (auth headers for storage calls)
+MySQL (``app.agents.adzump.stores``) is the store of record: ``save_campaign``
+writes the typed Product, the new_campaign flow draft and the curated
+competitor rows; ``hydrate_from_storage`` restores a returning product from
+them. The Modlix ``AISuggestedData`` record is a warn-only mirror of the
+analysis fields DS still reads (retirement plan S5 deletes it).
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import re
 from datetime import datetime, timezone
 from typing import Any  # noqa: F401  (used in type hints below)
-from urllib.parse import urlparse
 
 from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.models.product import check_product
+from app.agents.adzump import stores
+from app.agents.adzump.models.product import Product, check_product
 from app.agents.adzump._shared import (
     STORAGE_CREATE as CREATE,
     STORAGE_READ_PAGE as READ_PAGE,
     STORAGE_UPDATE as UPDATE,
     extract_storage_records as _extract_records,
+    normalize_business_url,
     primary_screenshot_url,
+    resolve_url,
     storage_headers,
 )
 from app.agents.appbuilder.tools._shared import get_saas_client
@@ -39,22 +37,6 @@ logger = logging.getLogger(__name__)
 STORAGE_NAME = "AISuggestedData"
 APP_CODE = "marketingai"
 SCHEMA_VERSION = 1
-
-def normalize_business_url(url: str) -> str:
-    """Canonicalize a business URL for storage keys and lookups.
-    Public: creative_intelligence stamps this exact form onto shared library
-    records (``Competitor.business_urls``) so they join back to ``businessUrl``.
-
-    - Force ``https`` scheme so the same business doesn't end up with two
-      records keyed under ``http://`` and ``https://``.
-    - Lowercase host, strip leading ``www.``, drop trailing slash.
-    """
-    if not url:
-        return ""
-    p = urlparse(url.strip())
-    host = (p.netloc or "").lower().removeprefix("www.")
-    path = (p.path or "").rstrip("/")
-    return f"https://{host}{path}"
 
 
 def _now_iso() -> str:
@@ -85,7 +67,7 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
         READ_PAGE, headers=_storage_headers(ctx), json=payload,
     )
     if not result.success:
-        logger.info("business_storage_read_miss: url=%s err=%s",
+        logger.info("product_service_read_miss: url=%s err=%s",
                     url, result.error)
         return None
     records = _extract_records(result.data)
@@ -131,9 +113,6 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     )
 
     # Authoritative half: product + campaign draft into nocode-ai MySQL.
-    from app.agents.adzump import creative_store  # lazy: avoids import cycle
-    from app.agents.adzump.models.product import Product
-
     campaign_draft = record.pop("campaign")
     # The analysis competitors ride in the draft so resume can restore
     # competitor_analysis without the Modlix record.
@@ -145,16 +124,16 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         "profile_summary":
             (session_ctx.get("product_profile") or {}).get("summary") or "",
     })
-    pid = await creative_store.upsert_product(
+    pid = await stores.products.upsert_product(
         ctx.get("client_code") or "", product, url, ctx.get("user_id") or 0)
-    await creative_store.upsert_flow(
+    await stores.flows.upsert_flow(
         ctx.get("client_code") or "", pid, chat_session_id, "new_campaign",
         campaign_draft.get("status") or "draft", campaign_draft,
         ctx.get("user_id") or 0)
     # Curated competitors get their typed rows at save time (born 'pending'),
     # not lazily at creatives-fetch time - the table mirrors the analyst's
     # list even when the user never fetches ads.
-    await creative_store.sync_competitor_profiles(
+    await stores.competitors.sync_competitor_profiles(
         ctx.get("client_code") or "", pid,
         campaign_draft.get("competitors") or [], ctx.get("user_id") or 0)
 
@@ -225,18 +204,6 @@ async def _mirror_modlix_record(record: dict, url: str, ctx: dict) -> str | None
 
 
 # ── Record construction (pure) ────────────────────────────────────────────
-
-
-def resolve_url(session_ctx: dict) -> str:
-    """Find the business URL across the various places it can live."""
-    profile = session_ctx.get("product_profile") or {}
-    if profile.get("url"):
-        return profile["url"]
-    product = session_ctx.get("product_data") or {}
-    pages = product.get("pages_analyzed") or []
-    if pages:
-        return pages[0]
-    return ""
 
 
 def _build_location_object(spec: dict, product: dict) -> dict:
@@ -463,15 +430,13 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     is a write-only mirror for DS, never read back here. A MySQL ERROR is not
     a miss - it propagates rather than silently starting fresh.
     """
-    from app.agents.adzump import creative_store  # lazy: avoids import cycle
-
     client_code = ctx.get("client_code") or ""
     key = normalize_business_url(url)
-    product = await creative_store.get_product(client_code, key)
+    product = await stores.products.get_product(client_code, key)
     if product is None:
         return False
-    pid = await creative_store.product_id(client_code, key)
-    draft = await creative_store.latest_flow(client_code, pid, "new_campaign") or {}
+    pid = await stores.products.product_id(client_code, key)
+    draft = await stores.flows.latest_flow(client_code, pid, "new_campaign") or {}
     _apply_hydration(
         session_ctx,
         product_data=product.model_dump(),
@@ -483,32 +448,3 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
         competitors=draft.get("competitors") or [],
     )
     return True
-
-
-# ── Lat/lng capture from map widget callback ──────────────────────────────
-
-
-_LOCATION_UPDATE_RE = re.compile(r'"type"\s*:\s*"location_update"')
-
-
-def parse_location_update(user_message: str) -> dict | None:
-    """If the user's message is a `location_update` JSON callback, return
-    ``{address, lat, lng}``. Returns None for plain "confirm" or anything
-    else.
-    """
-    if not user_message:
-        return None
-    msg = user_message.strip()
-    if not msg.startswith("{") or not _LOCATION_UPDATE_RE.search(msg):
-        return None
-    try:
-        payload = json.loads(msg)
-    except (ValueError, json.JSONDecodeError):
-        return None
-    if payload.get("type") != "location_update":
-        return None
-    return {
-        "address": (payload.get("address") or "").strip(),
-        "lat": payload.get("lat"),
-        "lng": payload.get("lng"),
-    }

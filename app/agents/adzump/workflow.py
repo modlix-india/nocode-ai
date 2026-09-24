@@ -17,6 +17,7 @@ from typing import Callable
 from app.core.session import BaseSession
 from app.agents.adzump.models import (
     LEGACY_DECLINED_KEYS,
+    LocationProposal,
     OfferResolution,
     OfferState,
     competitor_profiles,
@@ -28,6 +29,7 @@ from app.agents.adzump.platform import (
     is_meta as _platform_is_meta,
 )
 from app.agents.adzump.tools.campaign_data import (
+    CREATIVES_REVIEW_ASK,
     _last_user_text,
     analysis_offer_resolution,
     creatives_offer_resolution,
@@ -82,8 +84,9 @@ class AdzumpContext:
     def from_session(cls, session: BaseSession) -> "AdzumpContext":
         ctx = session.context
         competitive_raw = ctx.get("competitor_analysis")
-        # Sole writer (tools/location.py) stores the detected location string.
-        pending_location = ctx.get("_pending_location_confirm") or None
+        # Sole writer (tools/location.py) stores a LocationProposal.
+        proposal = LocationProposal.from_stored(ctx.get("_pending_location_confirm"))
+        pending_location = proposal.address if proposal else None
         pe = ctx.get("_pending_elicitation") or {}
         # The current ask's field, canonicalized so a legacy in-flight rail
         # (an old *_declined field name) matches the enum offer field.
@@ -192,7 +195,10 @@ def missing_list(journey: Journey, actx: AdzumpContext) -> list[str]:
 # ─── Step prescriptions ──────────────────────────────────────────────────────
 
 def _prescribe_product(actx: AdzumpContext) -> str:
-    return "business URL - call `analyze_product(url=<the user's URL>)`"
+    # No lead-in: "I'll analyze the website now" read wrong when the tool then
+    # reused the saved profile instead (live 2026-09-23).
+    return ("business URL - call `analyze_product(url=<the user's URL>)` with no "
+            "lead-in text; its result says whether it analyzed or reused saved data")
 
 
 def _prescribe_location(actx: AdzumpContext) -> str:
@@ -277,14 +283,9 @@ def _prescribe_competitor_creatives(actx: AdzumpContext) -> str:
             )
         return (
             "competitor creatives - consented, and the competitor list is on "
-            "screen. The user reviews it before credits are spent: ask via "
-            'the present_options tool (no field - control-flow): "Here are '
-            "your competitors - fetch their ads now, or adjust the list "
-            'first?" with options ["Fetch their ads", "I\'ll adjust the '
-            'list first"]. On their go-ahead call '
-            "`fetch_competitor_creatives`; handle add/update/delete via "
-            "analyze_competitors, then re-ask. (These are instructions to "
-            "CALL tools - never type tool-call syntax into your reply.)"
+            f"screen. {CREATIVES_REVIEW_ASK} On their go-ahead call "
+            "`fetch_competitor_creatives`. (These are instructions to CALL "
+            "tools - never type tool-call syntax into your reply.)"
         )
     # "recent", not "running" - the ad library's crawl lags, so what we
     # show may include recently-paused ads (each card carries its own
@@ -299,10 +300,11 @@ def _prescribe_competitor_creatives(actx: AdzumpContext) -> str:
         "competitor creatives - offer it ONCE: ask via the present_options "
         f'tool (field "competitor_creatives"): "{question}" with options '
         '[{"label":"Yes","value":"Yes","answer":"accepted"}, '
-        '{"label":"No","value":"No","answer":"declined"}]. BOTH answers '
-        "are recorded for you automatically - do NOT call "
-        "set_campaign_spec for them. (This is an instruction to CALL the "
-        "tool - never type tool-call syntax into your reply.)"
+        '{"label":"No","value":"No","answer":"declined"}]. A chip answer '
+        "is recorded for you automatically; if the user TYPES their answer, "
+        "record it with set_campaign_spec(competitor_creatives=\"accepted\" "
+        "or \"declined\"). (This is an instruction to CALL the tool - never "
+        "type tool-call syntax into your reply.)"
     )
 
 

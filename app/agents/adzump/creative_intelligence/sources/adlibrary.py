@@ -80,9 +80,6 @@ class AdLibrarySource:
         first = raw_ads[0] if raw_ads else {}
         return SourceFetch(
             creatives=creatives,
-            # page_name ("Gymshark Ltd") is cleaner than advertiser_name (the long
-            # store title), so prefer it when we weren't given a name.
-            resolved_name=name or first.get("page_name") or first.get("advertiser_name") or "",
             logo_url=first.get("logo_url") or "",
             platform_ids={},  # page_id isn't in the search payload (needs /ad-detail)
         )

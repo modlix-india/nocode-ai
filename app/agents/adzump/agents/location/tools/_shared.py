@@ -16,7 +16,7 @@ import logging
 from typing import Any
 
 from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
-from app.agents.adzump.services.business_storage import save_campaign
+from app.agents.adzump.services.product_service import save_campaign
 from app.agents.adzump.tools.craft import rerender_craft
 
 logger = logging.getLogger(__name__)

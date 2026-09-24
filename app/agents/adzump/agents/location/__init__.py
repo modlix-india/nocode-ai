@@ -7,7 +7,7 @@ Everything else is internal to this package - see AGENT.md.
 
 Exports are lazy (PEP 562): importing ``location.models`` from adzump-level
 modules must not drag in the full agent chain (a circular import via
-business_storage otherwise).
+product_service otherwise).
 """
 
 __all__ = ["get_location_agent", "is_local_business"]
