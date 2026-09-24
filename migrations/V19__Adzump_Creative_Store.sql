@@ -9,8 +9,11 @@
 --   adzump_flows         one row per (client, product, session, flow). Universal
 --                             per-flow session state (new_campaign: the campaign
 --                             draft) so any flow resumes from the last point.
---   adzump_competitors      one row per (client, competitor, product). Identity +
---                             fetch-ledger. Upserted on competitor_key (accumulates).
+--   adzump_competitors      one row per (client, product, competitor). Identity +
+--                             fetch-ledger. A competitor is its canonical website
+--                             (https://host/path - project pages on one developer
+--                             site stay separate), else its name while no website
+--                             is known.
 --   adzump_creatives        one row per LOGICAL creative (an ad concept). Shared
 --                             attributes only; no binary/asset fields. Competitor
 --                             creatives are refreshed WHOLESALE per slice (no
@@ -75,8 +78,8 @@ CREATE TABLE IF NOT EXISTS `adzump_competitors` (
     `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `client_code`       CHAR(12)     NOT NULL COMMENT 'Owning client (tenant) code',
     `product_id`        BIGINT UNSIGNED NOT NULL COMMENT 'FK adzump_products.id',
-    `name`              VARCHAR(255) NOT NULL COMMENT 'Competitor name; stable upsert key (url is not always found)',
-    `url`               VARCHAR(255) DEFAULT NULL COMMENT 'Competitor normalized host; NULL when none was found',
+    `name`              VARCHAR(255) NOT NULL COMMENT 'Competitor name; the identity while url is NULL',
+    `url`               VARCHAR(512) DEFAULT NULL COMMENT 'Canonical website (https://host/path); NULL while none is known - the name identifies the row then',
     `logo_url`          TEXT         DEFAULT NULL COMMENT 'Brand logo, Files service asset',
     `location`          VARCHAR(255) DEFAULT NULL COMMENT 'Competitor location',
     `pricing`           VARCHAR(255) DEFAULT NULL COMMENT 'Pricing summary',
@@ -94,6 +97,7 @@ CREATE TABLE IF NOT EXISTS `adzump_competitors` (
     `updated_at`        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_adzump_competitors` (`client_code`, `name`, `product_id`),
+    UNIQUE KEY `uq_adzump_competitors_website` (`client_code`, `product_id`, `url`),
     CONSTRAINT `fk_adzump_competitors_product` FOREIGN KEY (`product_id`)
         REFERENCES `adzump_products` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
