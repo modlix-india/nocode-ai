@@ -66,8 +66,8 @@ _IMAGE_KIND_FOLDERS = {
     "creative": "creatives",
     "logo_thumb": "logos",
     "creative_thumb": "creatives",
-    # Competitor ad creatives rehosted from adlibrary.com into our file store
-    # so the shared library doesn't depend on adlibrary's (undocumented-TTL) URLs.
+    # Competitor ad creatives rehosted into our file store so the library never
+    # depends on the vendor's signed, expiring CDN URLs.
     "competitor_creative": "competitor-creatives",
 }
 

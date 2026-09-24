@@ -1,4 +1,4 @@
-"""``AdIntelligenceSource`` backed by scrapecreators.com (Meta Ad Library scrape).
+"""The competitor-ad source: scrapecreators.com (a Meta Ad Library scrape).
 
 Contract (https://docs.scrapecreators.com/v1/facebook/adLibrary/search/ads):
   - GET {base}/v1/facebook/adLibrary/search/ads - x-api-key auth; cursor paging;
@@ -8,7 +8,7 @@ Contract (https://docs.scrapecreators.com/v1/facebook/adLibrary/search/ads):
     link to the competitor's domain, else the page whose name matches, else the
     fetch is honestly empty - never another advertiser's creatives.
   - ``is_active``/``start_date``/``end_date`` are Meta's real values, not a
-    crawl-lag heuristic (the reason this source replaced adlibrary.com).
+    crawl-lag heuristic.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.agents.adzump._shared import host_of
@@ -26,7 +27,6 @@ from app.agents.adzump.creative_intelligence.models import (
     Creative,
     MAX_CREATIVES_PER_COMPETITOR,
 )
-from app.agents.adzump.creative_intelligence.sources.base import SourceFetch
 
 logger = logging.getLogger(__name__)
 
@@ -48,25 +48,26 @@ _DISPLAY_FORMAT_MEDIA = {
 }
 
 
+class SourceFetch(BaseModel):
+    """One competitor's search result: the attributed creatives plus the
+    advertiser logo the batch resolved."""
+
+    creatives: list[Creative] = Field(default_factory=list)
+    logo_url: str = ""
+    # Raw ads the vendor search returned BEFORE attribution/caps - the true
+    # "fetched" number. 0 creatives with search_hits=49 means the search found
+    # plenty and attribution dropped it all, not that the library was empty.
+    search_hits: int = 0
+
+
 class ScrapeCreatorsError(Exception):
     """Non-recoverable scrapecreators.com failure (auth, credits, rate limit)."""
 
 
-def _unix_to_iso(ts: Any) -> str:
-    if not ts:
-        return ""
-    try:
-        return datetime.fromtimestamp(int(ts), tz=timezone.utc).isoformat()
-    except (ValueError, OSError, TypeError):
-        return ""
-
-
-def _compact(name: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
-
-
 class ScrapeCreatorsSource:
-    """``AdIntelligenceSource`` backed by scrapecreators.com."""
+    """Searches Meta's ad library for one competitor's ads by name. Raises
+    ScrapeCreatorsError on non-recoverable failures (auth, credits) so the
+    library serves stale rather than storing an empty record."""
 
     async def fetch(self, *, domain: str, name: str, country: str = "") -> SourceFetch:
         if not name:
@@ -94,11 +95,10 @@ class ScrapeCreatorsSource:
             return SourceFetch(
                 creatives=creatives,
                 logo_url=snapshot.get("page_profile_picture_url") or "",
-                platform_ids={"page_id": first.get("page_id")} if first.get("page_id") else {},
                 search_hits=len(ads),
             )
         # Mention tier: no attributable page - broker/reseller ads ABOUT the
-        # project, WITHOUT claiming a page identity (no logo/page_id).
+        # project, WITHOUT claiming a page identity (no logo).
         # Attribution gate (Rule 5): the ad's own text must name the
         # brand - a keyword search also returns ads for OTHER projects that
         # merely share locality words, and shipping those mixes competitors'
@@ -333,7 +333,6 @@ def _to_creatives(raw: dict) -> list[Creative]:
             last_seen=_unix_to_iso(end),
             is_active=bool(raw.get("is_active")),
             days_running=_days_running(start, end),
-            metrics={"estSpend": raw.get("spend") or 0},
         )
         for n, (card, video, image) in enumerate(with_assets)
     ]
@@ -387,5 +386,17 @@ def _to_creative(raw: dict) -> Creative:
         last_seen=_unix_to_iso(end),
         is_active=bool(raw.get("is_active")),
         days_running=days_running,
-        metrics={"estSpend": raw.get("spend") or 0},
     )
+
+
+def _unix_to_iso(ts: Any) -> str:
+    if not ts:
+        return ""
+    try:
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc).isoformat()
+    except (ValueError, OSError, TypeError):
+        return ""
+
+
+def _compact(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())

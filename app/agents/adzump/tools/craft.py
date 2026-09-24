@@ -10,7 +10,6 @@ modules contain rendering logic directly.
 from __future__ import annotations
 
 import logging
-import re
 from datetime import datetime, timezone
 
 from app.agents.adzump.models import CompetitorProfile
@@ -92,45 +91,6 @@ def render_competitors(
 # horizontally, so this is a payload cap, not a layout constraint.
 _RENDER_PER_COMPETITOR = 12
 
-# (metrics key, card label) - rendered in this order, zeros omitted.
-_CREATIVE_METRICS = [
-    ("impressions", "impressions"),
-    ("views", "views"),
-    ("likes", "likes"),
-    ("comments", "comments"),
-    ("shares", "shares"),
-]
-
-
-def _to_int(v) -> int:
-    """Coerce a vendor metric to an int; 0 on anything unparseable. The ad
-    library sends counts inconsistently - ints, floats, or strings like
-    '1,234', '10K', '1.2M', even ranges ('1K-5K'). A raw int() on those raises
-    and (via rerender_craft's swallow) would silently drop the whole panel, so
-    every count the render touches goes through here."""
-    if isinstance(v, bool):
-        return 0
-    if isinstance(v, (int, float)):
-        return int(v)
-    if not isinstance(v, str):
-        return 0
-    m = re.match(r"\s*(\d+(?:\.\d+)?)\s*([kmb])?", v.strip().replace(",", ""), re.I)
-    if not m:
-        return 0
-    mult = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000}.get(
-        (m.group(2) or "").lower(), 1)
-    return int(float(m.group(1)) * mult)
-
-
-def _fmt_count(n) -> str:
-    """1234 -> '1.2K', 2500000 -> '2.5M' - compact card-footer numbers."""
-    n = _to_int(n)
-    for cut, suffix in ((1_000_000, "M"), (1_000, "K")):
-        if n >= cut:
-            return f"{n / cut:.1f}".rstrip("0").rstrip(".") + suffix
-    return str(n)
-
-
 def _days_since(iso: str) -> int | None:
     """Whole days since an ISO timestamp; None when absent/unparseable."""
     try:
@@ -144,8 +104,8 @@ def _days_since(iso: str) -> int | None:
 
 def _creative_badges(c: dict) -> list[dict]:
     """Active/Paused status + days-running chips for one creative card.
-    Paused ads carry a last-seen chip - the ad library's crawl lags, so
-    "Paused" alone can't tell a fresh pause from months-old inventory."""
+    Paused ads carry a last-seen chip (Meta's end date), so a fresh pause
+    reads differently from months-old inventory."""
     badges = [
         {"label": "Active", "tone": "active"}
         if c.get("isActive") else {"label": "Paused", "tone": "paused"}
@@ -155,22 +115,10 @@ def _creative_badges(c: dict) -> list[dict]:
         if ago is not None:
             badges.append(
                 {"label": "seen today" if ago == 0 else f"seen {ago}d ago"})
-    days = _to_int(c.get("daysRunning"))
+    days = int(c.get("daysRunning") or 0)
     if days > 0:
         badges.append({"label": f"{days}d"})
     return badges
-
-
-def _creative_meta(c: dict) -> str:
-    """Compact non-zero metrics line ('1.2M impressions · 340 likes').
-    Empty when the vendor reported nothing - the card then shows no meta."""
-    metrics = c.get("metrics") or {}
-    parts = [
-        f"{_fmt_count(metrics[key])} {label}"
-        for key, label in _CREATIVE_METRICS
-        if _to_int(metrics.get(key)) > 0
-    ]
-    return " · ".join(parts[:3])
 
 
 def render_competitor_creatives(
@@ -184,7 +132,7 @@ def render_competitor_creatives(
 
     The one builder behind every panel render (`render_competitors`), so an
     on-demand fetch and a full rebuild draw byte-identical sections. Each card
-    carries status/days badges + a non-zero metrics line. Videos tile via
+    carries status/days badges. Videos tile via
     their poster still (flagged ▶) and click through to the PLAYABLE video
     (rehosted fileUrl, vendor URL fallback); creatives with no usable image
     are skipped. No-op when nothing is renderable.
@@ -214,9 +162,6 @@ def render_competitor_creatives(
         if caption:
             card["caption"] = caption[:120]
         card["badges"] = _creative_badges(c)
-        meta = _creative_meta(c)
-        if meta:
-            card["meta"] = meta
         cards.append(card)
         if len(cards) >= _RENDER_PER_COMPETITOR:
             break

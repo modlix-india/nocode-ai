@@ -78,7 +78,7 @@ class ConfigServerClient:
                             # Convert "ai.security.url" to nested dict
                             parts = key.split(".")
                             self._set_nested(config, parts[1:], value)
-                        # Shared adzump.* properties (e.g. adzump.adLibraryAPIKey in
+                        # Shared adzump.* properties (e.g. adzump.scrapeCreatorsAPIKey in
                         # application-default.yml) - kept under the "adzump" namespace.
                         elif key.startswith("adzump."):
                             self._set_nested(config, key.split("."), value)

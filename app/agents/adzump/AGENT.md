@@ -127,7 +127,7 @@ app/agents/adzump/
 │   ├── taxonomy.py           the category relevance gate (fails closed)
 │   ├── enrich.py             the EssenceAnalyst seam
 │   ├── sweep.py              repair sweep
-│   └── sources/              adlibrary, scrapecreators (vendor adapters)
+│   └── scrapecreators.py     the competitor-ad source (Meta Ad Library scrape)
 │
 ├── adapters/                 external platform clients
 │   ├── meta/                 client, accounts

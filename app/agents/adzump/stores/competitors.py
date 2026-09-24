@@ -348,7 +348,6 @@ def _creative_content(creative: Creative) -> dict:
         "verifiedAt": creative.verified_at,
         "winnerSignal": creative.winner_signal,
         "variants": creative.variants,
-        "metrics": creative.metrics,
         "renditions": [r.model_dump(by_alias=True) for r in creative.renditions],
     }
 
@@ -443,7 +442,6 @@ def _row_to_creative(cr: dict, asset: dict | None) -> Creative:
         height=height,
         aspectRatio=(width / height) if height else 0.0,
         durationSeconds=duration,
-        metrics=content.get("metrics", {}),
         essence=essence,
     )
 

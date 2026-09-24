@@ -13,8 +13,8 @@ repeat calls are cache hits and cost nothing. Misses/stale entries hit the
 source (rate-limited, metered), so we run competitors sequentially and never
 let one failure abort the batch.
 
-The source is injected (defaults to adlibrary) so a test drives the whole policy
-with no network, and a second vendor is a one-line swap.
+The source is injected (defaults to ScrapeCreators) so a test drives the whole
+policy with no network.
 """
 
 from __future__ import annotations
@@ -27,7 +27,6 @@ from datetime import datetime, timezone
 import httpx
 from typing import Awaitable, Callable
 
-from app.config import settings
 from app.agents.adzump import _uploads, stores
 from app.agents.adzump._shared import host_of, normalize_business_url, resolve_url
 from app.agents.adzump.creative_intelligence import freshness, taxonomy
@@ -40,12 +39,8 @@ from app.agents.adzump.creative_intelligence.models import (
     MAX_CREATIVES_PER_COMPETITOR,
     Rendition,
 )
-from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibrarySource
-from app.agents.adzump.creative_intelligence.sources.scrapecreators import (
+from app.agents.adzump.creative_intelligence.scrapecreators import (
     ScrapeCreatorsSource,
-)
-from app.agents.adzump.creative_intelligence.sources.base import (
-    AdIntelligenceSource,
     SourceFetch,
 )
 logger = logging.getLogger(__name__)
@@ -71,22 +66,7 @@ MAX_CONCURRENT_VERIFICATIONS = 6
 # competitor can't grow its record without limit.
 MAX_DROPPED_ENTRIES = 50
 
-_SOURCES = {"scrapecreators": ScrapeCreatorsSource, "adlibrary": AdLibrarySource}
-_default_source_instance: object | None = None
-
-
-def _default_source():
-    """The configured vendor (settings.ADS_INTEL_SOURCE), built once. Unknown
-    values fall back to scrapecreators with a warning - never a crash."""
-    global _default_source_instance
-    if _default_source_instance is None:
-        chosen = (settings.ADS_INTEL_SOURCE or "scrapecreators").lower()
-        source_cls = _SOURCES.get(chosen)
-        if source_cls is None:
-            logger.warning("ADS_INTEL_SOURCE=%r unknown, using scrapecreators", chosen)
-            source_cls = ScrapeCreatorsSource
-        _default_source_instance = source_cls()
-    return _default_source_instance
+_default_source = ScrapeCreatorsSource()
 
 
 def _campaign_country(ctx: dict) -> str:
@@ -120,7 +100,7 @@ def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
 
 async def creatives_for(
     *, key: str, name: str, ctx: dict, force: bool = False,
-    source: AdIntelligenceSource | None = None,
+    source: ScrapeCreatorsSource | None = None,
     enrich: EnrichCreatives | None = None,
 ) -> Competitor | None:
     """Return the stored ``Competitor`` for one competitor, fetching + storing from
@@ -145,7 +125,7 @@ async def creatives_for(
 
 async def _fetch_stage(
     *, key: str, names: list[str], ctx: dict, force: bool,
-    source: AdIntelligenceSource | None,
+    source: ScrapeCreatorsSource | None,
 ) -> tuple[SourceFetch | None, Competitor | None, list[str]]:
     """The rate-limited half: cache check + source fetch. Returns
     ``(fetched, prior, searched_names)`` - when ``fetched`` is None, ``prior``
@@ -166,7 +146,7 @@ async def _fetch_stage(
     was served the record built under 'Puravankara The Sound of Water' - a
     multi-project parent domain must accrete searches, never let the first
     project own the key for a whole TTL)."""
-    src = source or _default_source()
+    src = source or _default_source
 
     client_code, product_url = _product_scope(ctx)
     record = await stores.competitors.get_competitor(client_code, product_url, key)
@@ -195,7 +175,7 @@ async def _fetch_stage(
             got = await src.fetch(domain=search_domain, name=name,
                                   country=_campaign_country(ctx))
         except Exception as e:
-            # AdLibraryError, transport errors, bad JSON - ANY source failure
+            # ScrapeCreatorsError, transport errors, bad JSON - ANY source failure
             # for this name is logged; other names still search. All-fail
             # serves stale (the batch contract in the module docstring).
             logger.warning("creative_intelligence: source fetch failed key=%s "
@@ -209,7 +189,6 @@ async def _fetch_stage(
             fetched.creatives.extend(got.creatives)
             # Identity fields: first name that resolved them wins.
             fetched.logo_url = fetched.logo_url or got.logo_url
-            fetched.platform_ids = fetched.platform_ids or got.platform_ids
     if fetched is None:  # every name's fetch failed
         return None, record, []  # serve stale if we have it; else None
 
@@ -256,8 +235,8 @@ async def _process_stage(
     API. The record is built fully validated before the ONE store write, so a
     partially-verified record can never be observed (Rule 8)."""
     discovered = len(fetched.creatives)
-    # The vendor's raw hit count when the source reports it (scrapecreators
-    # does); a source that doesn't falls back to what it shipped.
+    # The vendor's raw hit count; an injected source that reports none (test
+    # fakes) falls back to what it shipped.
     searched = fetched.search_hits or discovered
     # The curated name, never the vendor's page name: the row is found by the
     # identity both writers share (live 2026-09-23: "Brigade Group" replaced
@@ -267,7 +246,6 @@ async def _process_stage(
         name=name,
         domain="" if key.startswith("name:") else host_of(key),
         logo_url=await _rehost_logo(fetched.logo_url, name, prior, ctx),
-        platform_ids=fetched.platform_ids,
         creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],
         # What this record's creatives can answer for (computed by the fetch
         # stage: union on an augment, this fetch's names on a full refresh).
@@ -507,7 +485,7 @@ def _dedupe_dropped(entries: list[dict]) -> list[dict]:
 
 async def creatives_for_all(
     competitors: list[CompetitorProfile], ctx: dict, *, force: bool = False,
-    source: AdIntelligenceSource | None = None,
+    source: ScrapeCreatorsSource | None = None,
     enrich: EnrichCreatives | None = None,
     on_resolved: Callable[[str, Competitor], Awaitable[None]] | None = None,
     on_stage: Callable[[str, str, str], Awaitable[None]] | None = None,
@@ -640,7 +618,7 @@ async def _rehost_logo(source_url: str, name: str, prior: Competitor | None,
 
 async def _attach_binaries(competitor: Competitor, ctx: dict) -> dict[str, tuple[bytes, str]]:
     """Rehost creative binaries into our file store so the library doesn't depend
-    on the source's (undocumented-TTL) URLs. For image/carousel/collection ads
+    on the source's signed, expiring URLs. For image/carousel/collection ads
     the asset itself is an image (-> fileUrl); for video ads BOTH the poster
     still (-> posterUrl) and the video file (-> fileUrl, size-capped - the
     craft click-through must keep playing after the vendor URL expires).

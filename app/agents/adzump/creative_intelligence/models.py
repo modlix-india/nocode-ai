@@ -1,8 +1,8 @@
 """The one shape for a market creative and a competitor.
 
-A single typed model carries a creative from the vendor adapter, through the
-store, to the craft renderer. There is no second grouped-dict vocabulary and no
-flatten step: an adapter emits ``Creative`` objects, the store persists
+A single typed model carries a creative from the ScrapeCreators mapping, through
+the store, to the craft renderer. There is no second grouped-dict vocabulary and
+no flatten step: scrapecreators.py emits ``Creative`` objects, the store persists
 ``model_dump(by_alias=True)`` (the camelCase DB record), and a read validates the
 stored dict straight back into the model. Aliases match the field names already
 in storage, so existing records parse with no migration.
@@ -29,7 +29,6 @@ MediaType = Literal["image", "video", "carousel", "collection"]
 FetchStatus = Literal["ok", "empty", "error"]
 
 SCHEMA_VERSION = 1
-SOURCE = "adlibrary.com"
 # Ceiling on creatives stored per competitor so one prolific advertiser can't
 # blow the Mongo document size limit; also the per-competitor fetch cap.
 MAX_CREATIVES_PER_COMPETITOR = 60
@@ -171,10 +170,9 @@ class Rendition(BaseModel):
 
 
 class Creative(BaseModel):
-    """One competitor ad creative. Vendor-agnostic: an adapter maps its raw
-    payload onto these fields, so nothing downstream knows which source it came
-    from. For videos ``source_asset_url`` is the video and ``poster_*`` the still;
-    for images the poster fields stay empty."""
+    """One competitor ad creative, mapped from Meta's raw ad by scrapecreators.py.
+    For videos ``source_asset_url`` is the video and ``poster_*`` the still; for
+    images the poster fields stay empty."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -182,7 +180,7 @@ class Creative(BaseModel):
     media_type: MediaType = Field(default="image", alias="mediaType")
 
     # Binary: rehosted into our Files store (fileUrl / posterUrl) vs the vendor's
-    # own (undocumented-TTL) URLs we fall back to until a rehost lands.
+    # own signed, expiring URLs we fall back to until a rehost lands.
     file_url: str = Field(default="", alias="fileUrl")
     source_asset_url: str = Field(default="", alias="sourceAssetUrl")
     poster_url: str = Field(default="", alias="posterUrl")
@@ -220,9 +218,6 @@ class Creative(BaseModel):
     poster_height: int = Field(default=0, alias="posterHeight")
     verified_at: str = Field(default="", alias="verifiedAt")
 
-    # Vendor-variable numeric bag (impressions/likes/spend/…); kept as a dict
-    # because which keys a source exposes differs per vendor.
-    metrics: dict[str, Any] = Field(default_factory=dict)
     essence: Essence | None = None
     # Alternate placement versions of THIS creative (grouped post-verify by
     # library._group_renditions); the UI shows one tile, the store writes one
@@ -235,9 +230,8 @@ class Creative(BaseModel):
         """Deterministic 'how proven is this creative' proxy - NO model call, and
         not a metric it doesn't have. Longevity is the signal: advertisers kill
         losers fast, so a long-running ad is a proven one. ``days_running`` is
-        adlibrary's ``days_count`` (confirm it means days-active, not days-since-
-        first-seen, before fully trusting the thresholds). ``is_active`` + the
-        metrics bag are available to refine this later."""
+        Meta's own start-to-end run length (via ScrapeCreators). ``is_active`` is
+        available to refine this later."""
         days = self.days_running or 0
         if days >= 90:
             return "evergreen"
@@ -260,7 +254,6 @@ class Competitor(BaseModel):
     name: str = ""
     aliases: list[str] = Field(default_factory=list)
     domain: str = ""
-    platform_ids: dict[str, Any] = Field(default_factory=dict, alias="platformIds")
     business_type: str = Field(default="", alias="businessType")
     location: str = ""
     pricing: str = ""
@@ -278,7 +271,6 @@ class Competitor(BaseModel):
     # 'Purva Sparkling Springs' without any search ever running for it).
     searched_names: list[str] = Field(default_factory=list, alias="searchedNames")
 
-    source: str = SOURCE
     last_fetched_at: str = Field(default="", alias="lastFetchedAt")
     # Raw ads the vendor search returned on the last fetch, BEFORE attribution,
     # caps, dedup, verify and gate - so 0 kept creatives out of 49 real ads

@@ -5,8 +5,8 @@ import asyncio
 import unittest
 from unittest import mock
 
-from app.agents.adzump.creative_intelligence.sources import scrapecreators
-from app.agents.adzump.creative_intelligence.sources.scrapecreators import (
+from app.agents.adzump.creative_intelligence import scrapecreators
+from app.agents.adzump.creative_intelligence.scrapecreators import (
     ScrapeCreatorsError,
     ScrapeCreatorsSource,
     _ads_of_the_advertiser,
@@ -170,7 +170,6 @@ class SearchPolicyTests(unittest.TestCase):
         self.assertEqual(self.calls[0]["country"], "IN")
         self.assertEqual(len(fetched.creatives), 1)
         self.assertEqual(fetched.logo_url, "https://cdn/logo.jpg")
-        self.assertEqual(fetched.platform_ids, {"page_id": "p1"})
 
     def test_no_search_type_param_reaches_the_api(self):
         captured: dict = {}
@@ -214,7 +213,6 @@ class SearchPolicyTests(unittest.TestCase):
         fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas X"))
         self.assertEqual(len(fetched.creatives), scrapecreators.MENTION_ADS_CAP)
         self.assertEqual(fetched.logo_url, "")
-        self.assertEqual(fetched.platform_ids, {})
         with self.subTest("no ad names the brand -> nothing ships"):
             source = self._source_with_pages([
                 {"searchResults": unrelated, "cursor": ""},

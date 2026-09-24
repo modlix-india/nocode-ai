@@ -90,20 +90,6 @@ class CompetitorCardsTests(unittest.TestCase):
                 [{"mediaType": "video", "posterUrl": "p.jpg", "fileUrl": "v.mp4"}], 1, 1)
             card = _carousel_cards(children)[0]
             self.assertEqual((card["url"], card["thumb_url"]), ("v.mp4", "p.jpg"))
-        with self.subTest("string/suffixed vendor metrics render, never crash the panel"):
-            # regression B2: int('10K') threw and the creatives vanished from the panel
-            children = []
-            render_competitor_creatives(children, [{
-                "mediaType": "image", "fileUrl": "f.jpg", "daysRunning": "112",
-                "metrics": {"impressions": "10K", "likes": "1,234", "views": "1K-5K"},
-            }], 1, 0)
-            card = _carousel_cards(children)[0]
-            self.assertEqual(card["url"], "f.jpg")
-            self.assertTrue(card["meta"])  # the metrics survive coercion
-        with self.subTest("zero metrics -> no meta line"):
-            children = []
-            render_competitor_creatives(children, [_img(1)], 1, 0)
-            self.assertNotIn("meta", _carousel_cards(children)[0])
         with self.subTest("payload cap; no-usable-image is a noop"):
             children = []
             render_competitor_creatives(children, [_img(i) for i in range(20)], 20, 4)

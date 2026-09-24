@@ -77,5 +77,5 @@ def dedupe_perceptual(creatives: list[Creative]) -> list[Creative]:
 
 def _signal(c: Creative) -> tuple[int, int]:
     """Rank a creative for 'which duplicate to keep': active beats paused, then
-    more impressions."""
-    return (int(c.is_active), int(c.metrics.get("impressions") or 0))
+    the longer-running one (the longevity signal winner_signal reads)."""
+    return (int(c.is_active), c.days_running or 0)

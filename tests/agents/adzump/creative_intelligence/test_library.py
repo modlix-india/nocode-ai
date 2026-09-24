@@ -14,8 +14,10 @@ from unittest import mock
 
 from app.agents.adzump.creative_intelligence import library, taxonomy
 from app.agents.adzump.creative_intelligence.models import Competitor, Creative, Essence
-from app.agents.adzump.creative_intelligence.sources.adlibrary import AdLibraryError
-from app.agents.adzump.creative_intelligence.sources.base import SourceFetch
+from app.agents.adzump.creative_intelligence.scrapecreators import (
+    ScrapeCreatorsError,
+    SourceFetch,
+)
 from app.agents.adzump.models import CompetitorProfile
 
 
@@ -152,7 +154,7 @@ class LibraryTests(unittest.TestCase):
                 self.assertEqual(rec.fetch_status, "ok")
                 library.stores.competitors.sync_competitor.assert_awaited()
         # ANY source failure serves stale - never a raise out of creatives_for.
-        for name, exc in [("vendor", AdLibraryError("boom")),
+        for name, exc in [("vendor", ScrapeCreatorsError("boom")),
                           ("transport", ConnectionError("reset")),
                           ("bad json", ValueError("not json"))]:
             with self.subTest(failure=name):
@@ -192,18 +194,6 @@ class LibraryTests(unittest.TestCase):
         with self.subTest("no key -> None"):
             self.assertIsNone(asyncio.run(library.creatives_for(
                 key="", name="x", ctx={}, source=FakeSource())))
-
-    def test_default_source_selection(self):
-        rows = [("scrapecreators", library.ScrapeCreatorsSource),
-                ("adlibrary", library.AdLibrarySource),
-                ("bogus", library.ScrapeCreatorsSource)]  # unknown -> default
-        for value, source_cls in rows:
-            with self.subTest(value):
-                library._default_source_instance = None
-                with mock.patch.object(library.settings, "ADS_INTEL_SOURCE", value):
-                    self.assertIsInstance(library._default_source(), source_cls)
-        library._default_source_instance = None
-        self.addCleanup(lambda: setattr(library, "_default_source_instance", None))
 
     def test_essence_ingest_wiring(self):
         with self.subTest("enrich sees only survivors; essences land in the ONE write"):
@@ -272,7 +262,7 @@ class LibraryTests(unittest.TestCase):
             library.stores.competitors.sync_competitor.assert_awaited()
         for name, stored, source in [
             ("fresh hit", _record(age_days=1), FakeSource(creatives=[_ad("a1")])),
-            ("source failure", _record(age_days=99), FakeSource(exc=AdLibraryError("x"))),
+            ("source failure", _record(age_days=99), FakeSource(exc=ScrapeCreatorsError("x"))),
             ("empty fetch", None, FakeSource(creatives=[])),
         ]:
             with self.subTest(no_vision_on=name):
@@ -472,10 +462,8 @@ class LibraryTests(unittest.TestCase):
             by_id = {c.creative_id: c for c in rec.creatives}
             self.assertEqual(by_id["junk"].essence.angle, "recovered")
         with self.subTest("failed augment search serves the stored record"):
-            from app.agents.adzump.creative_intelligence.sources.adlibrary import (
-                AdLibraryError as Err)
             rec = self._run(stored=_sound_of_water_record(),
-                            source=FakeSource(exc=Err("boom")))
+                            source=FakeSource(exc=ScrapeCreatorsError("boom")))
             self.assertEqual([c.creative_id for c in rec.creatives], ["junk"])
         with self.subTest("full stale refresh RESETS the name claims"):
             # a refresh discards other names' ads - keeping their claims would

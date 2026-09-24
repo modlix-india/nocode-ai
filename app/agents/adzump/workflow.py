@@ -287,9 +287,8 @@ def _prescribe_competitor_creatives(actx: AdzumpContext) -> str:
             "`fetch_competitor_creatives`. (These are instructions to CALL "
             "tools - never type tool-call syntax into your reply.)"
         )
-    # "recent", not "running" - the ad library's crawl lags, so what we
-    # show may include recently-paused ads (each card carries its own
-    # Active/Paused + last-seen chips).
+    # "recent", not "running" - the search returns recently-paused ads too
+    # (each card carries its own Active/Paused + last-seen chips).
     question = (
         "Want to see your competitors' recent ads?"
         if actx.competitor_names

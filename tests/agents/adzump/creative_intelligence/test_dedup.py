@@ -73,9 +73,9 @@ _IMAGEHASH_PINS = [
 ]
 
 
-def _c(cid, content="", ph="", active=False, impr=0):
+def _c(cid, content="", ph="", active=False, days=0):
     return Creative(creative_id=cid, content_hash=content, perceptual_hash=ph,
-                    is_active=active, metrics={"impressions": impr})
+                    is_active=active, days_running=days)
 
 
 class DedupTests(unittest.TestCase):
@@ -104,7 +104,7 @@ class DedupTests(unittest.TestCase):
             self.assertFalse(phash.is_near_duplicate("", ONES))
         with self.subTest("cascade: exact + near collapse; distinct + hashless kept"):
             out = dedupe([
-                _c("1", "AA", ONES, active=True, impr=10),
+                _c("1", "AA", ONES, active=True, days=10),
                 _c("2", "AA", ONES),                 # exact dup of 1 (content_hash)
                 _c("3", "BB", ONES_1BIT),            # near-dup of 1 (pHash)
                 _c("4", "CC", ZEROS, active=True),   # distinct - NEVER dropped
@@ -112,8 +112,11 @@ class DedupTests(unittest.TestCase):
             ])
             self.assertEqual(sorted(c.creative_id for c in out), ["1", "4", "5"])
         with self.subTest("exact tier keeps the higher-signal representative"):
-            out = dedupe_exact([_c("a", "H", impr=10), _c("b", "H", active=True, impr=1)])
-            self.assertEqual([c.creative_id for c in out], ["b"])  # active beats impressions
+            for pair, kept in [
+                ((_c("a", "H", days=40), _c("b", "H", active=True, days=1)), "b"),  # active first
+                ((_c("a", "H", days=3), _c("b", "H", days=40)), "b"),  # then the longer run
+            ]:
+                self.assertEqual([c.creative_id for c in dedupe_exact(list(pair))], [kept])
         with self.subTest("creative_id tier: a re-run updates, never duplicates"):
             first = _c("same-id", "H1", "")
             fresher = _c("same-id", "H2", "", active=True)

@@ -307,7 +307,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
 fetch_competitor_creatives = ToolDefinition(
     name="fetch_competitor_creatives",
     description=(
-        "Fetch competitor ad creatives (image/video thumbnails, ad copy, metrics, "
+        "Fetch competitor ad creatives (image/video thumbnails, ad copy, "
         "extracted essence) to use as creative inspiration. META flow only, and "
         "gated on consent: call ONLY after the user says yes to seeing competitor "
         "ads - a stored yes to the offer, or a yes in their latest message "
