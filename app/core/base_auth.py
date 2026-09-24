@@ -78,7 +78,12 @@ async def _authenticate(
         client_code=ctx_auth.clientCode,
         client_id=(ctx_auth.user.clientId if ctx_auth.user else 0) or 0,
         user_id=(ctx_auth.user.id if ctx_auth.user else 0) or 0,
-        app_code=access_app_code,
+        # NOT the access app. `app_code` is the app being built, and the only
+        # things that know it are the chat request (`app_code` in the body) and
+        # a resumed session's stored context. Defaulting it to the product the
+        # caller happens to be using made every app-less conversation open
+        # grounded in appbuilder or sitezump itself.
+        app_code="",
         access_app_code=access_app_code,
         client_level_type=(ctx_auth.clientLevelType or ""),
         user_name=_display_name(ctx_auth),

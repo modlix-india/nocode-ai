@@ -5,8 +5,10 @@ Agentic AI service for building no-code applications through conversation.
 Integrates with nocode-saas via Eureka service discovery and Config Server.
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -141,6 +143,17 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
 
+    # 6. Browser pool maintenance. Chromium is shared per worker and handed out
+    # as contexts; this timer reaps idle drive_page sessions and then closes
+    # browsers left with no contexts. It has to run on a timer rather than
+    # inside a tool call: a worker whose conversation ended stops making calls,
+    # which is exactly how it used to strand browsers for hours.
+    try:
+        from app.services import browser_pool
+        browser_pool.start_maintenance()
+    except Exception:
+        logger.exception("Failed to start browser pool maintenance")
+
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
     logger.info("=" * 60)
@@ -173,9 +186,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing LeadZump SaasClient: {e}")
 
-    # Close persistent Playwright sessions. The idle reaper only runs inside a
-    # tool call, so a worker that stops taking calls (redeploy, restart, OOM)
-    # would otherwise orphan its Chromium children indefinitely.
+    # Close persistent Playwright sessions, then tear the pool down. A worker
+    # that exits (redeploy, restart, OOM kill) would otherwise orphan its
+    # Chromium children: nothing outside this process reaps them.
     try:
         from app.agents.appbuilder.tools.modlix.visuals_browser import (
             close_all_browser_sessions,
@@ -185,6 +198,14 @@ async def lifespan(app: FastAPI):
             logger.info(f"Closed {closed} browser session(s)")
     except Exception as e:
         logger.error(f"Error closing browser sessions: {e}")
+
+    try:
+        from app.services import browser_pool
+        browsers = await browser_pool.close_all()
+        if browsers:
+            logger.info(f"Closed {browsers} shared browser(s)")
+    except Exception as e:
+        logger.error(f"Error closing browser pool: {e}")
 
 
     from app.core.stream_registry import stop_subscriber
@@ -242,6 +263,40 @@ app.add_middleware(RateLimitMiddleware)
 # Add request deduplication middleware (prevents duplicate concurrent requests)
 app.add_middleware(RequestDeduplicationMiddleware)
 
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Answer errors in the shape the platform's own toast can read.
+
+    Every Spring service in Modlix answers a failure with a FLAT body:
+
+        {"message": "...", "debugMessage": "...", "exceptionId": ..., "stackTrace": ...}
+
+    and the UI's toast renderer is built for exactly that — `Messages.tsx:103`
+    reads `msg.message` whenever the error body is an object. FastAPI's default
+    is `{"detail": ...}`, which has no `message` key, so **every HTTP error this
+    service has ever returned rendered as a completely blank toast.** Not a
+    wrong message: an empty box with an icon in it.
+
+    Nothing noticed because the agent surfaces is SSE — its errors arrive as
+    stream events and never touch this path. The blueprint routes are the first
+    plain HTTP ones a person presses a button to reach, and the button that
+    exposed it was Generate on an empty wallet: a real 402 carrying a real
+    sentence, shown as nothing at all.
+
+    `detail` is kept exactly as it was, so any existing client reading it is
+    unaffected; `message` is added beside it. When `detail` is already a dict
+    that names its own message (the validator refusals do), that one is used
+    rather than stringifying the dict.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict):
+        message = str(detail.get("message") or "").strip() or "The request was refused."
+        body: dict = {**detail, "detail": detail, "message": message}
+    else:
+        body = {"detail": detail, "message": str(detail)}
+    return JSONResponse(status_code=exc.status_code, content=body, headers=exc.headers)
+
 # API prefix - matches gateway routing: /api/ai/**
 API_PREFIX = "/api/ai"
 
@@ -271,6 +326,11 @@ app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Lear
 # Lore: curated, growing knowledge about each application we build.
 from app.services.lore.router import router as lore_router
 app.include_router(lore_router, prefix=f"{API_PREFIX}/lore", tags=["Lore"])
+
+# Blueprint: the plan for an application — what it is MEANT to be. Read and
+# written by the BlueprintEditor board and by SiteZump's AI Studio page.
+from app.services.blueprint.router import router as blueprint_router
+app.include_router(blueprint_router, prefix=f"{API_PREFIX}/blueprint", tags=["Blueprint"])
 
 # Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
 # Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.

@@ -157,10 +157,53 @@ class ContextManager:
                             MODEL, INPUT_TOKENS_USED
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ON DUPLICATE KEY UPDATE
-                            ASSISTANT_SUMMARY = VALUES(ASSISTANT_SUMMARY),
-                            TOOL_CALLS_JSON = VALUES(TOOL_CALLS_JSON),
-                            MODEL = VALUES(MODEL),
-                            INPUT_TOKENS_USED = VALUES(INPUT_TOKENS_USED)
+                            -- The instruction is updated, not just written
+                            -- once: a turn can be steered (see
+                            -- AgentEventStream.push_steer), and the row is
+                            -- created by the first incremental save, before
+                            -- any steer has arrived. Leaving it out meant the
+                            -- saved transcript showed only what the user
+                            -- opened with while the model had answered
+                            -- something else. NULLIF guards the other
+                            -- direction: a later write with nothing in it
+                            -- must not erase what is already there.
+                            USER_INSTRUCTION = COALESCE(
+                                NULLIF(VALUES(USER_INSTRUCTION), ''),
+                                USER_INSTRUCTION
+                            ),
+                            -- The summary is the one field a later write is
+                            -- always allowed to replace: it is the turn's
+                            -- verdict, and "[Stopped by user]" arriving over a
+                            -- half-written answer is the point.
+                            ASSISTANT_SUMMARY = COALESCE(
+                                NULLIF(VALUES(ASSISTANT_SUMMARY), ''),
+                                ASSISTANT_SUMMARY
+                            ),
+                            -- These three are only ever added to, never
+                            -- retracted, so a write that does not carry them
+                            -- must leave what is already there alone.
+                            --
+                            -- BaseAgent's cancellation path calls
+                            -- persist_turn(user, "[Stopped by user]", None)
+                            -- with no tool calls and no model, and unguarded
+                            -- assignment meant that NULL landed on top of
+                            -- everything persist_turn_incremental had saved.
+                            -- A cancelled turn therefore erased the partial
+                            -- progress that incremental saves exist to keep,
+                            -- precisely in the case they were written for.
+                            TOOL_CALLS_JSON = COALESCE(
+                                VALUES(TOOL_CALLS_JSON), TOOL_CALLS_JSON
+                            ),
+                            MODEL = COALESCE(VALUES(MODEL), MODEL),
+                            -- An estimate of what the turn fed the model, which
+                            -- only grows. The cancel write sees just the
+                            -- instruction and the stop marker, so plain
+                            -- assignment reported a four-minute turn as 14
+                            -- tokens.
+                            INPUT_TOKENS_USED = GREATEST(
+                                VALUES(INPUT_TOKENS_USED),
+                                COALESCE(INPUT_TOKENS_USED, 0)
+                            )
                         """,
                         (
                             session_id,

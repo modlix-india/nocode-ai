@@ -327,14 +327,24 @@ class SessionManager:
             return False
 
     async def update_session_context(
-        self, session_id: str, context_json: str, user_id: Optional[int] = None
+        self,
+        session_id: str,
+        context_json: str,
+        user_id: Optional[int] = None,
+        app_code: Optional[str] = None,
     ) -> bool:
-        """Update session context JSON.
+        """Update session context JSON, and the app the session is about.
 
         Args:
             session_id: Session ID
             context_json: JSON-serialized context string
             user_id: User ID for updated_by
+            app_code: The app this session is working in, when known. The row is
+                created before the first tool call, so a conversation that opens
+                with no app and then builds one would otherwise stay filed under
+                nothing and never appear in that app's chat list. Blank is
+                ignored rather than written: losing the app on a later save
+                would be worse than a stale one.
 
         Returns:
             True if successful
@@ -345,14 +355,24 @@ class SessionManager:
         try:
             async with get_connection() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(
-                        """
-                        UPDATE ai_tracking_sessions
-                        SET CONTEXT_JSON = %s, UPDATED_BY = %s
-                        WHERE SESSION_ID = %s
-                        """,
-                        (context_json, user_id, session_id)
-                    )
+                    if app_code:
+                        await cursor.execute(
+                            """
+                            UPDATE ai_tracking_sessions
+                            SET CONTEXT_JSON = %s, APP_CODE = %s, UPDATED_BY = %s
+                            WHERE SESSION_ID = %s
+                            """,
+                            (context_json, app_code, user_id, session_id)
+                        )
+                    else:
+                        await cursor.execute(
+                            """
+                            UPDATE ai_tracking_sessions
+                            SET CONTEXT_JSON = %s, UPDATED_BY = %s
+                            WHERE SESSION_ID = %s
+                            """,
+                            (context_json, user_id, session_id)
+                        )
                     return cursor.rowcount > 0
 
         except Exception as e:

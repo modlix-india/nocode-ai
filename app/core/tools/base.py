@@ -170,17 +170,26 @@ class ToolResult:
             return []
         blocks: list[dict] = []
 
+        from ._image_guard import sanitize_image_b64
+
         def _push(b64: str, mime: str | None) -> None:
             if not isinstance(b64, str) or not b64:
                 return
             if len(blocks) >= self.MAX_IMAGE_BLOCKS:
                 return
+            # An image over the provider's per-edge cap does not just fail this
+            # call: it lands in the history and every later request in the
+            # session fails with it. Shrink it, or drop it if it will not decode.
+            safe = sanitize_image_b64(b64, mime)
+            if safe is None:
+                return
+            safe_b64, safe_mime = safe
             blocks.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
-                    "media_type": (mime or "image/png"),
-                    "data": b64,
+                    "media_type": safe_mime,
+                    "data": safe_b64,
                 },
             })
 

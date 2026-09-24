@@ -2,7 +2,7 @@
 --
 -- A competitor's identity is its canonical website (https://host/path - project
 -- pages on one developer site stay separate), else its name while no website is
--- known. V17 keyed rows by name only and stored two shapes in `url` (the curated
+-- known. V19 keyed rows by name only and stored two shapes in `url` (the curated
 -- page URL vs the ads writer's bare host or "name:<slug>"), so the ads writer
 -- created a second row under the vendor's page name ("Brigade Group") while the
 -- curated "Brigade Avalon" row stayed pending.

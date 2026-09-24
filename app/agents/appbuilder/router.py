@@ -10,7 +10,7 @@ import logging
 from typing import Any, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.base_auth import require_auth_context
 from app.core.base_router import (
@@ -19,7 +19,10 @@ from app.core.base_router import (
     create_common_routes,
     stream_agent_response,
 )
+from app.core import run_manager
 from app.core.session import BaseSession, AuthContext
+from app.core.tools.draft_registry import DraftScope, to_scope
+from app.services.chat_attachments import store_chat_attachments
 from app.services.session_manager import get_session_manager
 from app.services.security import ALLOWED_AI_APPS
 
@@ -35,6 +38,18 @@ def set_appbuilder_agent(agent) -> None:
     """Set the AppBuilderAgent instance (called from main.py lifespan)."""
     global _agent
     _agent = agent
+
+
+def get_appbuilder_agent():
+    """The one AppBuilderAgent this process built, or None if it failed to.
+
+    There is exactly one, made during startup with the component catalogue, the
+    API catalogue and a loaded context — about 10K tokens of rendered prefix that
+    is computed once and cached for the life of the process. Anything that needs
+    to author a page uses THIS one; a second instance would re-download both
+    catalogues and then disagree with the first about what components exist.
+    """
+    return _agent
 
 
 async def require_ai_auth_context(
@@ -118,12 +133,21 @@ class ChatRequest(BaseModel):
     # normally. A caller that sends nothing (the plain chat page) gets exactly the
     # behaviour it always had.
     open_drafts: Optional[List[OpenDraft]] = None
-    # Send definition writes to the app's draft surface instead of live, so the
-    # user gets a reviewable copy and the agent can screenshot its own work.
-    # Off by default: turning it on silently would change where every existing
-    # caller's edits land, and the agent degrades to live writes anyway on a
-    # deployment that has no draft surface.
-    draft_mode: bool = False
+    # How much of this turn's definition writes go to the app's draft surface
+    # instead of live, so the user gets a reviewable copy and the agent can
+    # screenshot its own work. One of LIVE, DRAFT, PAGE_ONLY_DRAFT.
+    #
+    # Defaults to DRAFT, and anything unrecognised also reads as DRAFT, so live
+    # writing has to be asked for by name. A caller that gets the spelling wrong
+    # ends up with work it can review and publish, which is recoverable; the
+    # other default hands it a live change it never agreed to. The agent degrades
+    # to live writes anyway on a deployment that has no draft surface.
+    draft_mode: DraftScope = DraftScope.DRAFT
+
+    @field_validator("draft_mode", mode="before")
+    @classmethod
+    def _coerce_draft_mode(cls, v: Any) -> DraftScope:
+        return to_scope(v)
 
 
 class TemplateAiRequest(BaseModel):
@@ -262,7 +286,8 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
         session.context["app_code"] = body.app_code
     if body.editor_context:
         session.context["editor_context"] = body.editor_context
-    session.context["draft_mode"] = body.draft_mode
+    # The plain string, not the enum: session.context is persisted to CONTEXT_JSON.
+    session.context["draft_mode"] = body.draft_mode.value
     if body.open_drafts:
         # Kept as plain dicts on the session so the agent can build the registry
         # when it has the event stream in hand. The documents themselves never go
@@ -286,6 +311,37 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
             await get_session_manager().update_session_title(
                 session.session_id, title, auth.user_id
             )
+
+    if body.attachments:
+        # Asked before anything is written, because `start_run` below answers a
+        # second concurrent run with a 409 — and by then we would already have
+        # stored these files against turn N+1, which is the turn the run that is
+        # ALREADY going is about to write. `start_run` keeps its own check as
+        # the authoritative one; this only stops the write that precedes it.
+        if await run_manager.is_run_live(session.session_id):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "A run is already in progress for this session",
+                    "session_id": session.session_id,
+                },
+            )
+        try:
+            # `client_code` comes off the verified AuthContext and never off the
+            # body: the files endpoint behind this is permitAll inside the
+            # cluster, so this is the only thing deciding whose storage is
+            # written.
+            await store_chat_attachments(
+                body.attachments,
+                session_id=session.session_id,
+                turn_number=session.next_turn_number(),
+                client_code=auth.client_code,
+                access_app_code=auth.access_app_code,
+                headers=auth.to_headers(),
+            )
+        except Exception:  # noqa: BLE001
+            # Keeping a copy is worth strictly less than answering the user.
+            logger.warning("Could not store chat attachments", exc_info=True)
 
     image_blocks = build_image_blocks(body.attachments, _agent._provider_name) if body.attachments else None
     return await stream_agent_response(_agent, body.message, session, image_blocks, model_override=body.model)

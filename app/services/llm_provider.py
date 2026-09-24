@@ -6,7 +6,7 @@ LLM Provider abstraction for supporting multiple LLM backends.
 Supports:
 - Anthropic (Claude): claude-haiku-4-5, claude-sonnet-4
 - OpenAI (GPT): gpt-4o-mini, gpt-4o
-- DeepSeek: deepseek-chat (V3)
+- DeepSeek: deepseek-flash (V4.1-Flash)
 
 Usage:
     from app.services.llm_provider import get_llm_provider
@@ -1386,11 +1386,18 @@ class _StreamError:
         self.exc = exc
 
 
-# DeepSeek model ids that accept image input. The text-only chat models
-# (deepseek-v4-pro / deepseek-v4-flash) reject `image_url` content parts, so
-# vision cannot be a class-wide flag on DeepSeekProvider the way it is on
-# MiniMax — it has to be decided per configured model.
+# DeepSeek model ids that accept image input. `deepseek-v4-pro` is text-only and
+# rejects `image_url` content parts, so vision cannot be a class-wide flag on
+# DeepSeekProvider the way it is on MiniMax — it has to be decided per model.
+#
+# The two legacy flash ids are still listed because DeepSeek still accepts them
+# and now serves both from `deepseek-flash`, which has vision. Leaving
+# `deepseek-v4-flash` out would have this report no vision for a model that in
+# fact has it, and silently reroute screenshots through a Gemini description
+# nobody needs to pay for.
 _DEEPSEEK_VISION_MODELS: frozenset[str] = frozenset({
+    "deepseek-flash",
+    "deepseek-v4-flash",
     "deepseek-v4-flash-vision-exp",
 })
 
@@ -1426,7 +1433,7 @@ def appbuilder_vision_capable() -> bool:
     the tool result (native vision) and paying Gemini to describe it in text.
     Resolves capability from the model, not just the provider name, so a
     vision-capable model on an otherwise text-only provider
-    (``deepseek-v4-flash-vision-exp``) gets the native path.
+    (``deepseek-flash``) gets the native path.
 
     Settings-only by design — no provider is constructed, because callers
     include module-level tool-registry filtering that runs before the config
@@ -1486,17 +1493,6 @@ def _openai_compatible_usage(usage: Any) -> dict[str, int]:
         "cache_creation_input_tokens": 0,  # DeepSeek's cache is automatic; no explicit writes
         "cache_read_input_tokens": cache_read,
     }
-
-
-def _openai_compatible_stop_reason(finish_reason: str | None) -> str:
-    """OpenAI-style ``finish_reason`` in the Anthropic vocabulary the agent loop
-    reads. "length" must stay max_tokens: read as end_turn it hid every turn
-    that spent its whole output budget reasoning and ended with nothing."""
-    if finish_reason == "tool_calls":
-        return "tool_use"
-    if finish_reason == "length":
-        return "max_tokens"
-    return "end_turn"
 
 
 def _as_openai_image_part(block: dict) -> dict | None:
@@ -1615,6 +1611,25 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
         })
 
 
+# OpenAI-compatible `finish_reason` → the Anthropic-style `stop_reason` the
+# agent loop switches on. "length" must NOT fold into "end_turn": a response cut
+# off at the output ceiling is not a finished one, and this string is the loop's
+# only signal that the turn should be resumed rather than handed back to the
+# user. Folding it lost every truncated turn silently — prod session
+# HHARS1_984fdbf5 died mid-sentence 8 times in 19 turns, each one read as "the
+# model is done", so the user saw a plan break off and had to type "continue".
+_OAI_STOP_REASONS = {
+    "tool_calls": "tool_use",
+    "length": "max_tokens",
+    "stop": "end_turn",
+}
+
+
+def _stop_reason_from_finish(finish_reason: str | None) -> str:
+    """Map one OpenAI-compatible finish_reason, defaulting to "end_turn"."""
+    return _OAI_STOP_REASONS.get(finish_reason or "", "end_turn")
+
+
 class DeepSeekProvider(LLMProvider):
     """DeepSeek provider — OpenAI-compatible Chat Completions API.
 
@@ -1655,7 +1670,7 @@ class DeepSeekProvider(LLMProvider):
         Overrides the base class attribute with a per-model check: the
         text-only V4 chat models reject the `image_url` parts that
         `_append_user_list_content` emits, while
-        ``deepseek-v4-flash-vision-exp`` reads them natively. Keyed on the
+        ``deepseek-flash`` reads them natively. Keyed on the
         tier the agent actually runs (``AGENT_MODEL_TIER``).
         """
         tier = getattr(self.settings, "AGENT_MODEL_TIER", "balanced") or "balanced"
@@ -1835,11 +1850,13 @@ class DeepSeekProvider(LLMProvider):
                     "input": json_lib.loads(tc.function.arguments),
                 })
 
+        stop_reason = _stop_reason_from_finish(choice.finish_reason)
+
         result: Dict[str, Any] = {
             "content": content_blocks,
             "usage": _openai_compatible_usage(response.usage),
             "model": model,
-            "stop_reason": _openai_compatible_stop_reason(choice.finish_reason),
+            "stop_reason": stop_reason,
         }
 
         # Extract reasoning_content for thinking mode
@@ -1860,6 +1877,17 @@ class DeepSeekProvider(LLMProvider):
         """Stream completion via Chat Completions API (OpenAI-compatible)."""
         import json as json_lib
         model = self.get_model(model_tier)
+
+        # The thinking floor was applied on `create_completion_with_tools` only,
+        # and the agent loop runs HERE — so the tier that spends part of its
+        # budget on reasoning was the one path that never got the headroom for
+        # it. Same floor, same reason: reasoning_content is billed as output and
+        # comes out of this ceiling, so a caller's ordinary budget can be gone
+        # before the first token of the answer.
+        effective_max_tokens = (
+            max(max_tokens, self._THINKING_MIN_MAX_TOKENS)
+            if self._is_thinking_tier(model_tier) else max_tokens
+        )
 
         sys_text = flatten_system_blocks(system_prompt)
 
@@ -1907,7 +1935,7 @@ class DeepSeekProvider(LLMProvider):
         def _run_sync_stream():
             try:
                 stream = self.client.chat.completions.create(
-                    model=model, max_tokens=max_tokens,
+                    model=model, max_tokens=effective_max_tokens,
                     messages=full_messages,
                     tools=openai_tools if openai_tools else None,
                     stream=True,
@@ -1975,7 +2003,7 @@ class DeepSeekProvider(LLMProvider):
                     if tc.function and tc.function.arguments:
                         tool_call_buffer[idx]["arguments"] += tc.function.arguments
             if finish_reason:
-                final_stop_reason = _openai_compatible_stop_reason(finish_reason)
+                final_stop_reason = _stop_reason_from_finish(finish_reason)
                 for idx, tc_data in tool_call_buffer.items():
                     if tc_data["arguments"]:
                         yield StreamChunk(type="tool_input_delta",

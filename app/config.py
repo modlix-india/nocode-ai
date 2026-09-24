@@ -60,11 +60,11 @@ class Settings(BaseSettings):
 
     # Context limits for conversation tracking (reporting/metadata only — the
     # agent loop does NOT trim on this). 48000 dated from the 64K-context
-    # DeepSeek era; 112000 assumed a 128K floor. DeepSeek V4 (pro, flash and
-    # flash-vision-exp alike) documents a 1M window, so report against that.
-    # The output reservation the old value subtracted is noise at this scale
-    # (AGENT_MAX_TOKENS is ~1.6% of the window).
-    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek V4: 1M context window
+    # DeepSeek era; 112000 assumed a 128K floor. Both current DeepSeek models
+    # (`deepseek-flash` and `deepseek-v4-pro`) document a 1M window, so report
+    # against that. The output reservation the old value subtracted is noise at
+    # this scale (AGENT_MAX_TOKENS is ~1.6% of the window).
+    CONTEXT_LIMIT_DEFAULT: int = 1_000_000  # DeepSeek: 1M context window
     
     # LLM Provider Selection
     # Options: "anthropic", "openai", or "deepseek"
@@ -86,14 +86,21 @@ class Settings(BaseSettings):
     # DeepSeek Settings
     # Can be overridden by config server: ai.secrets.deepSeekAPIKey
     DEEPSEEK_API_KEY: str = ""
-    DEEPSEEK_MODEL_FAST: str = "deepseek-v4-flash"   # DeepSeek V4 Flash (cheap tier)
-    # DeepSeek V4 Flash Vision (experimental) — the only DeepSeek model that
-    # accepts image input, so the AppBuilder can read its own screenshots
+    # `deepseek-flash` is DeepSeek-V4.1-Flash: 1M context, 384K max output, and
+    # it accepts image input, so the AppBuilder reads its own screenshots
     # natively instead of paying for a Gemini text description of each one.
-    # See _DEEPSEEK_VISION_MODELS in app/services/llm_provider.py: swapping this
-    # back to a text-only model (deepseek-v4-pro / -flash) automatically turns
-    # the multimodal tool_result path back off.
-    DEEPSEEK_MODEL_BALANCED: str = "deepseek-v4-flash-vision-exp"
+    #
+    # Both tiers name the same model because both legacy ids we used to set here
+    # -- `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` -- are retired
+    # and already served by this one at Flash pricing. Keeping two spellings of
+    # one model only hid that the "cheap" tier had been vision-capable all along.
+    # The remaining separate model, `deepseek-v4-pro`, is dearer and text-only.
+    #
+    # See _DEEPSEEK_VISION_MODELS in app/services/llm_provider.py: pointing the
+    # balanced tier at a text-only model turns the multimodal tool_result path
+    # back off on its own.
+    DEEPSEEK_MODEL_FAST: str = "deepseek-flash"
+    DEEPSEEK_MODEL_BALANCED: str = "deepseek-flash"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
@@ -123,6 +130,52 @@ class Settings(BaseSettings):
     # export/import etc.). Must be set per env; if empty the admin routes
     # return 503 — safer than allowing unauthenticated access.
     ADMIN_TOKEN: str = ""
+
+    # ── Headless browser pool (app/services/browser_pool) ──────────────
+    # Chromium is shared per worker process and handed out as contexts, so a
+    # render costs a ~216 MB renderer instead of a ~595 MB browser tree.
+    #
+    # SIZING. Every number here is PER GUNICORN WORKER, and we run four, so the
+    # cluster ceiling is 4x what you read. A conversation is pinned to the
+    # worker that accepted its SSE stream and holds at most one tab per app, so
+    # N concurrent users spread over 4 workers means roughly N/4 sessions per
+    # worker -- but the kernel balances accepts loosely, so assume a worker can
+    # land noticeably more than its share.
+    #
+    # Rough budget: a tab is ~216 MB, a browser adds ~379 MB of fixed overhead
+    # while it is alive, and browsers close after BROWSER_IDLE_TTL_SECONDS with
+    # no tabs. Defaults below are sized for ~15 concurrent dev users:
+    # 5 sessions x 4 workers = 20 tabs of headroom against 15 users, and
+    # 8 contexts x 4 workers = 32 tabs as the absolute ceiling (~6.9 GB, which
+    # 15 users cannot actually reach; the realistic peak is ~15 tabs, ~3.2 GB).
+    # If dev regularly runs hotter than this, the answer is not bigger numbers
+    # on a box with no mem_limit -- it is Chromium as its own service with one
+    # pool shared across workers.
+    #
+    # Live contexts allowed at once. Each one with a page open is a renderer
+    # process. Callers past the cap QUEUE (up to the timeout below) rather than
+    # spawn, so this is the hard memory bound.
+    BROWSER_MAX_CONTEXTS: int = 8
+    # How long a caller waits for a free context before failing with a clear
+    # error. Longer than the slowest render so a busy burst queues instead of
+    # erroring, short enough that a stuck pool surfaces.
+    BROWSER_ACQUIRE_TIMEOUT_SECONDS: int = 120
+    # Close a browser once it has held zero contexts for this long. Keeps a
+    # burst of renders on one browser without leaving Chromium resident on a
+    # quiet worker. 0 keeps browsers alive for the process lifetime.
+    BROWSER_IDLE_TTL_SECONDS: int = 300
+    # Background sweep cadence: reaps idle drive_page sessions, then closes
+    # idle browsers. Minimum 15s.
+    BROWSER_SWEEP_INTERVAL_SECONDS: int = 60
+    # Idle TTL for a persistent drive_page session (its context + tab). This
+    # is the backstop; the primary release is the agent run ending.
+    BROWSER_SESSION_IDLE_TTL_SECONDS: int = 600
+    # Concurrent drive_page sessions per worker, kept below BROWSER_MAX_CONTEXTS
+    # so long-lived sessions leave room for one-shot screenshots. This is a soft
+    # cap: past it we reclaim finished and idle sessions, but never a live
+    # conversation's tab, so a busy worker goes slightly over rather than
+    # destroying someone's logged-in session (see _make_room_for_session).
+    BROWSER_MAX_SESSIONS: int = 5
 
     # ── Lore ───────────────────────────────────────────────────────────
     # Curated, growing knowledge about each application (app/services/lore).
@@ -210,6 +263,34 @@ class Settings(BaseSettings):
     # to an answer than to a broadcast, which is why it survives.
     LORE_PUSH_SUBJECT: bool = True
 
+    # ── Blueprint ──────────────────────────────────────────────────────
+    # The plan for an application: what it is MEANT to be, carried as a
+    # `blueprint` field on every overridable object (app/services/blueprint).
+    # Planning is one model call with a schema and no tools — routing it
+    # through the AppBuilder agent would spend ~44K tokens of tool schemas
+    # before the first word of a request that has nothing to call.
+    BLUEPRINT_TIER: str = "balanced"
+    # Output budget for one generation. A whole application plan with a
+    # glossary, features and forty objects is a big JSON document, and a
+    # reasoning model needs room to think AND then emit it.
+    BLUEPRINT_MAX_TOKENS: int = 16000
+    # Hard ceiling on one blueprint model call. The provider clients carry no
+    # timeout of their own, and this one runs inside a request, so without it a
+    # hung connection holds a worker until the browser gives up.
+    #
+    # Under the gateway's own 60s ceiling on purpose. Set to 180 it was a lie:
+    # the gateway returned a bare 504 at 60s while this went on waiting, so the
+    # caller got a timeout with no message and the service never learned its
+    # request had been abandoned. Failing first means the failure is ours to
+    # describe. A generation that genuinely needs longer than this — a plan for
+    # a forty-page site — does not belong in a request at all and needs a job.
+    BLUEPRINT_TIMEOUT_SECONDS: int = 50
+    # Fold a short plan brief into the agent's per-request context. On by
+    # default and deliberately small (~1.6K chars): the point is that the agent
+    # knows a plan EXISTS, since one that does not know to ask will not ask.
+    # The full plan is one blueprint_get away.
+    BLUEPRINT_PUSH_BRIEF: bool = True
+
     # CFA code workspace — where shallow clones of nocode-saas/nocode-ui/
     # nocode-kirun live for code-reading tools. Per-instance mounted volume
     # in prod (/var/cfa/workspace); local dev falls back to siblings of
@@ -258,6 +339,22 @@ class Settings(BaseSettings):
     MAX_IMAGE_BASE64_MB: float = 4.5  # Max base64 size before compression (Anthropic limit is 5MB)
     IMAGE_MAX_DIMENSION: int = 1568  # Max pixels on longest side (Anthropic recommendation)
 
+    # Chat attachment persistence.
+    #
+    # How long a file the user attached to a chat is kept. Stamped on the file
+    # itself at upload as `expiresAfterMinutes`, which is what makes the
+    # existing FILES_TTL_CLEANUP worker collect it — that job deletes only files
+    # that were given a lifetime, so a generated image (uploaded with none) is
+    # invisible to it at any age.
+    #
+    # A setting rather than a literal so retention can be changed per
+    # environment. Changing it does NOT re-stamp files already uploaded: their
+    # lifetime was fixed at upload, in files_file_system.
+    CHAT_ATTACHMENT_TTL_MINUTES: int = 90 * 24 * 60  # 129600 — 90 days
+    # Largest single attachment that will be stored. Bigger ones still reach the
+    # model (compression handles that separately); they are just not kept.
+    MAX_ATTACHMENT_MB: float = 25.0
+
     # Gateway URL (nocode-saas API gateway)
     # All agent tool calls route through this gateway
     # Can be overridden by config server: ai.gateway.url
@@ -272,7 +369,24 @@ class Settings(BaseSettings):
     # Agent Settings
     AGENT_MODEL_TIER: str = "balanced"  # "fast" (Haiku) or "balanced" (Sonnet)
     MAX_AGENT_TURNS: int = 160  # Max tool-use loop iterations per request. A full multi-section site clone (multi-res screenshots + asset copy + per-section build + hover/animation styling + screenshot self-QA) needs more headroom than 100.
-    AGENT_MAX_TOKENS: int = 16000  # Max tokens per LLM response. MiniMax M3 supports a larger output budget than the old 8192 DeepSeek cap; the bigger budget lets the agent emit full component trees / @keyframes blocks in one turn and cuts turn count.
+    # Max tokens per LLM response. Raised from 16000 (a MiniMax M3-era number)
+    # after prod session HHARS1_984fdbf5 stalled 8 times in 19 turns, every
+    # stall a call returning exactly 16000 output tokens. On a thinking model
+    # reasoning_content is billed as output and comes out of THIS budget, so a
+    # turn could spend the lot deliberating and be cut before writing a tool
+    # call. `deepseek-flash` documents 384K max output, so the ceiling is ours,
+    # not the model's; 32000 clears the largest honest turn in that session
+    # (11.6K) with room for the reasoning that shares it. The truncation itself
+    # is now recoverable (see AGENT_MAX_TRUNCATION_CONTINUATIONS) — this only
+    # makes it rare. Keep it within the smallest max-output of any provider the
+    # agent can be pointed at.
+    AGENT_MAX_TOKENS: int = 32000
+    # How many times ONE turn may be resumed after being cut off at
+    # AGENT_MAX_TOKENS. 0 restores the old behaviour (stop, say nothing).
+    # Bounded because each resume is a fresh full-context call: a model that
+    # truncates every time would otherwise burn the turn budget, and the
+    # wallet, restarting the same answer.
+    AGENT_MAX_TRUNCATION_CONTINUATIONS: int = 2
 
     # Which tools ship a FULL schema in the per-turn tools[] payload.
     #   "full" — the curated HOT_TOOLS set (64 tools, ~19.6K tok/turn).
@@ -315,14 +429,44 @@ class Settings(BaseSettings):
     AGENT_HISTORY_KEEP_IMAGES_TURNS: int = 3
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
-    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
-    ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); competitor research stays Claude (Anthropic-only web_search); vision sub-agents on gpt-4o-mini until deepseek-v4-flash-vision-exp is benched for essence
+    APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-flash). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
+    ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); competitor research stays Claude (Anthropic-only web_search); the vision sub-agents pin their own model (agents/vision, agents/creative_essence)
     ADZUMP_ANALYST_THINKING: bool = True  # Extended (adaptive) thinking for the Product Analyst ONLY - its reasoning streams to the UI during the 36->4 judgment. Off everywhere else (BaseAgent default). Toggle to disable without a code change.
     ADZUMP_ANALYST_EFFORT: str = "medium"  # Bounds the analyst's adaptive-thinking depth (low|medium|high|max). Unset effort = API default "high": a 101k-token final judgment turn spent 6.5 min thinking (live 2026-09-21). The re-judge is a judgment task with a ~2k-token JSON output - medium suits it.
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
     # balanced tier as AppBuilder, so the two agents share one model and one set of
     # provider quirks to reason about rather than two.
+    # Which backend `generate_image` renders with. "minimax" is image-01 on
+    # MINIMAX_BASE_URL; "gemini" is gemini-2.5-flash-image / Nano Banana.
+    #
+    # MiniMax is the default because of aspect ratio, which is most of what
+    # this tool is asked for. Benched 2026-09-16 over 5 prompts: Gemini has no
+    # aspect field, so the ratio is a sentence appended to the prompt and the
+    # model ignores it — every request came back 1024x1024, including the 16:9
+    # and 4:3 ones (3/5 wrong). image-01 takes aspect_ratio as a real field and
+    # was exact 5/5. Gemini is ~2x faster (median 9.1s vs 18.5s) and renders
+    # cleaner lettering, so pass image_provider="gemini" for a typographic
+    # image; it also reproduced a real brand's logo on a prompt asking for an
+    # unbranded product, which is why it is no longer the default for the
+    # product shots this tool generates for customers.
+    #
+    # Gemini stays the fallback on two counts, both in _execute_generate_image:
+    #   - capability: image-01's only image input is `subject_reference`, ONE
+    #     image typed `character`, for carrying a person's likeness across
+    #     scenes. A real multi-image edit can only be Gemini.
+    #   - availability: a failed MiniMax render retries on Gemini.
+    # Both are reported in the tool summary rather than applied silently,
+    # because the fallback render will NOT honour the aspect ratio.
+    #
+    # Note MiniMax's *chat* models cannot do this at all: ask MiniMax-M3 for an
+    # image and it prints an image_generation call as text and then narrates
+    # "the image has been generated" with nothing attached. Image gen is a
+    # separate model on a separate endpoint, never a chat completion.
+    IMAGE_PROVIDER: str = "minimax"  # minimax | gemini
+    IMAGE_EDIT_FALLBACK_TO_GEMINI: bool = True   # >1 input image → Gemini
+    IMAGE_ERROR_FALLBACK_TO_GEMINI: bool = True  # MiniMax render failed → Gemini
+    MINIMAX_IMAGE_MODEL: str = "image-01"
     COMPONENT_CATALOG_URL: str = ""  # CDN URL for component-catalog.json (empty = use fallback)
     # Where nocode-ui's generated catalog lives, for a dev box. Accepts the
     # client dir, its dist/ dir, or the JSON file. Empty auto-resolves to a

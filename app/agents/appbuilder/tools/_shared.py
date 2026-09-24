@@ -15,7 +15,12 @@ _NAME_RE = re.compile(r"^[a-zA-Z]+$")
 # Re-exported so tool modules import their app-scope keys from one place. The
 # definitions live in core because the session, the run loop and per-app
 # services (KB, lore) all key off them too — see `app.core.session`.
-from app.core.session import FOCUS_APP_KEY, FOCUS_PAGE_KEY, SEEN_APPS_KEY  # noqa: E402
+from app.core.session import (  # noqa: E402
+    FOCUS_APP_KEY,
+    FOCUS_PAGE_KEY,
+    SEEN_APPS_KEY,
+    app_code_from_context,
+)
 
 
 def resolve_app_code(params: dict, context: dict) -> str:
@@ -36,14 +41,15 @@ def resolve_app_code(params: dict, context: dict) -> str:
     Reads deliberately do not set the focus (see
     ``AppBuilderAgent.note_tool_outcome``), so reading another app's page as an
     example cannot hijack where the next edit goes.
+
+    Returns "" when the session has no app at all, and callers must say so
+    rather than substitute one: the app the assistant is being RUN from is not
+    a candidate. See ``app_code_from_context``.
     """
     explicit = (params.get("app_code") or "").strip() if isinstance(params, dict) else ""
     if explicit:
         return explicit
-    focus = (context.get(FOCUS_APP_KEY) or "").strip() if isinstance(context, dict) else ""
-    if focus:
-        return focus
-    return (context.get("app_code") or "").strip() if isinstance(context, dict) else ""
+    return app_code_from_context(context)
 
 
 def app_scope_hint(context: dict, app_code: str) -> str:

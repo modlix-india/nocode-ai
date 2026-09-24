@@ -194,6 +194,82 @@ def _flatten_spec(spec: Dict[str, Any], out: List[Dict[str, Any]]) -> None:
         _flatten_spec(child, out)
 
 
+# Custom properties are NOT all declared on :root. Bootstrap 5, Tabler, shadcn
+# and every other current design system declare them per COMPONENT
+# (`.card { --tblr-card-bg: ... }`), so `root_custom_properties()` cannot see
+# them and the reference survives into the page as a literal `var(--x)`. A
+# Modlix style leaf carries no cascade, so that reference resolves against
+# nothing and the whole declaration is dropped: on Tabler's tables page that
+# was every card background and two thirds of every rounded corner.
+#
+# The browser already knows the answer for each element's own scope, so ask it.
+# Only the NAME is looked up, never the whole property, so authored values keep
+# their calc()/clamp()/relative units — the thing this analyser exists to
+# preserve.
+_VAR_NAME_RE = re.compile(r"var\(\s*(--[A-Za-z0-9_-]+)")
+
+_SCOPED_VARS_JS = r"""
+(wanted) => {
+  const out = {};
+  for (const [mid, names] of Object.entries(wanted)) {
+    const el = document.querySelector(`[data-mxa-id="${mid}"]`);
+    if (!el) continue;
+    const cs = getComputedStyle(el);
+    const got = {};
+    for (const name of names) {
+      const v = cs.getPropertyValue(name);
+      if (v && v.trim()) got[name] = v.trim();
+    }
+    if (Object.keys(got).length) out[mid] = got;
+  }
+  return out;
+}
+"""
+
+
+async def _resolve_scoped_vars(page, resolved: Dict[str, Dict[str, str]]) -> int:
+    """Replace var(--x) with the value x has ON THAT ELEMENT. Returns hits."""
+    wanted: Dict[str, List[str]] = {}
+    for mid, decls in resolved.items():
+        names = set()
+        for value in decls.values():
+            if isinstance(value, str) and "var(" in value:
+                names.update(_VAR_NAME_RE.findall(value))
+        if names:
+            wanted[mid] = sorted(names)
+    if not wanted:
+        return 0
+
+    scoped: Dict[str, Dict[str, str]] = {}
+    ids = list(wanted)
+    for i in range(0, len(ids), 400):        # chunked: one huge arg stalls CDP
+        chunk = {k: wanted[k] for k in ids[i:i + 400]}
+        scoped.update(await page.evaluate(_SCOPED_VARS_JS, chunk) or {})
+
+    hits = 0
+    for mid, decls in resolved.items():
+        table = scoped.get(mid)
+        if not table:
+            continue
+        for prop, value in list(decls.items()):
+            if not isinstance(value, str) or "var(" not in value:
+                continue
+            new = value
+            for name, resolved_value in table.items():
+                # A truncated reference is still a reference: CDP hands back
+                # `var(--x,` when the fallback itself nests a var(), so match
+                # the name and drop everything to the matching close paren OR
+                # to the end of the string, whichever comes first.
+                new = re.sub(
+                    r"var\(\s*" + re.escape(name) + r"\s*(?:,[^()]*)?\)?",
+                    resolved_value, new,
+                )
+            if new != value:
+                decls[prop] = new
+                hits += 1
+    return hits
+
+
 async def _resolve_all_breakpoints(extractor, page, bps, all_ids, interactive_ids, cap):
     """For each viewport: resize, then resolve every node's authored CSS at that
     width (CDP only returns viewport-active media rules, so we MUST resize).
@@ -215,6 +291,7 @@ async def _resolve_all_breakpoints(extractor, page, bps, all_ids, interactive_id
                 continue
             resolved[mid] = await extractor.resolved_at(nid, w)
             n += 1
+        hits = await _resolve_scoped_vars(page, resolved)
         per_bp[name] = resolved
         if i == 0:  # capture hover on the base (desktop) viewport only
             for mid in interactive_ids:
@@ -226,7 +303,8 @@ async def _resolve_all_breakpoints(extractor, page, bps, all_ids, interactive_id
                 delta = {k: v for k, v in hv.items() if base.get(k) != v}
                 if delta:
                     hover_map[mid] = delta
-        logger.info("  breakpoint %s: resolved %d nodes", name, len(resolved))
+        logger.info("  breakpoint %s: resolved %d nodes, %d scoped var() values",
+                    name, len(resolved), hits)
     return per_bp, hover_map
 
 

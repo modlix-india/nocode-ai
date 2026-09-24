@@ -9,6 +9,13 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Socket read timeout, in seconds. Exported because it is a hard ceiling on how
+# long ANY blocking command may wait: redis-py applies it to the socket read, so
+# a command that blocks server-side for longer than this raises TimeoutError
+# instead of returning. Anything calling BLPOP/XREAD/etc. must keep its own
+# block window strictly under this value. See run_manager._subscribe_remote.
+SOCKET_TIMEOUT_S = 5
+
 # Global Redis connection pool
 _redis_client: Optional[redis.Redis] = None
 
@@ -32,8 +39,8 @@ async def get_redis_client() -> Optional[redis.Redis]:
                 settings.REDIS_URL,
                 encoding="utf-8",
                 decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5,
+                socket_timeout=SOCKET_TIMEOUT_S,
+                socket_connect_timeout=SOCKET_TIMEOUT_S,
                 retry_on_timeout=True
             )
             # Test connection

@@ -28,6 +28,7 @@ import asyncio
 import json
 import logging
 import uuid
+from collections import deque
 from contextvars import ContextVar
 from enum import Enum
 
@@ -62,6 +63,7 @@ class AgentEventType(str, Enum):
     AGENT_FINISHED = "agent_finished"  # Sub-agent finished
     AGENT_USAGE = "agent_usage"  # Token usage update for an agent
     CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
+    STEER = "steer"  # A message the user sent mid-run, folded into the turn
     DRAFT_PATCH = "draft_patch"  # A write held in the user's open draft, not saved
     OBJECT_CHANGED = "object_changed"  # A write that really did save, so refetch it
     # Bracket the events a reattaching client is being shown for the second
@@ -103,6 +105,9 @@ class AgentEventStream:
         self._queue: asyncio.Queue[AgentEvent | object] = asyncio.Queue()
         # Pending confirmation requests: confirmation_id → Future[dict]
         self._pending_confirmations: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        # Messages the user sent while this run was going, waiting for the loop
+        # to reach a turn boundary and fold them in. See `push_steer`.
+        self._steers: deque[dict[str, str]] = deque()
         # Cancellation flag — set by POST /stop, checked by the agent loop
         self._cancelled = False
         # Set by the first emit_done. The run wrapper closes the stream in a
@@ -125,7 +130,54 @@ class AgentEventStream:
     def is_cancelled(self) -> bool:
         return self._cancelled
 
+    # ── Steering ─────────────────────────────────────────────────
+
+    def push_steer(self, text: str, steer_id: str = "") -> str:
+        """Queue a message the user sent while this run was still working.
+
+        Starting a second run instead is not an option: `run_manager` refuses
+        it with a 409, because two agents interleaving tool calls and history
+        writes on one session corrupt both. So the message rides this queue and
+        the loop folds it into the conversation at its next turn boundary.
+
+        Returns the steer's id, or "" if it was refused (empty, or a run that is
+        already cancelled or closed and will never reach another boundary).
+        The id is minted HERE rather than at emit time so it stays stable across
+        the replay a reattaching client gets, which is what lets that client
+        tell a bubble it has already drawn from a new one.
+        """
+        text = (text or "").strip()
+        if not text or self._cancelled or self._closed:
+            return ""
+        steer_id = steer_id or f"steer_{uuid.uuid4().hex[:12]}"
+        self._steers.append({"id": steer_id, "text": text})
+        return steer_id
+
+    def drain_steers(self) -> list[dict[str, str]]:
+        """Take everything queued, leaving the queue empty."""
+        pending = list(self._steers)
+        self._steers.clear()
+        return pending
+
+    @property
+    def has_steers(self) -> bool:
+        return bool(self._steers)
+
     # ── Emit methods (producer side) ────────────────────────────
+
+    async def emit_steer(self, steer_id: str, text: str, applied: bool = True) -> None:
+        """Report what became of a steer.
+
+        `applied` true is the acknowledgement the client waits for before it
+        draws the message as part of the conversation: only the loop knows
+        whether the text actually reached the model. False says it never will,
+        so the client can hand the text back to the input box rather than
+        leaving the user believing it was read.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.STEER,
+            data={"id": steer_id, "text": text, "applied": applied},
+        ))
 
     async def emit_text(self, text: str) -> None:
         """Emit a text chunk from the LLM response."""

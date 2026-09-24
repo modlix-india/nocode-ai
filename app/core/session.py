@@ -86,15 +86,37 @@ SEEN_APPS_KEY = "written_app_codes"
 FOCUS_PAGE_KEY = "focus_page_name"
 
 
-def session_app_code(session: "BaseSession") -> str:
-    """The app a session is working in: focus app, else the request app."""
-    context = getattr(session, "context", None) or {}
-    focus = context.get(FOCUS_APP_KEY) if isinstance(context, dict) else ""
+def app_code_from_context(context: Any) -> str:
+    """The app being worked in, from a session context dict. "" when unknown.
+
+    THE resolver. Everything that asks "which app is this about" goes through
+    here or through `session_app_code` below, because the answer has to be the
+    same for the prompt, the tools, the KB and lore: when they disagree, the
+    model is told it is in one app while its own writes land in another.
+
+    Two steps and no third: the focus app (where writes have been landing),
+    then the app the chat request opened with.
+
+    There is deliberately NO fallback to the caller's access app. That is the
+    product the user is running the assistant from (appbuilder, sitezump), not
+    the app they are building, and defaulting to it made the agent open a
+    conversation grounded in a SYSTEM-owned product the client could not even
+    edit. Unknown has to read as unknown, so the agent asks instead of guessing.
+    A product assistant whose app IS the hosting app says so explicitly, by
+    setting `app_code` on the session context in its own router.
+    """
+    if not isinstance(context, dict):
+        return ""
+    focus = context.get(FOCUS_APP_KEY)
     if isinstance(focus, str) and focus.strip():
         return focus.strip()
-    request_app = context.get("app_code") if isinstance(context, dict) else ""
-    auth = getattr(session, "auth", None)
-    return request_app or (getattr(auth, "app_code", "") if auth else "") or ""
+    request_app = context.get("app_code")
+    return request_app.strip() if isinstance(request_app, str) else ""
+
+
+def session_app_code(session: "BaseSession") -> str:
+    """The app a session is working in: focus app, else the request app."""
+    return app_code_from_context(getattr(session, "context", None) or {})
 
 
 @dataclass
@@ -241,14 +263,20 @@ class BaseSession:
         return username, password
 
     def _require_app_user_app(self) -> tuple[str, str]:
-        """Pull (app_code, client_code) for app-user login or raise."""
-        if not self.auth or not self.auth.app_code:
+        """Pull (app_code, client_code) for app-user login or raise.
+
+        The app being built, by the shared resolver: an end-user login belongs
+        to the app whose pages are being driven, which is the focus app once
+        the session has moved on from whatever it opened with.
+        """
+        app_code = session_app_code(self)
+        if not self.auth or not app_code:
             raise RuntimeError(
                 "app-user login needs a target app_code on the session — "
                 "set `app_code` on the chat request before invoking tools "
                 "that need an app-user identity."
             )
-        return self.auth.app_code, self.auth.client_code or ""
+        return app_code, self.auth.client_code or ""
 
     async def _login_app_user(
         self, username: str, password: str, app_code: str, client_code: str,
@@ -330,6 +358,36 @@ class BaseSession:
             self.messages.append({"role": "user", "content": content})
         else:
             self.messages.append({"role": "user", "content": text})
+
+    def append_user_text(self, text: str) -> None:
+        """Add user text to the conversation mid-turn, merging where it must.
+
+        Used for steering (see `AgentEventStream.push_steer`), which arrives at
+        a turn boundary where the tail message is usually the tool_result one.
+        A second consecutive user message there is rejected by the provider,
+        so the text becomes another block INSIDE that message; only when the
+        tail is an assistant message (the model finished and the user is
+        re-opening the turn) does a message of its own make sense.
+
+        Unlike the per-turn reminder, which decorates a per-call copy, this is
+        a real user utterance and belongs in the history permanently.
+        """
+        if not text:
+            return
+
+        block = {"type": "text", "text": text}
+        tail = self.messages[-1] if self.messages else None
+        if not tail or tail.get("role") != "user":
+            self.messages.append({"role": "user", "content": [block]})
+            return
+
+        content = tail.get("content")
+        if isinstance(content, list):
+            tail["content"] = [*content, block]
+        elif isinstance(content, str):
+            tail["content"] = ([{"type": "text", "text": content}] if content else []) + [block]
+        else:
+            tail["content"] = [block]
 
     def append_assistant_message(
         self,
@@ -607,6 +665,20 @@ class BaseSession:
         self._turn_count += 1
         self._turn_started = True
 
+    def next_turn_number(self) -> int:
+        """The number ``start_turn`` is about to assign.
+
+        For the route, which has to file a turn's attachments before the agent
+        loop has begun and therefore before ``start_turn`` has run. Correct only
+        while nothing else can be mid-turn on this session, which is what the
+        run-already-live check in the chat route is there to guarantee.
+        """
+        return self._turn_count + 1
+
+    def current_turn_number(self) -> int:
+        """The turn in progress. Zero before the first ``start_turn``."""
+        return self._turn_count
+
     async def persist_turn(
         self,
         user_text: str,
@@ -798,7 +870,11 @@ class BaseSession:
             from app.services.session_manager import get_session_manager
             context_json = self._serialize_context(self.context)
             await get_session_manager().update_session_context(
-                self.session_id, context_json, self.auth.user_id if self.auth else None
+                self.session_id, context_json,
+                self.auth.user_id if self.auth else None,
+                # Keep the row's app current: a conversation that opens with no
+                # app and then builds one belongs in that app's chat list.
+                app_code=session_app_code(self),
             )
         except Exception as e:
             logger.warning("Failed to save session context: %s (keys=%s)",
@@ -846,7 +922,11 @@ class BaseSession:
                 client_id=self.auth.client_id,
                 user_id=self.auth.user_id,
                 agent_name=self.agent_name,
-                app_code=self.auth.app_code,
+                # What the session is about, by the shared resolver. The row is
+                # what the sidebar filters on and what a resumed session reads
+                # its app back from, so it must not record the product the chat
+                # happened to be opened from.
+                app_code=session_app_code(self),
                 context_json=context_json,
             )
             if session:

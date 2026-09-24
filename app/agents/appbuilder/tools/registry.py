@@ -61,6 +61,7 @@ from app.agents.appbuilder.tools.code_workspace import CODE_WORKSPACE_TOOLS as W
 from app.agents.appbuilder.tools.kb_app import KB_APP_TOOLS
 from app.agents.appbuilder.tools.platform_docs import PLATFORM_DOC_TOOLS
 from app.services.lore.tools import LORE_TOOLS
+from app.services.blueprint.tools import BLUEPRINT_TOOLS
 
 LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TOOLS
 # Vision routing — hide the Gemini-only `describe_image` tool when the
@@ -111,6 +112,11 @@ ALL_TOOLS: list[ToolDefinition] = (
     # sections a person asks for; lore accumulates on its own and is queried
     # by question rather than by section.
     + LORE_TOOLS
+    # Blueprint — what the app is MEANT to be. Distinct from lore, which is
+    # what has been LEARNED about it: a plan is decided in advance and is the
+    # thing a build is measured against, so drift between the two is a real
+    # state rather than a contradiction to curate away.
+    + BLUEPRINT_TOOLS
 )
 
 # ── Tool-of-tools router (DEPRECATED — retired from AppBuilderAgent) ─────────

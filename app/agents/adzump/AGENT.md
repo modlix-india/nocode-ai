@@ -78,7 +78,7 @@ app/agents/adzump/
 ├── _shared.py                tool utilities (headers, JSON extraction, host parsing)
 ├── _uploads.py               image upload + rehost pipeline
 │
-├── stores/                   data access - SQL only, typed models in and out (migration V17)
+├── stores/                   data access - SQL only, typed models in and out (migrations V19, V20)
 │   ├── products.py           adzump_products
 │   ├── flows.py              adzump_flows - per-flow draft state, resume source
 │   └── competitors.py        adzump_competitors + creatives + creative_assets

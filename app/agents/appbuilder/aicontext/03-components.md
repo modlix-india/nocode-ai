@@ -122,6 +122,24 @@
 ### Form
 - `validationCheck`, `onSubmit`
 
+**Leave vertical room for the floating label.** TextBox, TextArea and Dropdown
+render their label *outside* their own box once it floats: the label is
+`position: absolute` at `bottom: 100%`, so it sits above the control and overflows
+upward. A column of inputs with a small gap therefore collides — the label of one
+row lands on top of the control above it, which is exactly what it looks like: two
+labels printed over each other.
+
+So a grid of form rows needs an **explicit gap of at least 20px**; 24px is
+comfortable. Do not rely on the theme's `gapBetween`, which should be `0px` so
+full-bleed page sections do not show seams (see `04-styles-and-themes`). The form
+grid is one of the places that must set its own.
+
+Two more things that read as defects on a generated form:
+- A **phone field defaults its country code to `+93`** (Afghanistan) unless you set
+  one. Set the country the site is for.
+- Put label text in the field's own label, not in a separate Text above it. Two
+  stacked labels is the most common way these forms end up looking broken.
+
 ### Table
 Table is a family, not a single component: `Table` + `TableColumns` /
 `TableColumn` / `TableGrid` / `TablePreviewGrid` / `TableRow` / `TableEmptyGrid`,

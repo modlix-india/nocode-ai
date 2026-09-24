@@ -262,7 +262,12 @@ async def _upsert_ui_app(
         ui_body["translations"] = tr
 
     client, headers = _client_and_headers(context)
+    # Retry once. The UI write fails transiently often enough that the agent's
+    # own workaround -- calling create_app a second time -- is what healed
+    # `circuitbreakers`. Doing it here costs one request and saves the app.
     ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
+    if not ui_resp.success and "409" not in str(ui_resp.error or ""):
+        ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
     if not ui_resp.success:
         # 409 means a UI doc with this appCode already exists from a prior partial
         # create — fine, the app is now fully present in both layers. Reads will
@@ -280,13 +285,32 @@ async def _upsert_ui_app(
                     f"update_app."
                 ),
             )
+        # HARD FAILURE. This used to return success=True with the warning buried
+        # in the summary, and the model read the first clause ("Created security
+        # app ...") as a win and kept building. Without the UI doc, every
+        # /api/ui/** read for the app 404s or 403s, so the whole rest of the
+        # build is a cascade of "Forbidden access to the application with code
+        # <x>" that looks like a permissions problem and is not. Seen on
+        # `crumbcotwo`: security row 815, no UI doc, one stub page, abandoned.
+        #
+        # Calling create_app again with the SAME app_code is the fix, and it is
+        # safe: step 0 finds the existing security row and skips straight to the
+        # UI write. Say so explicitly, or the model invents a new appCode and
+        # leaves the half-built one behind as an orphan.
         return ToolResult(
-            success=True,
-            summary=(
-                f"Created security app '{app_code}' (id={sec_id}), but the UI "
-                f"override write failed: {ui_resp.error}. The app is "
-                f"PARTIALLY CREATED — listing pages or visiting the app URL "
-                f"will 403 until you retry the UI write via update_app."
+            success=False,
+            error=(
+                f"App '{app_code}' is PARTIALLY CREATED and is not usable. The "
+                f"security row exists (id={sec_id}) but the UI application "
+                f"document could not be written after two attempts: "
+                f"{ui_resp.error}\n"
+                f"Until that document exists, every /api/ui read for this app "
+                f"fails — listing pages, reading the app, or opening its URL "
+                f"will 403/404, which looks like a permissions problem but is a "
+                f"missing document.\n"
+                f"Recovery: call create_app again with app_code='{app_code}'. It "
+                f"reuses the existing security row and retries only the UI write. "
+                f"Do NOT pick a different appCode — that strands this one."
             ),
         )
     next_step = (
@@ -452,6 +476,64 @@ async def _lookup_ui_app_by_code(client: Any, headers: dict, app_code: str) -> t
     rows = (listing.data or {}).get("content", []) if isinstance(listing.data, dict) else []
     match = next((a for a in rows if a.get("appCode") == app_code), None)
     return match, None
+
+
+async def _register_font_packs(
+    client: Any, headers: dict, params: dict[str, Any], context: dict[str, Any],
+    app_code: str, packs: dict[str, dict[str, str]],
+) -> str:
+    """Merge font packs into `app.properties.fontPacks`. Returns a note.
+
+    `properties.fontPacks` is what actually loads the webfont: its `code` is
+    literal HTML injected into the page head. Theme tokens naming a family that
+    no pack loads leave the page on a fallback face, which looks exactly like
+    the fonts having done nothing.
+
+    Reads the doc BY ID. The list route strips `properties`, so merging onto a
+    list row would PUT the app back with every property erased.
+
+    Never raises: the theme already exists, and losing the pack is a degraded
+    site, not a failed build.
+    """
+    try:
+        row, err = await _lookup_ui_app_by_code(client, headers, app_code)
+        if err or not row or not row.get("id"):
+            return (
+                f"Could not register the font pack ({err or 'no UI doc for ' + app_code}). "
+                f"The theme names fonts nothing downloads — add them to "
+                f"app.properties.fontPacks via update_app."
+            )
+        app_id = row["id"]
+        full = await client.get(f"{_APPS_API}/{app_id}", headers=headers)
+        if not full.success or not isinstance(full.data, dict):
+            return f"Could not read the app doc to register the font pack ({full.error})."
+        body = full.data
+        props = body.get("properties")
+        if not isinstance(props, dict):
+            props = {}
+            body["properties"] = props
+        existing = props.get("fontPacks")
+        if not isinstance(existing, dict):
+            existing = {}
+        # Additive: a pack someone added by hand outranks anything seeded here.
+        already = {
+            p.get("code") for p in existing.values() if isinstance(p, dict)
+        }
+        added = {k: v for k, v in packs.items() if v.get("code") not in already}
+        if not added:
+            return "Font pack was already registered on the app."
+        existing.update(added)
+        props["fontPacks"] = existing
+        props.setdefault("iconPacks", {})
+        body["properties"] = props
+        body["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
+        put = await client.put(f"{_APPS_API}/{app_id}", headers=headers, json=body)
+        if not put.success:
+            return f"Theme saved, but registering the font pack failed ({put.error})."
+        names = ", ".join(v.get("name", "?") for v in added.values())
+        return f"Registered the font pack ({names}) on app.properties.fontPacks."
+    except Exception as e:  # noqa: BLE001 - a degraded site beats a failed build
+        return f"Theme saved, but registering the font pack raised {type(e).__name__}: {e}"
 
 
 async def _create_ui_doc_with_page_ref(
@@ -796,6 +878,21 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._font_floor import PAIRINGS, apply_font_floor, pairing_from_families
+    from ._theme_floor import apply_theme_floor
+    variables, floor_notes = apply_theme_floor(variables)
+
+    # Typography, which the agent had never once set: every generated site
+    # rendered in the stock face. The pairing can be named outright
+    # (`font_pairing="modern"`) or spelled out (`font_display=` / `font_body=`).
+    chosen = None
+    if (fd := (params.get("font_display") or "").strip()):
+        chosen = pairing_from_families(fd, params.get("font_body"))
+    elif (fp := (params.get("font_pairing") or "").strip().lower()) in PAIRINGS:
+        chosen = PAIRINGS[fp]
+    variables, font_packs, font_notes = apply_font_floor(variables, pairing=chosen)
+    floor_notes.extend(font_notes)
+
     body = {
         "name": name, "appCode": ac, "clientCode": cc,
         "variables": variables, "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -804,7 +901,17 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_THEMES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created theme '{name}' (id={(r.data or {}).get('id', '?')}).")
+
+    # The font only loads once the pack is on the app. Failing to register it is
+    # not worth failing the theme over — say so and let the agent retry.
+    if font_packs:
+        reg_note = await _register_font_packs(client, headers, params, context, ac, font_packs)
+        floor_notes.append(reg_note)
+
+    summary = f"Created theme '{name}' (id={(r.data or {}).get('id', '?')})."
+    if floor_notes:
+        summary += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
+    return ToolResult(success=True, summary=summary)
 
 
 create_theme_tool = ToolDefinition(
@@ -815,6 +922,9 @@ create_theme_tool = ToolDefinition(
         ToolParameter(name="variables", type="object", description="Per-breakpoint variables: {ALL: {colorOne: '#50BC9B'}, MOBILE_POTRAIT_SCREEN_ONLY: {messageContainerWidth: '100vw'}, ...}"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
+        ToolParameter(name="font_pairing", type="string", required=False, description="Typography for the site, picked to suit the business: 'editorial' (Fraunces + Inter — food, craft, retail), 'modern' (Space Grotesk + Inter — software, engineering), 'classic' (Playfair Display + Source Sans 3 — law, finance, luxury), 'friendly' (Poppins + Inter — consumer, education), 'neutral' (Inter throughout). Picks the Google fonts, writes the font tokens AND registers the pack that loads them. Omit and 'editorial' is used, because the stock face makes every site look like a template."),
+        ToolParameter(name="font_display", type="string", required=False, description="Any Google font family for headings, e.g. 'Fraunces'. Overrides font_pairing. Use when the brand needs a specific face."),
+        ToolParameter(name="font_body", type="string", required=False, description="Google font family for body text. Defaults to font_display when omitted."),
         ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_theme,
@@ -837,6 +947,12 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     doc, err = await _find_by_name(client, headers, _THEMES_API, ac, name)
     if err or doc is None:
         return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
+
+    # Rename only. An update replaces the map wholesale, so seeding defaults here
+    # would resurrect variables that were deliberately dropped -- and would also
+    # make the drop check below compare against something the caller never sent.
+    from ._theme_floor import apply_theme_floor
+    variables, floor_notes = apply_theme_floor(variables, fill_gaps=False)
 
     before = _flatten_vars(doc.get("variables"))
     after = _flatten_vars(variables)
@@ -861,6 +977,8 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     line = (f"Updated theme '{name}' (v{(save.data or {}).get('version', '?')}, "
             f"variables {len(before)} -> {len(_flatten_vars(saved))}"
             f"{f', {len(dropped)} deleted' if dropped else ''}).")
+    if floor_notes:
+        line += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
     return ToolResult(success=not problems,
                       summary=line if not problems else line + "\n  ! " + "\n  ! ".join(problems),
                       error=None if not problems else "; ".join(problems))
@@ -1088,6 +1206,8 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._motion_floor import with_motion_floor
+    css, motion_added = with_motion_floor(css)
     body = {
         "name": name, "appCode": ac, "clientCode": cc, "styleString": css,
         "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -1096,7 +1216,14 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_STYLES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created style '{name}' (id={(r.data or {}).get('id', '?')}).")
+    summary = f"Created style '{name}' (id={(r.data or {}).get('id', '?')})."
+    if motion_added:
+        summary += (
+            "\n  - Added baseline motion (hover/focus transitions, reduced-motion "
+            "guard, and opt-in _revealUp / _revealFade / _zoomOnHover classes). "
+            "A generated site otherwise has no animation at all."
+        )
+    return ToolResult(success=True, summary=summary)
 
 
 create_style_tool = ToolDefinition(

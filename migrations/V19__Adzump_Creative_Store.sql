@@ -31,7 +31,7 @@
 
 CREATE TABLE IF NOT EXISTS `adzump_products` (
     `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `client_code`  VARCHAR(64)  NOT NULL COMMENT 'Owning client (tenant) code',
+    `client_code`  CHAR(12)     NOT NULL COMMENT 'Owning client (tenant) code',
     `url`          VARCHAR(512) NOT NULL COMMENT 'Product primary_url; stable upsert key',
     `name`         VARCHAR(255) DEFAULT NULL COMMENT 'Business / product name',
     `scale`        VARCHAR(32)  DEFAULT NULL COMMENT 'local|regional|national|international',
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `adzump_products` (
 
 CREATE TABLE IF NOT EXISTS `adzump_flows` (
     `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `client_code`  VARCHAR(64)  NOT NULL COMMENT 'Owning client (tenant) code',
+    `client_code`  CHAR(12)     NOT NULL COMMENT 'Owning client (tenant) code',
     `product_id`   BIGINT UNSIGNED NOT NULL COMMENT 'FK adzump_products.id - the product the flow works on',
     `session_id`   VARCHAR(64)  NOT NULL DEFAULT '' COMMENT 'Chat session that owns this run',
     `flow`         VARCHAR(32)  NOT NULL DEFAULT 'new_campaign' COMMENT 'Which flow this state belongs to',
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS `adzump_flows` (
 
 CREATE TABLE IF NOT EXISTS `adzump_competitors` (
     `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `client_code`       VARCHAR(64)  NOT NULL COMMENT 'Owning client (tenant) code',
+    `client_code`       CHAR(12)     NOT NULL COMMENT 'Owning client (tenant) code',
     `product_id`        BIGINT UNSIGNED NOT NULL COMMENT 'FK adzump_products.id',
     `name`              VARCHAR(255) NOT NULL COMMENT 'Competitor name; stable upsert key (url is not always found)',
     `url`               VARCHAR(255) DEFAULT NULL COMMENT 'Competitor normalized host; NULL when none was found',
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS `adzump_competitors` (
 
 CREATE TABLE IF NOT EXISTS `adzump_creatives` (
     `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `client_code`     VARCHAR(64)  NOT NULL COMMENT 'Owning client (tenant) code, denormalized from parent for scope filtering',
+    `client_code`     CHAR(12)     NOT NULL COMMENT 'Owning client (tenant) code, denormalized from parent for scope filtering',
     `competitor_id`   BIGINT UNSIGNED DEFAULT NULL COMMENT 'FK adzump_competitors.id; NULL for generated / uploaded',
     `product_id`      BIGINT UNSIGNED NOT NULL COMMENT 'FK adzump_products.id',
     `format`          ENUM('single','carousel','video','collection') NOT NULL DEFAULT 'single' COMMENT 'Ad shape',

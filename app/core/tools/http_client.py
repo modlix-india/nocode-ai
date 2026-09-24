@@ -218,6 +218,11 @@ class SaasClient:
     # row keyed on a name with no live counterpart has nothing to publish over.
     _DRAFTABLE_VERBS = {"GET", "PUT"}
 
+    # Sub-paths that ACT ON an object's draft rather than writing past it. They
+    # carry no `?draft=` flag because they are already addressed at the draft,
+    # and they must never be mistaken for a partial live write.
+    _DRAFT_SURFACE_SUBPATHS = {"draft", "publish", "fork"}
+
     def _draft_params(
         self, method: str, path: str, params: dict[str, Any] | None,
     ) -> dict[str, Any] | None:
@@ -233,13 +238,14 @@ class SaasClient:
         Only a call that names one object is flagged. A collection listing is
         left alone: the draft surface has no opinion about lists, and a flag the
         backend ignores would read as support that is not there.
+
+        Whether the turn drafts THIS kind is `drafts_kind`'s answer, not a single
+        bool: a page-only turn flags a page and leaves a storage alone.
         """
-        if not drafts.drafting.get():
-            return params
         if method.upper() not in self._DRAFTABLE_VERBS:
             return params
         kind, obj_id, sub = drafts.DraftRegistry.resolve(path)
-        if not drafts.is_draftable(kind) or not obj_id or sub:
+        if not drafts.drafts_kind(kind) or not obj_id or sub:
             return params
         out = dict(params or {})
         out.setdefault("draft", "true")
@@ -258,13 +264,21 @@ class SaasClient:
         whole-document read-modify-write instead. This is the guard for
         everything else: a tool that has not been converted, or a route added
         later, fails loudly here rather than leaking silently.
+
+        Two things it must NOT refuse. A sub-path on a kind this turn is not
+        drafting anyway (a function's steps during a page-only turn) is going
+        live either way, so refusing it would block work for no gain. And the
+        draft-surface operations themselves -- `DELETE /{id}/draft` discards a
+        draft, `POST /{id}/publish` ships one -- are writes to the draft, not
+        writes around it; refusing those blocked discarding a draft exactly
+        during the turns that could have one.
         """
-        if not drafts.drafting.get():
-            return None
         if method.upper() not in _MUTATING:
             return None
         kind, obj_id, sub = drafts.DraftRegistry.resolve(path)
-        if not sub or not drafts.is_draftable(kind) or not obj_id:
+        if not sub or not obj_id or not drafts.drafts_kind(kind):
+            return None
+        if sub in self._DRAFT_SURFACE_SUBPATHS:
             return None
 
         logger.warning("refused %s %s: no draft counterpart for this partial write", method, path)
@@ -311,7 +325,12 @@ class SaasClient:
         # is deliberate and is the same trade the page editor already makes:
         # saving is cheap now, because it saves to the draft, so the answer is
         # to save first rather than to hold the write.
-        if drafts.is_draftable(kind) and drafts.drafting.get():
+        #
+        # A kind this turn is NOT drafting falls through to be held here instead,
+        # which is what should happen to an open storage during a page-only turn:
+        # the server has nowhere to review it, so the browser is once again the
+        # only place a change to it can wait for someone to look at it.
+        if drafts.drafts_kind(kind):
             return None
 
         if obj_id and sub:

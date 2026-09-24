@@ -50,9 +50,44 @@ import copy
 import logging
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+class DraftScope(str, Enum):
+    """How much of a turn's work is held back for review.
+
+    Three settings rather than two because the products using the agent do not
+    agree about what a draft is. AppBuilder drafts everything and has a pending
+    bar to publish it. SiteZump's page editor drafts one page at a time and
+    publishes it on its own; it has no UI for a pending storage or connection, so
+    drafting one there would strand the change with no way to ship it.
+    """
+
+    LIVE = "LIVE"
+    DRAFT = "DRAFT"
+    PAGE_ONLY_DRAFT = "PAGE_ONLY_DRAFT"
+
+
+def to_scope(value: Any) -> DraftScope:
+    """Read a scope off the wire, falling back to DRAFT.
+
+    Anything unrecognised means DRAFT, including a bare `True`/`False` from a
+    caller that predates the enum, `None`, and a typo. The fallback leans toward
+    review on purpose: a caller confused about the spelling gets a change it can
+    look at and publish, not one that is already live. Saying live has to be
+    deliberate, which is the exact string "LIVE".
+    """
+    if isinstance(value, DraftScope):
+        return value
+    if isinstance(value, str):
+        try:
+            return DraftScope(value.strip().upper())
+        except ValueError:
+            return DraftScope.DRAFT
+    return DraftScope.DRAFT
 
 # Set for the duration of one agent turn. A ContextVar rather than a parameter
 # because the intercept is in the HTTP client, which is reached through twenty
@@ -64,16 +99,21 @@ logger = logging.getLogger(__name__)
 # they all share is the only thing that works.
 open_drafts: ContextVar["DraftRegistry | None"] = ContextVar("open_drafts", default=None)
 
-# True when this turn's writes to draftable objects should go to the server's
-# draft surface. Decided once, in the agent, from what the caller asked for AND
-# what the deployment actually supports, because a deployment that predates the
-# draft work accepts `?draft=true` and performs an ordinary live update.
+# How much of this turn's work goes to the server's draft surface. Decided once,
+# in the agent, from what the caller asked for AND what the deployment actually
+# supports, because a deployment that predates the draft work accepts
+# `?draft=true` and performs an ordinary live update.
+#
+# Defaults to LIVE while the caller's *intent* (`_draft_surface.draft_mode`)
+# defaults to DRAFT. That is not a contradiction: intent is what someone asked
+# for, this is what was settled after probing, and nothing is drafted until
+# something has proved it can be.
 #
 # It lives here rather than in the appbuilder agent's `_draft_surface` because
 # the choke point that has to read it is in core, and core must not import from
-# an agent. `_draft_surface.active()` reads the same flag, so the tools and the
+# an agent. `_draft_surface.active()` reads the same value, so the tools and the
 # choke point cannot disagree about where a write went.
-drafting: ContextVar[bool] = ContextVar("drafting", default=False)
+drafting: ContextVar[DraftScope] = ContextVar("drafting", default=DraftScope.LIVE)
 
 
 # API path prefix -> object kind. Explicit rather than pattern-matched: the whole
@@ -137,6 +177,37 @@ DRAFTABLE_KINDS: frozenset[str] = frozenset({
 
 def is_draftable(kind: str | None) -> bool:
     return bool(kind) and kind in DRAFTABLE_KINDS
+
+
+# What a PAGE_ONLY_DRAFT turn still holds back. Everything that changes how a page
+# LOOKS travels with the page, because a style or theme edit made to finish a page
+# change would otherwise go live while the page it was made for waits for review,
+# and the reviewer would see a half-applied design.
+#
+# Nothing else is here. A storage, connection or schema has its own publish story
+# and no per-object review UI in a page-only product, so a draft of one would sit
+# pending with nothing able to ship it.
+PAGE_ONLY_KINDS: frozenset[str] = frozenset({"page", "style", "theme"})
+
+
+def drafts_kind(kind: str | None) -> bool:
+    """Does this turn hold a write to `kind` for review?
+
+    The scope is still decided once per turn -- two tools disagreeing would put
+    half a change in the draft and half of it live. What this adds is that the
+    settled scope is read per kind rather than as one bool, so "pages are held,
+    storages are not" is expressible without any call site deciding for itself.
+
+    `DRAFTABLE_KINDS` stays a capability table (what the backend can draft at
+    all); this is the policy on top of it. Collapsing the two would lose the
+    security-kind exclusion, which is a data-loss bug in both directions.
+    """
+    scope = drafting.get()
+    if scope is DraftScope.LIVE or not is_draftable(kind):
+        return False
+    if scope is DraftScope.PAGE_ONLY_DRAFT:
+        return kind in PAGE_ONLY_KINDS
+    return True
 
 # Trailing segments that are operations on a collection, not object ids. A path
 # ending in one of these is not an object call at all, so it resolves to nothing:
