@@ -247,6 +247,12 @@ _CREATIVE_VERBS_RE = re.compile(r"\b(show|see|fetch)\b.{0,40}\b(ads?|creatives?)
 _NEGATION_RE = re.compile(r"\b(no|not|don'?t|do not|never|skip|without|stop|cancel|later)\b")
 
 
+def has_negation_cue(text: str) -> bool:
+    """True when the message negates or defers ("don't", "not", "later") - never
+    consent to a gated action, whatever else it says."""
+    return bool(_NEGATION_RE.search((text or "").lower()))
+
+
 # The review step between the competitor list landing and credits being spent
 # (Kailash 2026-09-09). Shared by the creatives step and the analysis result.
 CREATIVES_REVIEW_ASK = (
@@ -270,7 +276,7 @@ def wants_competitor_creatives(text: str) -> bool:
     if not lu or is_clear_decline_reply(lu):
         return False
     return is_clear_affirmative_reply(lu) or (
-        bool(_CREATIVE_VERBS_RE.search(lu)) and not _NEGATION_RE.search(lu))
+        bool(_CREATIVE_VERBS_RE.search(lu)) and not has_negation_cue(lu))
 
 
 def pending_creatives_fetch_steer(context: dict[str, Any]) -> str:

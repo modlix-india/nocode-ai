@@ -21,6 +21,7 @@ from app.agents.adzump._shared import resolve_url
 from app.agents.adzump.services.product_service import save_campaign
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
+    has_negation_cue,
     is_clear_affirmative_reply,
     is_clear_decline_reply,
 )
@@ -31,12 +32,17 @@ logger = logging.getLogger(__name__)
 # (campaign_data.is_clear_affirmative_reply - the gate-not-NLU rationale and
 # the F17 backstop philosophy live there).
 _LAUNCH_VERBS_RE = re.compile(r"\b(launch|publish)\b")
+# Launch is irreversible, so any doubt blocks it: a question, a negation or a
+# hold-off voids even a "yes" ("yes, but hold off until Monday"). A wrong block
+# costs one re-ask; a wrong pass spends the budget.
+_LAUNCH_HOLD_RE = re.compile(r"\?|\b(hold off|wait|pause|until)\b")
 
 
 def _user_confirmed_launch(last_user: str) -> bool:
     """True when the user's latest message is an explicit launch go-ahead."""
     lu = (last_user or "").strip().lower()
-    if not lu or is_clear_decline_reply(lu):
+    if (not lu or is_clear_decline_reply(lu) or has_negation_cue(lu)
+            or _LAUNCH_HOLD_RE.search(lu)):
         return False
     return is_clear_affirmative_reply(lu) or bool(_LAUNCH_VERBS_RE.search(lu))
 

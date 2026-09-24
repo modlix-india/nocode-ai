@@ -88,10 +88,24 @@ class LaunchConsentGateTests(unittest.TestCase):
             res = asyncio.run(_launch_campaign({}, ctx))
         self.assertTrue(res.success)
 
-    def test_helper_word_boundary(self):
-        # "yesterday" must not read as "yes"; "eyes" must not match either.
-        self.assertFalse(_user_confirmed_launch("yesterday we discussed eyes"))
-        self.assertTrue(_user_confirmed_launch("YES"))
+    def test_consent_phrases(self):
+        # Only a plain go-ahead passes; a question, negation or hold-off blocks
+        # even when it names the action (these all passed before 2026-09-24).
+        for message, confirmed in [
+            ("YES", True),
+            ("Yes, launch", True),
+            ("go ahead and publish it", True),
+            ("launch it now", True),
+            ("yesterday we discussed eyes", False),  # word boundary, not "yes"
+            ("don't launch yet", False),
+            ("do not publish", False),
+            ("hold off on the launch", False),
+            ("when will it launch?", False),
+            ("can we publish later?", False),
+            ("yes, but wait until Monday to launch", False),
+        ]:
+            with self.subTest(message):
+                self.assertEqual(_user_confirmed_launch(message), confirmed)
 
 
 class LaunchIdempotencyTests(unittest.TestCase):
