@@ -1,11 +1,11 @@
-"""The journey engine's invariant suite (S0-1..S0-7 + S3).
+"""The journey engine's invariant suite (S0 rows + S3).
 
 The S0 rows were written against the retired if-chain and passed UNCHANGED
 across the slice-3 conversion - they are the equivalence referee (D6:
-membership, order, tool named - never prose wording). Invariant #6 goes
-through the REAL ``from_session`` lenient path with raw legacy dicts, not the
-``make_actx`` fixture shortcut. S3 adds the registry-discipline lint and the
-engine's one deliberate semantic: waiting (an ask in flight) blocks review.
+membership, order, tool named - never prose wording). S0-6 goes through the
+REAL ``from_session`` lenient path with raw legacy dicts, not the ``make_actx``
+fixture shortcut. S3 adds the registry-discipline lint and the engine's one
+deliberate semantic: waiting (an ask in flight) blocks review.
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ import unittest
 from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext, missing_list
 from app.agents.adzump.tools.launch import _launch_campaign
 from app.agents.adzump.models import OfferResolution
+from app.agents.adzump.tools.campaign_data import CREATIVES_REVIEW_ASK
 from tests.agents.adzump._fixtures import SAAS, make_actx, make_session
 
 
@@ -33,8 +34,8 @@ GOOGLE_DONE = {
 META_DONE = {**GOOGLE_DONE, "platform": "Meta", "fb_page": "pg-9"}
 
 
-class NextActionInvariants(unittest.TestCase):
-    """S0-1..S0-7 - the seven behaviors every rework PR must preserve."""
+class JourneyInvariantTests(unittest.TestCase):
+    """S0 - the behaviors every journey rework must preserve."""
 
     # S0-1 · offer-once: a settled offer never re-enters the missing-list
     def test_settled_offer_absent_from_missing(self):
@@ -47,6 +48,10 @@ class NextActionInvariants(unittest.TestCase):
                 product=SAAS), "competitive analysis"),
             ("creatives settled", make_actx(
                 {"platform": "Meta"}, product=SAAS, creatives_resolved=True),
+                "competitor creatives"),
+            ("creatives never offered on Google", make_actx(
+                {"platform": "Google Ads"}, product=SAAS,
+                competitor_names=["Rival"], attempted=True),
                 "competitor creatives"),
         ]
         for label, actx, prefix in rows:
@@ -74,18 +79,8 @@ class NextActionInvariants(unittest.TestCase):
                 actx = AdzumpContext.from_session(session)
                 self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, actx), prefix))
 
-    # S0-3 · chip asks invite typing; no Custom chip is ever prescribed (D13)
-    def test_chip_asks_invite_typing_no_custom_chip(self):
-        for field in ("duration", "budget"):
-            with self.subTest(field):
-                actx = make_actx({"platform": "Google Ads"}, product=SAAS,
-                                 attempted=True)
-                line = _entry(missing_list(NEW_CAMPAIGN, actx), field)
-                self.assertIsNotNone(line)
-                self.assertIn("type your own", line)
-                self.assertNotIn("Custom", line)
-
-    # S0-4 · an accepted creatives offer prescribes the fetch, not a re-ask
+    # S0-4 · an accepted creatives offer starts research, never a blind fetch:
+    # known rivals get the list-review checkpoint first (Kailash 2026-09-09)
     def test_accepted_offer_unlocks_fetch(self):
         rows = [
             ("rivals known", ["Lodha"], "fetch_competitor_creatives"),
@@ -99,7 +94,11 @@ class NextActionInvariants(unittest.TestCase):
                 line = _entry(missing_list(NEW_CAMPAIGN, actx), "competitor creatives")
                 self.assertIsNotNone(line)
                 self.assertIn(tool, line)
-                self.assertNotIn("offer it ONCE", line)
+                self.assertNotIn('field "competitor_creatives"', line)  # not a re-ask
+                if names:
+                    self.assertIn(CREATIVES_REVIEW_ASK, line)
+                else:
+                    self.assertNotIn("fetch_competitor_creatives", line)
 
     # S0-5 → S2 · the review prescription is two tool calls; the card itself
     # is CODE-rendered (tools/summary.py) - no VERBATIM template remains.
@@ -117,10 +116,8 @@ class NextActionInvariants(unittest.TestCase):
                 self.assertEqual(len(missing), 1)
                 block = missing[0]
                 self.assertTrue(block.startswith("review & publish"))
-                for token in ("show_campaign_summary", "Ready to launch",
-                              "launch_campaign"):
-                    self.assertIn(token, block)
-                self.assertNotIn("VERBATIM", block)  # template engine is dead
+                for tool in ("show_campaign_summary", "launch_campaign"):
+                    self.assertIn(tool, block)
 
     # S0-6 · in-flight legacy session resumes sanely through from_session
     def test_legacy_session_resume(self):
@@ -211,11 +208,6 @@ class JourneyEngineTests(unittest.TestCase):
                               f"{step.name} requires {required} which is not "
                               "an earlier step")
             seen.add(step.name)
-        # launch.py's required-field set must be journey steps (offers aren't
-        # in it - declines never block launch).
-        launch_required = {"platform", "duration", "budget",
-                           "parent_account", "account"}
-        self.assertTrue(launch_required <= set(names))
 
 
 class DependencyMirrorTests(unittest.TestCase):

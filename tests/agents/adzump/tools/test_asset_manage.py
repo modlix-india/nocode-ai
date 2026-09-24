@@ -1,6 +1,6 @@
 """asset_manage below the model: text builders (_build_brief, _saved_summary),
 verdict disposition (model-led, explicit-only escalation - no confidence
-threshold), dedup, product_data write shapes, elicitation-payload decrements.
+threshold), product_data writers, elicitation-payload decrements.
 Regression: PR1a project-identity grounding - story in plans/asset-upload-qa-findings.md."""
 import json
 import unittest
@@ -9,7 +9,7 @@ from app.agents.adzump.agents.product.models import AssetRequirements
 from app.agents.adzump.agents.vision.models import ImageVerdict
 from app.agents.adzump.tools.asset_manage import (
     _build_brief, _fulfill_requirement, _saved_summary, classify_verdict,
-    dedup_by_content, store_image, store_logo,
+    store_image, store_logo,
 )
 
 
@@ -91,22 +91,12 @@ class ClassifyTests(unittest.TestCase):
                 self.assertEqual(classify_verdict(verdict), expected)
 
 
-class DedupTests(unittest.TestCase):
-    def test_identical_bytes_collapse(self):
-        imgs = [{"data": b"AAAA"}, {"data": b"BBBB"}, {"data": b"AAAA"}]
-        self.assertEqual([i["data"] for i in dedup_by_content(imgs)], [b"AAAA", b"BBBB"])
-        self.assertEqual(dedup_by_content([]), [])
-
-
-class StoreShapeTests(unittest.TestCase):
-    """The product_data["assets"] write shape."""
+class StoreWriterTests(unittest.TestCase):
 
     def test_store_logo_upload_wins_then_appends(self):
         pd, sctx = {}, {}
         store_logo(pd, {"url": "https://s/logo.png", "format": "png"}, "logo-dark", sctx)
-        logo = pd["assets"]["logos"][0]
-        self.assertEqual(logo["source"], "user_upload")
-        self.assertEqual(logo["confidence"], 1.0)  # uploads are unbeatable
+        self.assertEqual(pd["assets"]["logos"][0]["confidence"], 1.0)  # uploads are unbeatable
         self.assertTrue(sctx["_asset_logo_cleared"])
         store_logo(pd, {"url": "https://s/proj.png"}, "project", sctx)  # 2nd appends
         self.assertEqual([l["url"] for l in pd["assets"]["logos"]],
@@ -116,9 +106,7 @@ class StoreShapeTests(unittest.TestCase):
         pd = {}
         self.assertTrue(store_image(pd, {"url": "https://s/hero.png"}, "hero", "hero", {}))
         self.assertFalse(store_image(pd, {"url": "https://s/hero.png"}, "hero", "hero", {}))
-        images = pd["assets"]["images"]
-        self.assertEqual([i["url"] for i in images], ["https://s/hero.png"])
-        self.assertEqual((images[0]["role"], images[0]["source"]), ("hero", "user_upload"))
+        self.assertEqual([i["url"] for i in pd["assets"]["images"]], ["https://s/hero.png"])
 
 
 def _sctx_with_open_elicit(**req):

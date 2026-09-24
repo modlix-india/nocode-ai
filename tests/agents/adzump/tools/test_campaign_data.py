@@ -14,7 +14,7 @@ from app.agents.adzump.tools.campaign_data import (
     clear_competitor_decline, is_clear_decline_reply, is_decline, is_real_estate,
 )
 from app.agents.adzump.services.product_service import _build_full_record
-from tests.agents.adzump._fixtures import RE, spec_context
+from tests.agents.adzump._fixtures import RE, make_session, spec_context
 
 
 class IsDeclineTests(unittest.TestCase):
@@ -171,10 +171,6 @@ class DependencyCascadeTests(unittest.TestCase):
         sc["_field_asks"] = {"competitor_creatives": 2}
         _clear_dependents("platform", sc, frozenset())
         self.assertNotIn("_field_asks", sc)
-        # A downstream change (fb_page) clears only the instagram count.
-        sc["_field_asks"] = {"competitor_creatives": 2, "instagram": 1}
-        _clear_dependents("fb_page", sc, frozenset())
-        self.assertEqual(sc["_field_asks"], {"competitor_creatives": 2})
 
 
 # ── v5 · set_campaign_spec retry-loop fixes ────────────────────────────────
@@ -527,14 +523,9 @@ class WantsCompetitorCreativesTests(unittest.TestCase):
 
 
 class LastUserTextTests(unittest.TestCase):
-    """_last_user_text means what the HUMAN last typed. Tool results are also
-    appended as role="user" messages (Anthropic format, session.append_tool_results)
-    and must be skipped - reading one as "the user said nothing" made every
-    _last_user_text-based gate refuse mid-turn (live 2026-07-30: consent gate
-    silently dropped the competitor-creatives fetch after analyze ran)."""
+    """What the HUMAN last typed - role="user" tool_result carriers are skipped."""
 
     def test_table(self):
-        from types import SimpleNamespace
         from app.agents.adzump.tools.campaign_data import _last_user_text
 
         tool_result_msg = {"role": "user", "content": [
@@ -560,8 +551,9 @@ class LastUserTextTests(unittest.TestCase):
         ]
         for name, messages, expected in cases:
             with self.subTest(case=name):
-                context = {"_session": SimpleNamespace(messages=messages)}
-                self.assertEqual(_last_user_text(context), expected)
+                session = make_session()
+                session.messages = messages
+                self.assertEqual(_last_user_text({"_session": session}), expected)
 
 
 class PendingCreativesFetchSteerTests(unittest.TestCase):
@@ -570,22 +562,23 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
     on a pre-analysis fetch attempt, then never fetched after analyzing."""
 
     def test_table(self):
-        from types import SimpleNamespace
-        from app.agents.adzump.tools.campaign_data import pending_creatives_fetch_steer
+        from app.agents.adzump.tools.campaign_data import (
+            CREATIVES_REVIEW_ASK, pending_creatives_fetch_steer,
+        )
 
         def ctx(*, platform="Meta", accepted=False, fetched=False, last_user="Yes",
                 messages=None):
             spec = {"platform": platform}
             if accepted:
                 spec["competitor_creatives"] = "accepted"
-            session_ctx: dict = {"campaign_spec": spec}
+            extra = {}
             if fetched:  # covered = every named competitor carries a result
-                session_ctx["competitor_analysis"] = {"competitors": [
+                extra["competitor_analysis"] = {"competitors": [
                     {"name": "R", "url": "https://r.com", "creatives": []}]}
-            session = SimpleNamespace(
-                messages=messages if messages is not None
-                else [{"role": "user", "content": last_user}])
-            return {"session_context": session_ctx, "_session": session}
+            session = make_session(last_user=last_user, spec=spec, **extra)
+            if messages is not None:
+                session.messages = messages
+            return {"session_context": session.context, "_session": session}
 
         # The shape the steer was written for: analyze_competitors just ran,
         # so its tool_result (a role="user" message) sits after the human Yes.
@@ -611,13 +604,8 @@ class PendingCreativesFetchSteerTests(unittest.TestCase):
             with self.subTest(case=name):
                 steer = pending_creatives_fetch_steer(context)
                 self.assertEqual(bool(steer), owed)
-        # Owed always means the REVIEW ask, never a same-turn fetch: the list
-        # just posted and the user reviews it first (Kailash 2026-09-09). A
-        # fetch-NOW variant contradicted the step's prescription (2026-09-23).
-        for context in (ctx(), ctx(accepted=True, last_user="what about targeting?")):
-            steer = pending_creatives_fetch_steer(context)
-            self.assertIn("adjust the list", steer)
-            self.assertNotIn("NOW", steer)
+                if owed:  # the review ask the step prescribes, never a fetch-now
+                    self.assertIn(CREATIVES_REVIEW_ASK, steer)
 
 
 class ClearHelperTests(unittest.TestCase):

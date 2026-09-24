@@ -55,22 +55,24 @@ class ToCreativeTests(unittest.TestCase):
         self.assertEqual(creative.publisher_platforms, ["FACEBOOK", "INSTAGRAM"])
         self.assertTrue(creative.first_seen.startswith("2025-02-28"))
 
-    def test_video_ad_uses_video_and_poster(self):
-        ad = _ad()
-        ad["snapshot"]["display_format"] = "VIDEO"
-        ad["snapshot"]["videos"] = [{
-            "video_hd_url": "https://cdn/v.mp4",
-            "video_preview_image_url": "https://cdn/v_poster.jpg",
-        }]
-        creative = _to_creative(ad)
-        self.assertEqual(creative.media_type, "video")
-        self.assertEqual(creative.source_asset_url, "https://cdn/v.mp4")
-        self.assertEqual(creative.poster_source_url, "https://cdn/v_poster.jpg")
-
-    def test_multi_images_is_carousel(self):
-        ad = _ad()
-        ad["snapshot"]["display_format"] = "MULTI_IMAGES"
-        self.assertEqual(_to_creative(ad).media_type, "carousel")
+    def test_media_rows(self):
+        video = {"video_hd_url": "https://cdn/v.mp4",
+                 "video_preview_image_url": "https://cdn/v_poster.jpg"}
+        for label, snapshot_extra, media, asset, poster in [
+            ("video ad uses video + poster", {"display_format": "VIDEO", "videos": [video]},
+             "video", "https://cdn/v.mp4", "https://cdn/v_poster.jpg"),
+            ("video in a card maps as video",
+             {"display_format": "VIDEO", "images": [], "videos": [], "cards": [video]},
+             "video", "https://cdn/v.mp4", "https://cdn/v_poster.jpg"),
+            ("multi images is a carousel", {"display_format": "MULTI_IMAGES"},
+             "carousel", "https://cdn/x.jpg", ""),
+        ]:
+            with self.subTest(label):
+                ad = _ad()
+                ad["snapshot"].update(snapshot_extra)
+                creative = _to_creative(ad)
+                self.assertEqual((creative.media_type, creative.source_asset_url,
+                                  creative.poster_source_url), (media, asset, poster))
 
     def test_carousel_pulls_media_and_copy_from_cards(self):
         # Live shape (verified 2026-09-01): carousel ads have empty top-level
@@ -96,17 +98,6 @@ class ToCreativeTests(unittest.TestCase):
         self.assertEqual(creative.headline, "Villas Around a Waterfall")
         self.assertEqual(creative.primary_text, "Lakefront villas")
         self.assertEqual(creative.landing_url, "https://purvasparklingspring.com")
-
-    def test_video_in_card_maps_as_video(self):
-        ad = _ad()
-        ad["snapshot"].update({
-            "display_format": "VIDEO", "images": [], "videos": [],
-            "cards": [{"video_hd_url": "https://cdn/card_v.mp4",
-                       "video_preview_image_url": "https://cdn/card_v_poster.jpg"}],
-        })
-        creative = _to_creative(ad)
-        self.assertEqual(creative.source_asset_url, "https://cdn/card_v.mp4")
-        self.assertEqual(creative.poster_source_url, "https://cdn/card_v_poster.jpg")
 
     def test_null_fields_survive(self):
         ad = _ad()
@@ -232,40 +223,18 @@ class SearchPolicyTests(unittest.TestCase):
                                                name="Nambiar Villas X"))
             self.assertEqual(fetched.creatives, [])
 
-    def test_mention_tier_matches_brand_in_landing_urls(self):
-        # Broker ads often carry the project name ONLY in the landing url,
-        # never in the copy (live 2026-09-20: 13 Godrej Platinum ads, all
-        # unattributed because only their links named the brand).
-        cases = {
-            "snapshot link_url": {"link_url": "https://godrej-platinum.in/offer"},
-            "extra_links": {"extra_links":
-                            ["https://fb.me/x", "https://godrejplatinum.in"]},
-            "card link_url": {"cards": [
-                {"title": "2BHK", "body": {"text": "Book now"},
-                 "link_url": "https://www.godrej-platinum.in/book"}]},
-        }
-        for label, snapshot_extra in cases.items():
-            with self.subTest(label):
-                ad = _ad(page_name="Some Broker")
-                ad["snapshot"]["body"] = {"text": "Luxury homes near you"}
-                ad["snapshot"]["title"] = "New Launch"
-                ad["snapshot"].update(snapshot_extra)
-                self.assertTrue(
-                    scrapecreators._mentions_brand(ad, "Godrej Platinum"))
-        with self.subTest("unrelated link does not match"):
-            ad = _ad(page_name="Some Broker",
-                     link_url="https://prestige-lakeside.in")
-            ad["snapshot"]["body"] = {"text": "Luxury homes near you"}
-            ad["snapshot"]["title"] = "New Launch"
-            self.assertFalse(
-                scrapecreators._mentions_brand(ad, "Godrej Platinum"))
-
-    def test_mention_tier_matches_on_distinctive_tokens(self):
-        # 'Nambiar Villas' vs an ad for 'Nambiar District 25': generic words
-        # (villas/homes/...) carry no brand identity, so attribution needs
-        # only the distinctive tokens (live 2026-09-21: all 23 Nambiar ads
-        # dropped because no ad said the literal phrase 'Nambiar Villas').
+    def test_mentions_brand_rows(self):
+        # Landing urls (live 2026-09-20) and distinctive tokens (live 2026-09-21).
         cases = [
+            ("brand in snapshot link_url", "Godrej Platinum",
+             {"link_url": "https://godrej-platinum.in/offer"}, True),
+            ("brand in extra_links", "Godrej Platinum",
+             {"extra_links": ["https://fb.me/x", "https://godrejplatinum.in"]}, True),
+            ("brand in a card link_url", "Godrej Platinum",
+             {"cards": [{"title": "2BHK", "body": {"text": "Book now"},
+                         "link_url": "https://www.godrej-platinum.in/book"}]}, True),
+            ("unrelated link does not match", "Godrej Platinum",
+             {"link_url": "https://prestige-lakeside.in"}, False),
             ("distinctive token in body", "Nambiar Villas",
              {"body": {"text": "Nambiar District 25 - book your site visit"}},
              True),
@@ -316,14 +285,23 @@ class SearchPolicyTests(unittest.TestCase):
             creatives = scrapecreators._to_creatives(_ad())
             self.assertEqual([c.creative_id for c in creatives], ["a1"])
 
-    def test_cursor_pagination_stops_without_cursor(self):
-        source = self._source_with_pages([
-            {"searchResults": [_ad()], "cursor": "next"},
-            {"searchResults": [_ad()], "cursor": ""},
-        ])
-        fetched = asyncio.run(source.fetch(domain="", name="Purva Sparkling Springs"))
-        self.assertEqual([c["cursor"] for c in self.calls], ["", "next"])
-        self.assertEqual(len(fetched.creatives), 2)
+    def test_cursor_pagination_rows(self):
+        # Each page is a metered credit: paging stops at the last cursor or PAGE_LIMIT.
+        endless = [{"searchResults": [_ad()], "cursor": "next"}] * (
+            scrapecreators.PAGE_LIMIT + 2)
+        for label, pages, want_calls in [
+            ("stops when the cursor runs out",
+             [{"searchResults": [_ad()], "cursor": "next"},
+              {"searchResults": [_ad()], "cursor": ""}], 2),
+            ("stops at PAGE_LIMIT while the vendor keeps paging",
+             list(endless), scrapecreators.PAGE_LIMIT),
+        ]:
+            with self.subTest(label):
+                source = self._source_with_pages(pages)
+                fetched = asyncio.run(source.fetch(domain="", name="Purva Sparkling Springs"))
+                self.assertEqual(len(self.calls), want_calls)
+                self.assertEqual([c["cursor"] for c in self.calls][:2], ["", "next"])
+                self.assertEqual(len(fetched.creatives), want_calls)
 
     def test_missing_key_and_name_raise(self):
         with mock.patch.object(scrapecreators.settings, "SCRAPECREATORS_API_KEY", ""):

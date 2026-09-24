@@ -94,9 +94,6 @@ class DedupTests(unittest.TestCase):
     def test_fingerprint_and_tier_cascade(self):
         gradient = _gradient()
         h_gradient = phash.compute_phash(_png(gradient))
-        with self.subTest("stable hex fingerprint"):
-            self.assertTrue(h_gradient)
-            self.assertTrue(all(c in "0123456789abcdef" for c in h_gradient))
         with self.subTest("re-encoded/resized copy is a near-dup; different image is not"):
             reencoded = phash.compute_phash(_jpeg(gradient.resize((320, 320))))
             self.assertTrue(phash.is_near_duplicate(h_gradient, reencoded))

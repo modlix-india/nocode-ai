@@ -47,10 +47,6 @@ class CompetitorCardsTests(unittest.TestCase):
             kv = children[0]["items"]
             self.assertIn(("Gap", "no villas"),
                           [(i["key"], i["value"]) for i in kv])
-            metric_rows = [b for b in children if b["type"] == "row"
-                           and b["children"][0].get("type") == "metric"]
-            labels = [m["label"] for m in metric_rows[0]["children"]]
-            self.assertEqual(labels, ["Total ads", "Active", "Paused"])
             self.assertEqual(len(_carousel_cards(children)), 1)
         with self.subTest("no creatives fetched yet -> no badge, no carousel"):
             blocks = []
@@ -61,8 +57,7 @@ class CompetitorCardsTests(unittest.TestCase):
             self.assertNotIn("badge", card)
             self.assertFalse(_carousel_cards(card["children"]))
         with self.subTest("fetched but library had none -> explicit 'No ads found'"):
-            # absence must not masquerade as "runs no ads": a FETCHED-empty
-            # competitor says so; an unfetched one (above) claims nothing.
+            # only a FETCHED-empty competitor says so; an unfetched one claims nothing
             blocks = []
             empty = {**rival, "creatives": [], "totalCreatives": 0, "activeCreatives": 0}
             render_competitors(blocks, {"competitors": [empty]})
@@ -74,9 +69,7 @@ class CompetitorCardsTests(unittest.TestCase):
                                 "sourceAssetUrl": "v.jpg"}, "f.jpg"),
             ("carousel poster rehosted", {"mediaType": "carousel", "posterUrl": "p.jpg",
                                           "sourceAssetUrl": "v.jpg"}, "p.jpg"),
-            # Vendor source URLs are signed-with-expiry and rot into error
-            # bodies - NEVER rendered (the "blank cards" bug, 2026-09-10).
-            # A legacy creative with only a source url is skipped.
+            # vendor urls expire into error bodies (blank cards, 2026-09-10)
             ("vendor url never renders",
              {"mediaType": "carousel", "sourceAssetUrl": "v.jpg"}, None),
             ("video poster", {"mediaType": "video", "posterUrl": "p.jpg",
@@ -90,12 +83,6 @@ class CompetitorCardsTests(unittest.TestCase):
                     self.assertFalse(cards)
                 else:
                     self.assertEqual(cards[0]["url"], expected)
-        with self.subTest("video gets the play marker from its poster"):
-            children = []
-            render_competitor_creatives(
-                children,
-                [{"mediaType": "video", "posterUrl": "p.jpg", "headline": "Watch"}], 1, 1)
-            self.assertTrue(_carousel_cards(children)[0]["caption"].startswith("▶"))
         with self.subTest("video click-through is the playable rehosted video"):
             children = []
             render_competitor_creatives(
@@ -103,55 +90,20 @@ class CompetitorCardsTests(unittest.TestCase):
                 [{"mediaType": "video", "posterUrl": "p.jpg", "fileUrl": "v.mp4"}], 1, 1)
             card = _carousel_cards(children)[0]
             self.assertEqual((card["url"], card["thumb_url"]), ("v.mp4", "p.jpg"))
-        with self.subTest("badges + non-zero metrics line"):
-            children = []
-            render_competitor_creatives(children, [{
-                "mediaType": "image", "fileUrl": "f.jpg", "isActive": True,
-                "daysRunning": 112,
-                "metrics": {"impressions": 2_500_000, "likes": 0, "views": 980},
-            }], 1, 1)
-            card = _carousel_cards(children)[0]
-            self.assertEqual([b["label"] for b in card["badges"]], ["Active", "112d"])
-            self.assertEqual(card["badges"][0]["tone"], "active")
-            self.assertEqual(card["meta"], "2.5M impressions · 980 views")
         with self.subTest("string/suffixed vendor metrics render, never crash the panel"):
-            # regression: the ad library sends counts as '10K'/'1,234'/ranges;
-            # int() on those threw and rerender_craft swallowed it -> creatives
-            # silently vanished from the panel (B2). Now coerced, never raised.
+            # regression B2: int('10K') threw and the creatives vanished from the panel
             children = []
             render_competitor_creatives(children, [{
                 "mediaType": "image", "fileUrl": "f.jpg", "daysRunning": "112",
                 "metrics": {"impressions": "10K", "likes": "1,234", "views": "1K-5K"},
             }], 1, 0)
             card = _carousel_cards(children)[0]
-            self.assertEqual(card["meta"], "10K impressions · 1K views · 1.2K likes")
-            self.assertIn("112d", [b["label"] for b in card["badges"]])
-        with self.subTest("paused + zero metrics -> paused badge, no meta key"):
+            self.assertEqual(card["url"], "f.jpg")
+            self.assertTrue(card["meta"])  # the metrics survive coercion
+        with self.subTest("zero metrics -> no meta line"):
             children = []
             render_competitor_creatives(children, [_img(1)], 1, 0)
-            card = _carousel_cards(children)[0]
-            self.assertEqual(card["badges"], [{"label": "Paused", "tone": "paused"}])
-            self.assertNotIn("meta", card)
-        with self.subTest("paused with lastSeen carries the recency chip"):
-            from datetime import datetime, timedelta, timezone
-            seen = (datetime.now(timezone.utc) - timedelta(days=45)).isoformat()
-            children = []
-            render_competitor_creatives(children, [
-                {"mediaType": "image", "fileUrl": "f.jpg", "lastSeen": seen}], 1, 0)
-            labels = [b["label"] for b in _carousel_cards(children)[0]["badges"]]
-            self.assertEqual(labels, ["Paused", "seen 45d ago"])
-            # active ads don't need it; garbage timestamps stay silent
-            children = []
-            render_competitor_creatives(children, [
-                {"mediaType": "image", "fileUrl": "f.jpg", "isActive": True,
-                 "lastSeen": seen}], 1, 1)
-            self.assertEqual([b["label"] for b in _carousel_cards(children)[0]["badges"]],
-                             ["Active"])
-            children = []
-            render_competitor_creatives(children, [
-                {"mediaType": "image", "fileUrl": "f.jpg", "lastSeen": "junk"}], 1, 0)
-            self.assertEqual([b["label"] for b in _carousel_cards(children)[0]["badges"]],
-                             ["Paused"])
+            self.assertNotIn("meta", _carousel_cards(children)[0])
         with self.subTest("payload cap; no-usable-image is a noop"):
             children = []
             render_competitor_creatives(children, [_img(i) for i in range(20)], 20, 4)

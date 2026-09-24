@@ -120,10 +120,21 @@ def elicitation(field: str, answers: dict | None = None, *, expects: str = "sing
 
 
 class FakeStream:
-    """Captures `emit_text` calls - the happy path most tool tests need."""
+    """Records what a tool or sub-agent emits: text, data events, and the
+    agent-finished events a parent stream receives."""
+
+    is_cancelled = False
 
     def __init__(self) -> None:
         self.texts: list[str] = []
+        self.data: list[tuple[str, Any]] = []
+        self.finished: list[dict[str, Any]] = []
 
     async def emit_text(self, text: str) -> None:
         self.texts.append(text)
+
+    async def emit_data(self, name: str, payload: Any) -> None:
+        self.data.append((name, payload))
+
+    async def emit_agent_finished(self, **event: Any) -> None:
+        self.finished.append(event)

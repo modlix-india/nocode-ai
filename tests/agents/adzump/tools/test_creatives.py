@@ -12,7 +12,9 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+from app.agents.adzump.models import OfferResolution
 from app.agents.adzump.tools import creatives
+from app.agents.adzump.tools.campaign_data import creatives_offer_resolution
 
 
 def _ctx(*, platform="Meta", last_user="Yes", competitors=None, messages=None):
@@ -40,6 +42,11 @@ _MID_TURN_MESSAGES = [
 ]
 
 
+def _offer(ctx) -> OfferResolution:
+    session_ctx = ctx["session_context"]
+    return creatives_offer_resolution(session_ctx["campaign_spec"], session_ctx)
+
+
 def _run(ctx, fetch=None):
     with mock.patch.object(creatives.ci, "creatives_for_all",
                            new=fetch or mock.AsyncMock(return_value={})) as fetched:
@@ -54,75 +61,50 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
                 result, fetch = _run(_ctx(platform=platform))
                 self.assertFalse(result.success)
                 fetch.assert_not_awaited()
-        for last_user, allowed in [
-            ("Yes", True), ("yes, show me", True),
-            ("show me their ads", True),                # verb form, no bare yes
-            ("go ahead", True),
-            ("", False),
-            ("tell me about the budget", False),        # model jumping the gun
-            ("no thanks", False),                       # clear decline
-            ("yesterday we discussed eyes", False),     # word boundary
-        ]:
-            with self.subTest(consent=last_user or repr(last_user)):
+        # The consent predicate's phrase table lives in test_campaign_data.
+        for last_user, allowed in [("Yes", True), ("tell me about the budget", False)]:
+            with self.subTest(consent=last_user):
                 result, fetch = _run(_ctx(last_user=last_user))
                 self.assertEqual(result.success, allowed)
                 if not allowed:
                     fetch.assert_not_awaited()
-                    self.assertIn("Consent gate", result.error)
                     # the refusal names the re-ask tool + tagged field
                     self.assertIn("present_options", result.error)
                     self.assertIn('field "competitor_creatives"', result.error)
-                    # the customer's tool row gets calm copy, never the steering
-                    self.assertIn("go-ahead", result.display_error)
+                    # the customer's tool row never shows the steering
                     self.assertNotIn("present_options", result.to_display_text())
         with self.subTest("stored acceptance passes the gate (stored-ok exception)"):
-            # HLD/LLD §4.5: the fetch is metered but internal and reversible -
-            # a stored yes must not expire because a digression moved the
-            # latest message (live: the consented fetch died on the way to
-            # the analyze step).
+            # A stored yes survives a digression moving the latest message (HLD/LLD 4.5).
             ctx = _ctx(last_user="tell me about the budget")
             ctx["session_context"]["campaign_spec"]["competitor_creatives"] = "accepted"
             result, fetch = _run(ctx)
             self.assertTrue(result.success)
         with self.subTest("consent survives a tool result later in the turn"):
-            # The gate's own "run analyze_competitors NOW, then call fetch AGAIN
-            # in this same turn" must be satisfiable (incident: LastUserTextTests).
+            # the gate's own "analyze now, then fetch again this turn" stays satisfiable
             result, fetch = _run(_ctx(messages=list(_MID_TURN_MESSAGES)))
             self.assertTrue(result.success)
             fetch.assert_awaited()
         with self.subTest("consented but no competitors prescribes analysis"):
-            # Live 2026-09-08: a parallel analyze+fetch raced; this refusal must
-            # never mark the offer resolved or the owed fetch evaporates.
+            # regression: live 2026-09-08 (a raced refusal must not resolve the offer)
             ctx = _ctx(competitors=[])
             result, fetch = _run(ctx)
             self.assertFalse(result.success)
             self.assertIn("analyze_competitors", result.error)
             fetch.assert_not_awaited()
         with self.subTest("fetch that resolves nothing leaves the offer OPEN"):
-            # Coverage-based resolution: only an _on_resolved write-back covers
-            # a competitor. A run where every competitor failed keeps the offer
-            # owed, so the retry happens (cache-served for any that DID land).
-            from app.agents.adzump.models import OfferResolution
-            from app.agents.adzump.tools.campaign_data import (
-                creatives_offer_resolution,
-            )
+            # only an _on_resolved write-back covers a competitor
             ctx = _ctx()
             result, _ = _run(ctx)
             self.assertTrue(result.success)
-            session_ctx = ctx["session_context"]
-            self.assertIs(
-                creatives_offer_resolution(session_ctx["campaign_spec"], session_ctx),
-                OfferResolution.OPEN)
+            self.assertIs(_offer(ctx), OfferResolution.OPEN)
         with self.subTest("failed fetch also leaves the offer OPEN"):
             ctx = _ctx()
             result, _ = _run(ctx, fetch=mock.AsyncMock(side_effect=RuntimeError("boom")))
             self.assertFalse(result.success)
+            self.assertIs(_offer(ctx), OfferResolution.OPEN)
 
     def test_already_fetched_entries_are_skipped(self):
-        """Session-level cache: only the entry WITHOUT creatives is fetched
-        when one more competitor is added (live 2026-09-04: Purva re-spent
-        credits because the 404ing shared store was the only guard).
-        Fetched-empty ([] = honest 'No ads found') also skips."""
+        """Only entries without a fetch result are fetched (live 2026-09-04 re-spend)."""
         competitors = [
             {"name": "Purva", "url": "https://purvasparklingspring.com",
              "creatives": [{"creativeId": "a1"}], "totalCreatives": 1,
@@ -145,12 +127,7 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
         self.assertTrue(result.success)
         fetch.assert_not_awaited()
         # every named competitor carries a result -> the offer reads fulfilled
-        from app.agents.adzump.models import OfferResolution
-        from app.agents.adzump.tools.campaign_data import creatives_offer_resolution
-        session_ctx = ctx["session_context"]
-        self.assertIs(
-            creatives_offer_resolution(session_ctx["campaign_spec"], session_ctx),
-            OfferResolution.FULFILLED)
+        self.assertIs(_offer(ctx), OfferResolution.FULFILLED)
 
 
 class EssenceRollupTests(unittest.TestCase):

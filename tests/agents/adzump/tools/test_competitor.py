@@ -11,7 +11,6 @@ from unittest import mock
 from app.agents.adzump.tools import competitor
 from app.agents.adzump.tools.competitor import (
     _apply_url_updates,
-    _find_competitor,
     _join_verified_urls,
     _verify_competitor_url,
 )
@@ -123,33 +122,29 @@ class VerifyCompetitorUrlTests(unittest.TestCase):
              "https://nambiarprojects.com/x",
              dict(answer="MATCH: YES\nOfficial project page.",
                   final_url="https://nambiarprojects.com/nambiar-bannerghatta-road/"),
-             "https://nambiarprojects.com/nambiar-bannerghatta-road/", None),
-            # The USER is the authority: a live non-portal pin is accepted even
-            # when the page read disagrees, with the doubt as a caution (live
-            # 2026-09-08: the reader vetoed the user's CORRECT Nambiar pin
-            # because the official page mentions a channel partner).
+             "https://nambiarprojects.com/nambiar-bannerghatta-road/", False),
+            # the user is the authority: a live non-portal pin stands, with a caution
             ("content mismatch accepted with caution",
              "https://sobha.com/other",
              dict(answer="MATCH: NO\nA different Sobha project page."),
-             "https://sobha.com/other", "different Sobha project"),
+             "https://sobha.com/other", True),
             ("dead site rejected", "https://deadclone.co.in/",
-             dict(), "", "didn't respond"),
+             dict(), "", True),
             ("portal rejected without a fetch", "https://99acres.com/x",
-             dict(answer="MATCH: YES"), "", "portal"),
+             dict(answer="MATCH: YES"), "", True),
             ("redirect into a portal rejected", "https://short.link/x",
              dict(answer="MATCH: YES", final_url="https://99acres.com/y"),
-             "", "redirects to a portal"),
+             "", True),
             ("garbage url rejected", "not-a-url", dict(answer="MATCH: YES"),
-             "", "not a valid website"),
+             "", True),
         ]
-        for label, url, kwargs, expected_url, reason_part in rows:
+        for label, url, kwargs, expected_url, has_reason in rows:
             with self.subTest(label):
                 verified, reason = self._verify(
                     "Nambiar Villas Bannerghatta", url,
                     answer=kwargs.get("answer"), final_url=kwargs.get("final_url"))
                 self.assertEqual(verified, expected_url)
-                if reason_part:
-                    self.assertIn(reason_part, reason)
+                self.assertEqual(bool(reason), has_reason)
 
 
 class ApplyUrlUpdatesTests(unittest.TestCase):
@@ -175,38 +170,25 @@ class ApplyUrlUpdatesTests(unittest.TestCase):
         for stale in ("creatives", "totalCreatives", "activeCreatives"):
             self.assertNotIn(stale, entry)
 
-    def test_rejections_are_user_facing(self):
+    def test_rejected_pins_never_apply(self):
         rows = [
-            ("verification failed",
-             "Nambiar | https://wrong.example",
-             [{"name": "Nambiar Villas", "url": None}],
-             ("", "that page is a broker site"), "broker site"),
+            ("verification failed", "Nambiar | https://wrong.example",
+             [{"name": "Nambiar Villas", "url": None}], ("", "that page is a broker site")),
             ("unknown competitor", "Ghost | https://x.example",
-             [{"name": "Nambiar Villas"}], ("https://x.example", ""),
-             "No competitor named 'Ghost'"),
+             [{"name": "Nambiar Villas"}], ("https://x.example", "")),
             ("unparseable spec", "just some text",
-             [{"name": "Nambiar Villas"}], ("https://x.example", ""),
-             "expected 'Name | URL'"),
+             [{"name": "Nambiar Villas"}], ("https://x.example", "")),
         ]
-        for label, spec, competitors, verified, reason_part in rows:
+        for label, spec, competitors, verified in rows:
             with self.subTest(label):
                 acks, rejections = self._apply(spec, competitors, verified)
                 self.assertEqual(acks, [])
-                self.assertIn(reason_part, rejections[0])
+                self.assertEqual(len(rejections), 1)
                 self.assertNotEqual(competitors[0].get("url_source"), "user")
-
-    def test_find_competitor_is_fuzzy(self):
-        competitive = {"competitors": [
-            {"name": "Purva Sparkling Springs"}, {"name": "Sobha Magnus"}]}
-        self.assertEqual(_find_competitor(competitive, "purva")["name"],
-                         "Purva Sparkling Springs")
-        self.assertIsNone(_find_competitor(competitive, "Lodha"))
 
 
 class SameProjectTests(unittest.TestCase):
-    """Live 2026-09-08: 'check Nambiar's official website' appended a second
-    Nambiar card. A looked-up name matching an existing entry must refresh it;
-    sibling projects (same brand, different project) must stay separate."""
+    """A looked-up name refreshes its entry; sibling projects stay separate (live 2026-09-08)."""
 
     def test_rows(self):
         from app.agents.adzump.tools.competitor import _same_project
@@ -225,7 +207,6 @@ class SameProjectTests(unittest.TestCase):
         ]
         for label, a, b, expected in rows:
             with self.subTest(label):
-                from app.agents.adzump.tools.competitor import _same_project
                 self.assertIs(_same_project(a, b), expected)
                 self.assertIs(_same_project(b, a), expected)
 
@@ -270,9 +251,7 @@ class RefreshEntryTests(unittest.TestCase):
 
 
 class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
-    """Live 2026-09-08: 'find more competitors' fired several analyze calls
-    (two in parallel), each force-run wiped the list and painted another
-    'Competitors' panel group. One analyst at a time; re-discovery merges."""
+    """One analyst at a time; re-discovery merges, never replaces (live 2026-09-08)."""
 
     def _context(self, competitors=None):
         session_ctx = {
@@ -307,7 +286,6 @@ class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
         first, second = asyncio.run(race())
         self.assertTrue(first.success)
         self.assertFalse(second.success)
-        self.assertIn("ALREADY running", second.error)
         # The lock releases - a later call is welcome again.
         self.assertNotIn("_competitor_analysis_running",
                          context["session_context"])

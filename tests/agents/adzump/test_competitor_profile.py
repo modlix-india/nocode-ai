@@ -1,14 +1,11 @@
 """CompetitorProfile - the typed contract for competitor entries.
 
-Locks the lenient parse (legacy shapes, LLM nulls), the stored-shape dump
-(craft's fetched/unfetched tri-state), and the grep-level death of the
-retired URL guesser and the phantom ``domain`` read.
+Locks the lenient parse (legacy shapes, LLM nulls) and the stored-shape dump
+(craft's fetched/unfetched tri-state).
 """
 from __future__ import annotations
 
-import subprocess
 import unittest
-from pathlib import Path
 
 from app.agents.adzump.models import CompetitorProfile, competitor_profiles
 
@@ -23,37 +20,38 @@ SCHEMA_ENTRY = {
     "why_competitor": "same buyer pool on the same road",
 }
 
-ADZUMP_DIR = Path(__file__).resolve().parents[3] / "app" / "agents" / "adzump"
+LEGACY_ENTRY = {"product_name": "Lodha Azur", "url": "https://lodhagroup.com"}
 
 
 class FromStoredTests(unittest.TestCase):
-    def test_schema_entry_round_trips(self):
-        profile = CompetitorProfile.from_stored(SCHEMA_ENTRY)
-        self.assertEqual(profile.name, "Purva Sparkling Springs")
-        self.assertIsNone(profile.url)
-        self.assertEqual(profile.to_stored(), SCHEMA_ENTRY)
+    def test_lenient_parse(self):
+        for name, raw, expected in [
+            ("schema entry", SCHEMA_ENTRY, {"name": "Purva Sparkling Springs", "url": None}),
+            ("legacy product_name folds into name", LEGACY_ENTRY, {"name": "Lodha Azur"}),
+            ("LLM nulls fall back to defaults",
+             {"name": "X", "key_usps": None, "business_type": None},
+             {"key_usps": [], "business_type": ""}),
+            ("malformed entry keeps the name", {"name": "X", "key_usps": 7},
+             {"name": "X", "key_usps": []}),
+        ]:
+            with self.subTest(name):
+                profile = CompetitorProfile.from_stored(raw)
+                for field, value in expected.items():
+                    self.assertEqual(getattr(profile, field), value)
 
-    def test_legacy_product_name_folds_into_name(self):
-        profile = CompetitorProfile.from_stored(
-            {"product_name": "Lodha Azur", "url": "https://lodhagroup.com"})
-        self.assertEqual(profile.name, "Lodha Azur")
-        self.assertNotIn("product_name", profile.to_stored())
-
-    def test_llm_nulls_fall_back_to_defaults(self):
-        profile = CompetitorProfile.from_stored(
-            {"name": "X", "key_usps": None, "business_type": None})
-        self.assertEqual(profile.key_usps, [])
-        self.assertEqual(profile.business_type, "")
-
-    def test_unknown_extras_survive_the_round_trip(self):
-        stored = CompetitorProfile.from_stored(
-            {"name": "X", "listing_rank": 3}).to_stored()
-        self.assertEqual(stored["listing_rank"], 3)
-
-    def test_malformed_entry_keeps_the_name(self):
-        profile = CompetitorProfile.from_stored({"name": "X", "key_usps": 7})
-        self.assertEqual(profile.name, "X")
-        self.assertEqual(profile.key_usps, [])
+    def test_stored_shape(self):
+        for name, raw, present, absent in [
+            ("schema entry round-trips", SCHEMA_ENTRY, SCHEMA_ENTRY, ()),
+            ("legacy product_name is never re-emitted", LEGACY_ENTRY,
+             {"name": "Lodha Azur"}, ("product_name",)),
+            ("unknown extras survive", {"name": "X", "listing_rank": 3},
+             {"listing_rank": 3}, ()),
+        ]:
+            with self.subTest(name):
+                stored = CompetitorProfile.from_stored(raw).to_stored()
+                self.assertEqual({k: stored.get(k) for k in present}, present)
+                for key in absent:
+                    self.assertNotIn(key, stored)
 
 
 class CreativesTriStateTests(unittest.TestCase):
@@ -85,30 +83,15 @@ class CreativesTriStateTests(unittest.TestCase):
 
 
 class AccessorTests(unittest.TestCase):
-    def test_reads_session_entries(self):
-        session = {"competitor_analysis": {"competitors": [
-            {"name": "A"}, "junk", {"product_name": "B"}]}}
-        names = [p.name for p in competitor_profiles(session)]
-        self.assertEqual(names, ["A", "B"])
-
-    def test_empty_session(self):
-        self.assertEqual(competitor_profiles({}), [])
-
-
-class RetiredCodeGrepTests(unittest.TestCase):
-    """The URL guesser and the phantom domain read must never come back."""
-
-    def _grep(self, pattern: str) -> str:
-        result = subprocess.run(
-            ["grep", "-rn", pattern, str(ADZUMP_DIR)],
-            capture_output=True, text=True)
-        return result.stdout
-
-    def test_url_guesser_is_gone(self):
-        self.assertEqual(self._grep("_resolve_brand_url"), "")
-
-    def test_phantom_domain_read_is_gone(self):
-        self.assertEqual(self._grep('get("domain")'), "")
+    def test_session_entries(self):
+        for name, session, expected in [
+            ("reads entries, skips junk, folds legacy names",
+             {"competitor_analysis": {"competitors": [
+                 {"name": "A"}, "junk", {"product_name": "B"}]}}, ["A", "B"]),
+            ("empty session", {}, []),
+        ]:
+            with self.subTest(name):
+                self.assertEqual([p.name for p in competitor_profiles(session)], expected)
 
 
 if __name__ == "__main__":

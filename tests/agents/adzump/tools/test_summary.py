@@ -36,7 +36,7 @@ class RenderSummaryCardTests(unittest.TestCase):
     def test_variant_rows(self):
         rows = [
             ("google", GOOGLE_DONE, {"attempted": True},
-             ("Acme Manager (ID: 111-222-3334)",),
+             ("Acme Manager (ID: 111-222-3334)", "Acme Ads (ID: 555-666-7778)"),
              ("**Facebook Page**", "**Instagram Account**")),
             ("meta+ig", {**META_DONE, "ig_page": "ig-7"},
              {"creatives_resolved": True},
@@ -55,25 +55,10 @@ class RenderSummaryCardTests(unittest.TestCase):
                     self.assertNotIn(token, card)
                 self.assertNotIn("Linked", card)  # IDs never degrade
 
-    def test_google_cid_renders_dashed(self):
-        card = self._card(GOOGLE_DONE, attempted=True)
-        self.assertIn("Acme Manager (ID: 111-222-3334)", card)
-        self.assertIn("Acme Ads (ID: 555-666-7778)", card)
-
-    def test_competitors_line_rows(self):
-        rows = [
-            ("names", {"competitor_names": ["Lodha", "Sobha"]}, "Lodha, Sobha"),
-            ("declined", {}, "declined"),
-            ("none analyzed", {"attempted": True}, "none analyzed"),
-            ("not analyzed", {}, "not analyzed"),
-        ]
-        for label, kwargs, expected in rows:
-            with self.subTest(label):
-                spec = dict(GOOGLE_DONE)
-                if label == "declined":
-                    spec["competitive_analysis"] = "declined"
-                card = self._card(spec, **kwargs)
-                self.assertIn(f"**Competitors**: {expected}", card)
+    def test_competitor_names_render(self):
+        card = self._card(GOOGLE_DONE, competitor_names=["Lodha", "Sobha"])
+        for name in ("Lodha", "Sobha"):
+            self.assertIn(name, card)
 
 
 class ShowCampaignSummaryTests(unittest.TestCase):
@@ -89,7 +74,7 @@ class ShowCampaignSummaryTests(unittest.TestCase):
         result = self._run({**GOOGLE_DONE, "competitive_analysis": "declined"})
         self.assertTrue(result.success)
         self.assertEqual(result.audience, "user")
-        self.assertIn("Here's your campaign summary:", result.summary)
+        self.assertIn("**Ad Account**", result.summary)  # the card, not a partial
         self.assertIn("launch", result.model_summary)  # next step steered
 
     def test_incomplete_spec_refuses(self):

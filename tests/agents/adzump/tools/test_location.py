@@ -11,6 +11,7 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.tools.location import _confirm_location, _detected_location
+from tests.agents.adzump._fixtures import FakeStream
 
 
 class DetectedLocationTests(unittest.TestCase):
@@ -26,17 +27,6 @@ class DetectedLocationTests(unittest.TestCase):
                 self.assertEqual(_detected_location(product), expected)
 
 
-class _Stream:
-    def __init__(self):
-        self.data = []
-
-    async def emit_text(self, text):
-        pass
-
-    async def emit_data(self, name, payload):
-        self.data.append((name, payload))
-
-
 class ConfirmLocationTests(unittest.IsolatedAsyncioTestCase):
     """The map pins what the backend geocoded (so an untouched pin keeps the
     detected address) and the country code lands before the ad search needs it."""
@@ -45,7 +35,7 @@ class ConfirmLocationTests(unittest.IsolatedAsyncioTestCase):
         session_ctx = {"product_data": {
             "business_type": "Residential real estate", "product_name": "Misty Shores",
             "place": {"address": "Near ITPB (Whitefield), Bangalore"}}}
-        stream = _Stream()
+        stream = FakeStream()
         maps = mock.MagicMock()
         maps.return_value.geocode = mock.AsyncMock(return_value=geo)
         with mock.patch("app.agents.adzump.adapters.google.maps.GoogleMapsClient", maps):

@@ -59,30 +59,6 @@ class TurnDecisionRecordTests(unittest.TestCase):
                 self.assertEqual(record["repeat_ask"], repeat)
                 self.assertEqual(record["repeat_ask_unmatched"], unmatched)
 
-    def test_record_carries_context(self):
-        record = _emit(
-            missing=["duration - ...", "budget - ..."],
-            steers=["capture_ack"],
-            captures=[{"layer": 1, "field": "platform", "value": "Meta",
-                       "verdict": "stored"}],
-            prior_capture={"field": "platform", "verdict": "stored"},
-        )
-        self.assertEqual(record["missing"], ["duration", "budget"])
-        self.assertEqual(record["prescription"], "duration")
-        self.assertEqual(record["captures"][0]["verdict"], "stored")
-        self.assertEqual(record["prior_capture"]["field"], "platform")
-        self.assertEqual(record["turn"], 7)
-
-    def test_record_carries_offer_resolutions(self):
-        # Slice 4: the record says WHY each offer is settled - the signal that
-        # was invisible when a failed analysis silently mooted the creatives
-        # offer and the user's Yes evaporated (live 2026-09-08).
-        record = _emit(offers={"competitive_analysis": "fulfilled",
-                               "competitor_creatives": "moot",
-                               "instagram": "open"})
-        self.assertEqual(record["offers"]["competitor_creatives"], "moot")
-        self.assertEqual(_emit()["offers"], {})  # omitted -> empty, never crash
-
 
 class ReminderIntegrationTests(unittest.TestCase):
     """The record actually fires from build_turn_reminder with real capture

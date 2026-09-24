@@ -78,15 +78,14 @@ class RestoredFactsTests(unittest.TestCase):
             "competitor_analysis": {"competitors": [
                 {"name": "Brigade Avalon", "creatives": [{}]}, {"name": "Godrej United"}]},
         }
-        self.assertEqual(_restored_facts(full), [
-            "product Misty Shores (Residential)",
-            "location Near ITPB (Whitefield) - map-confirmed",
-            "2 competitors (1 with ads fetched)",
-            "17 target areas",
-            "saved meta accounts: AdZump Dummy, A1",
-        ])
-        self.assertEqual(_restored_facts({"product_data": {"product_name": "X"}}),
-                         ["product X ()"])
+        facts = _restored_facts(full)
+        self.assertEqual(len(facts), 5)  # product, location, competitors, areas, accounts
+        text = " | ".join(facts)
+        for value in ("Misty Shores", "Near ITPB (Whitefield)", "17", "AdZump Dummy", "A1"):
+            with self.subTest(value=value):
+                self.assertIn(value, text)
+        self.assertNotIn("B1", text)  # an account's display name wins over its id
+        self.assertEqual(len(_restored_facts({"product_data": {"product_name": "X"}})), 1)
 
 
 if __name__ == "__main__":

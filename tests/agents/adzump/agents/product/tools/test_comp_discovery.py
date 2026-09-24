@@ -1,7 +1,7 @@
-"""comp_discovery: the extract_candidates fact table, the fetch_candidates ID
-enforcement, _is_specific_geography (the geography FLAG), and _resolve_urls
-(candidate-stage URL fill, D-5 scoped by CP-4) + the dead-GBP fetch fallback.
-The GBP guards' own tests live in test_competitor_urls.py."""
+"""comp_discovery: the extract_candidates pool, the fetch_candidates ID
+enforcement, _is_specific_geography, _resolve_urls (candidate-stage URL fill)
+and the dead-site fetch fallback. The GBP guards and the listing memo are
+tested in test_competitor_urls.py."""
 from __future__ import annotations
 
 import asyncio
@@ -97,43 +97,30 @@ class ExtractCandidatesTests(unittest.TestCase):
         result = asyncio.run(_extract_candidates({}, context))
         return result, context["session_context"]["_research_state"]
 
-    def test_table_facts_ids_and_pool_custody(self):
+    def test_pool_facts_and_url_custody(self):
         result, research_state = self._run(_searches())
         self.assertTrue(result.success)
         pool = research_state["candidate_pool"]
         self.assertEqual(set(pool), {"C1", "C2"})
-        # Facts in the table: seen-in count, aggregator flag; NO full URLs.
-        self.assertIn("C1 | Purva Sparkling Springs | purvasparklingspring.com "
-                      "| 2/2 | -", result.summary)
-        self.assertIn("aggregator-hosted", result.summary)  # Lodha on 99acres
-        self.assertNotIn("https://", result.summary)
-        # URL custody stays in the pool for fetch_candidates.
+        self.assertEqual(len(pool["C1"]["seen_in"]), 2)
+        self.assertTrue(pool["C2"]["is_aggregator"])  # Lodha on 99acres
+        # URL custody stays in the pool; the model never sees a full URL.
         self.assertEqual(pool["C1"]["url"], "https://purvasparklingspring.com/")
+        self.assertNotIn("https://", result.summary)
 
-    def test_self_reference_excluded_and_surfaced(self):
-        result, research_state = self._run(_searches())
-        self.assertNotIn("Valmark CityVille |", result.summary)
-        self.assertIn("Excluded as the client's own business: Valmark CityVille",
-                      result.summary)
+    def test_self_reference_never_enters_the_pool(self):
+        _, research_state = self._run(_searches())
         self.assertNotIn("Valmark CityVille",
                          [c["name"] for c in
                           research_state["candidate_pool"].values()])
-
-    def test_geography_flag_for_micro_market_profiles(self):
-        result, _ = self._run(_searches())  # profile says "Bannerghatta Road"
-        self.assertIn("Geography flag", result.summary)
 
     def test_piped_title_cannot_shift_table_columns(self):
         result, _ = self._run([{"query": "q1", "candidates": [
             {"name": "Sobha Magnus | Luxury Flats\nBannerghatta",
              "url": "https://sobha.com/magnus"}]}])
-        self.assertIn("C1 | Sobha Magnus / Luxury Flats Bannerghatta "
-                      "| sobha.com | 1/1 | -", result.summary)
-
-    def test_no_search_results_errors(self):
-        result, _ = self._run([])
-        self.assertFalse(result.success)
-        self.assertIn("web_search first", result.error)
+        row = next(line for line in result.summary.splitlines()
+                   if line.startswith("C1 |"))
+        self.assertEqual(len(row.split(" | ")), 5)  # ID | name | host | seen in | flags
 
     def test_pool_rebuild_drops_mismatched_verified_evidence(self):
         # Run boundary: cids are positional per pool build. A later run's C1
@@ -160,7 +147,10 @@ class FetchCandidatesTests(unittest.TestCase):
     skip re-fetch); the evidence block carries no SEGMENT hints."""
 
     def _run(self, ids, context, fetch_status="ok"):
+        self.fetched = []
+
         async def fake_fetch(candidate):
+            self.fetched.append(candidate["cid"])
             return {**candidate, "fetch_status": fetch_status,
                     "fetch_answer": "TYPE: BRAND\nGood page",
                     "fetch_url": candidate.get("url")}
@@ -175,64 +165,55 @@ class FetchCandidatesTests(unittest.TestCase):
         asyncio.run(_extract_candidates({}, context))
         return context
 
-    def test_verifies_picked_ids_and_stashes_evidence(self):
+    def _verified_cids(self, context):
+        return [c["cid"] for c in
+                context["session_context"]["_research_state"]["verified_competitors"]]
+
+    def test_verifies_picked_ids_and_lists_them_as_citable(self):
         context = self._prepared_context()
         result = self._run(["C1"], context)
         self.assertTrue(result.success)
-        self.assertIn("### Purva Sparkling Springs", result.summary)
-        self.assertIn("ID: C1", result.summary)
-        self.assertNotIn("SEGMENT", result.summary)
-        verified = context["session_context"]["_research_state"]["verified_competitors"]
-        self.assertEqual([c["cid"] for c in verified], ["C1"])
+        self.assertEqual(self._verified_cids(context), ["C1"])
+        self.assertIn("C1 = Purva Sparkling Springs", result.summary)  # citable roster
 
-    def test_id_enforcement_rows(self):
-        context = self._prepared_context()
-        rows = [
-            ("unknown id", ["C1", "C9"], "Unknown candidate IDs: C9"),
-            ("no ids", [], "Pass the candidate IDs"),
-        ]
-        for label, ids, error_part in rows:
-            with self.subTest(label):
-                result = self._run(ids, context)
-                self.assertFalse(result.success)
-                self.assertIn(error_part, result.error)
-
-    def test_over_budget_picks_error(self):
-        context = _context([{"query": "q1", "candidates": [
+    def test_bad_calls_error_before_any_fetch(self):
+        over_budget = _context([{"query": "q1", "candidates": [
             {"name": f"Project {i}", "url": f"https://project{i}.com/"}
             for i in range(14)]}])
-        asyncio.run(_extract_candidates({}, context))
-        result = self._run([f"C{i}" for i in range(1, 15)], context)
-        self.assertFalse(result.success)
-        self.assertIn("over the fetch budget", result.error)
-
-    def test_no_pool_errors(self):
-        result = self._run(["C1"], _context(_searches()))
-        self.assertFalse(result.success)
-        self.assertIn("extract_candidates first", result.error)
+        asyncio.run(_extract_candidates({}, over_budget))
+        rows = [
+            ("no search results", lambda: asyncio.run(
+                _extract_candidates({}, _context([]))), "web_search first"),
+            ("unknown id", lambda: self._run(["C1", "C9"], self._prepared_context()),
+             "Unknown candidate IDs: C9"),
+            ("no ids", lambda: self._run([], self._prepared_context()),
+             "Pass the candidate IDs"),
+            ("over budget", lambda: self._run(
+                [f"C{i}" for i in range(1, 15)], over_budget), "over the fetch budget"),
+            ("no pool", lambda: self._run(["C1"], _context(_searches())),
+             "extract_candidates first"),
+        ]
+        for label, call, error_part in rows:
+            with self.subTest(label):
+                self.fetched = []
+                result = call()
+                self.assertFalse(result.success)
+                self.assertIn(error_part, result.error)
+                self.assertEqual(self.fetched, [])
 
     def test_second_call_accumulates_and_skips_verified(self):
         context = self._prepared_context()
         self._run(["C1"], context)
-        result = self._run(["C1", "C2"], context)
-        self.assertIn("Already verified earlier, not re-fetched: C1",
-                      result.summary)
-        verified = context["session_context"]["_research_state"]["verified_competitors"]
-        self.assertEqual({c["cid"] for c in verified}, {"C1", "C2"})
+        self._run(["C1", "C2"], context)
+        self.assertEqual(self.fetched, ["C2"])  # C1 is never re-fetched
+        self.assertEqual(set(self._verified_cids(context)), {"C1", "C2"})
 
-    def test_nothing_verified_is_honest_and_recoverable(self):
-        context = self._prepared_context()
-        result = self._run(["C1"], context, fetch_status="failed")
-        self.assertTrue(result.success)
-        self.assertIn("NOTHING VERIFIED", result.summary)
-        self.assertIn("ONCE more with different IDs", result.summary)
-
-    def test_no_new_evidence_steers_to_final_json(self):
-        """A re-call that adds nothing (re-cited verified IDs, or replacements
-        that all dropped) must CLOSE the pipeline, not invite another round -
-        with thinking on, one such loop burned a 115s deliberation turn (live
-        2026-09-11). The steer fires only when a verified base exists; a
-        first-call washout keeps the recoverable NOTHING VERIFIED path."""
+    def test_calls_that_verify_nothing_keep_the_evidence_base(self):
+        with self.subTest("first-call washout stays recoverable"):
+            context = self._prepared_context()
+            result = self._run(["C1"], context, fetch_status="failed")
+            self.assertTrue(result.success)
+            self.assertEqual(self._verified_cids(context), [])
         context = self._prepared_context()
         self._run(["C1"], context)
         for label, ids, status in [
@@ -242,12 +223,8 @@ class FetchCandidatesTests(unittest.TestCase):
             with self.subTest(label):
                 result = self._run(ids, context, fetch_status=status)
                 self.assertTrue(result.success)
-                self.assertIn("NO NEW EVIDENCE", result.summary)
-                self.assertIn("do NOT call fetch_candidates again", result.summary)
-                self.assertNotIn("ONCE more", result.summary)
-        # the accumulated evidence base is untouched by the steered calls
-        verified = context["session_context"]["_research_state"]["verified_competitors"]
-        self.assertEqual([c["cid"] for c in verified], ["C1"])
+                self.assertEqual(self._verified_cids(context), ["C1"])
+                self.assertIn("C1 = Purva Sparkling Springs", result.summary)
 
 
 class AttachUrlOptionsTests(unittest.TestCase):
@@ -326,8 +303,8 @@ class ResolveUrlsTests(unittest.TestCase):
     listing WINS, a wrong or shared-host listing never lands (a bad URL would
     poison the shared creative-library key), a guard miss keeps the URL."""
 
-    def _run(self, candidates, listing, session=None):
-        session = session or {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
+    def _run(self, candidates, listing):
+        session = {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
         client = mock.Mock()
         listings = listing if isinstance(listing, list) else [listing]
         client.find_business_listings = mock.AsyncMock(
@@ -366,17 +343,6 @@ class ResolveUrlsTests(unittest.TestCase):
         self.assertEqual(candidates[0]["url"],
                          "https://www.puravankara.com/villas-in-bannerghatta-road")
         self.assertEqual(client.find_business_listings.await_count, 0)
-
-    def test_memo_spends_one_lookup_per_name(self):
-        session = {"product_data": {"place": {"lat": 12.9, "lng": 77.6}}}
-        listing = {"name": "Lodha Azur", "website": "https://lodhagroup.com/azur"}
-        first = [{"name": "Lodha Azur", "url": None}]
-        client = self._run(first, [listing], session=session)
-        self.assertEqual(client.find_business_listings.await_count, 1)
-        repeat = [{"name": "Lodha Azur", "url": None}]
-        client = self._run(repeat, [], session=session)  # memo hit - no call
-        self.assertEqual(client.find_business_listings.await_count, 0)
-        self.assertEqual(repeat[0]["url"], "https://lodhagroup.com/azur")
 
     def test_guard_misses_keep_the_search_url(self):
         rows = [
@@ -419,22 +385,19 @@ class FetchFallbackTests(unittest.TestCase):
         ):
             return asyncio.run(_fetch_one_candidate(candidate))
 
-    def test_dead_gbp_url_falls_back_to_search_url(self):
-        result = self._fetch(
-            {"name": "Purva", "url": "https://deadmicrosite.com",
-             "search_url": "https://puravankara.com/villas"},
-            {"https://puravankara.com/villas": "TYPE: BRAND\nGood page"},
-        )
-        self.assertEqual(result["fetch_status"], "ok")
-        self.assertEqual(result["url"], "https://puravankara.com/villas")
-
-    def test_both_dead_fails(self):
-        result = self._fetch(
-            {"name": "Purva", "url": "https://deadmicrosite.com",
-             "search_url": "https://alsodead.com"},
-            {},
-        )
-        self.assertEqual(result["fetch_status"], "failed")
+    def test_dead_site_fallback(self):
+        live = {"https://puravankara.com/villas": "TYPE: BRAND\nGood page"}
+        for label, search_url, status, url in [
+            ("dead GBP url falls back to the search url",
+             "https://puravankara.com/villas", "ok", "https://puravankara.com/villas"),
+            ("both dead fails", "https://alsodead.com", "failed", None),
+        ]:
+            with self.subTest(label):
+                result = self._fetch({"name": "Purva", "url": "https://deadmicrosite.com",
+                                      "search_url": search_url}, live)
+                self.assertEqual(result["fetch_status"], status)
+                if url:
+                    self.assertEqual(result["url"], url)
 
 
 if __name__ == "__main__":

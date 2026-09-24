@@ -16,7 +16,7 @@ from unittest import mock
 from app.agents.adzump.agent import (
     AdzumpAgent, AdzumpContext,
 )
-from app.agents.adzump.workflow import NEW_CAMPAIGN, missing_list
+from app.agents.adzump.workflow import ESCAPE_AFTER_ASKS, NEW_CAMPAIGN, missing_list
 from tests.agents.adzump._fixtures import (
     RE, SAAS, elicitation, make_actx, make_session,
 )
@@ -50,53 +50,15 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
                                    product=SAAS, **kw))
         return [x for x in m if "competitor creatives" in x]
 
-    def test_unoffered_prescribes_the_ask_once(self):
-        cases = [
-            ("with analysis", dict(competitor_names=["Rival"], attempted=True),
-             "Want to see your competitors' recent ads?"),
-            ("without analysis", {},
-             "Want me to analyze your competitors and show their recent ads?"),
-        ]
-        for name, kw, question in cases:
+    def test_unoffered_prescribes_one_tagged_ask(self):
+        # Accepted / waiting / resolved rows live in test_workflow (S0-1, S0-4, S3).
+        for name, kw in [("with analysis", dict(competitor_names=["Rival"], attempted=True)),
+                         ("without analysis", {})]:
             with self.subTest(case=name):
                 offer = self._offer_lines(**kw)
                 self.assertEqual(len(offer), 1)
                 self.assertIn("present_options", offer[0])
                 self.assertIn('field "competitor_creatives"', offer[0])
-                self.assertIn(question, offer[0])
-
-    def test_accepted_prescribes_analysis_then_review_never_blind_fetch(self):
-        # Kailash 2026-09-09: consent starts the RESEARCH, not the spend - the
-        # user reviews the posted list (add/update/delete) and the fetch runs
-        # only on their go-ahead. (Historic regression still locked: the
-        # verbatim offer question must never re-fire after a Yes.)
-        cases = [
-            ("accepted, competitors known -> review checkpoint",
-             ["Rival"], True, "fetch their ads now, or adjust the list"),
-            ("accepted, no analysis yet -> analyze only",
-             [], False, "Run `analyze_competitors` NOW. Do NOT fetch"),
-        ]
-        for name, names, attempted, marker in cases:
-            with self.subTest(case=name):
-                offer = self._offer_lines(
-                    spec_extra={"competitor_creatives": "accepted"},
-                    competitor_names=names, attempted=attempted)
-                self.assertEqual(len(offer), 1)
-                self.assertIn(marker, offer[0])
-                # The verbatim question must be gone - it's what the model copied.
-                self.assertNotIn("Want me to analyze your competitors", offer[0])
-                self.assertNotIn("Want to see the ads", offer[0])
-
-    def test_open_ask_is_never_represcribed(self):
-        # The ask's rail is open → WAIT: no creatives line at all (the resume
-        # steer owns the reply). Once the rail is gone (digression popped it),
-        # the ask resurfaces - capped at once by the exhaustion predicate.
-        self.assertEqual(
-            self._offer_lines(pending_ask="competitor_creatives",
-                              last_user="what will this cost me?"), [])
-        resurfaced = self._offer_lines(last_user="what will this cost me?")
-        self.assertEqual(len(resurfaced), 1)
-        self.assertIn("offer it ONCE", resurfaced[0])
 
     def test_from_session_reads_rail_and_ig_data(self):
         # slice 1d: the offered markers are gone - from_session reads the open
@@ -110,22 +72,6 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
         bare = AdzumpContext.from_session(make_session(spec=dict(self.META)))
         self.assertIsNone(bare.pending_ask_field)
         self.assertFalse(bare.ig_accounts_fetched)
-
-    def test_offer_is_suppressed_when_resolved(self):
-        # Declined/fetched/moot resolution is computed by the shared predicate
-        # (covered in test_campaign_data); the creatives step only honours the flag.
-        cases = [
-            ("offer resolved", make_actx(dict(self.META), product=SAAS,
-                                         competitor_names=["R"], attempted=True,
-                                         creatives_resolved=True)),
-            ("google flow", make_actx({**self.META, "platform": "Google Ads"},
-                                      product=SAAS, competitor_names=["R"],
-                                      attempted=True)),
-        ]
-        for name, actx in cases:
-            with self.subTest(case=name):
-                m = missing_list(NEW_CAMPAIGN, actx)
-                self.assertFalse(any("competitor creatives" in x for x in m))
 
 
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
@@ -296,10 +242,12 @@ class TaggedCaptureTests(unittest.TestCase):
                          pending_elicitation=elicitation("platform", {"Meta": "Meta"}))
         ack = _cap(s)
         self.assertEqual(s.context["campaign_spec"]["account"], "A1")
-        self.assertIn("reused saved accounts: AdZump Dummy, my campaign", ack)
-        with self.subTest("a plain capture adds nothing"):
-            s = make_session(last_user="30 days", pending_elicitation=_dur_pe())
-            self.assertNotIn("also did", _cap(s))
+        for name in ("AdZump Dummy", "my campaign"):
+            self.assertIn(name, ack)
+        with self.subTest("a plain capture names no accounts"):
+            s = make_session(last_user="30 days", product=product,
+                             pending_elicitation=_dur_pe())
+            self.assertNotIn("AdZump Dummy", _cap(s))
 
     def test_stale_rail_steps_aside(self):
         # S1-11/R6 - a rail kept open across turns must not claim a
@@ -380,28 +328,19 @@ class CaptureMarkerTests(unittest.TestCase):
         self.assertNotIn("_captured_this_turn", s.context)       # still popped - no leak
 
 
-# ── F10 · "Custom" chip → free-text ─────────────────────────────────────────
 # ── R12 · refused-required-slot escape (slice 1e) ───────────────────────────
 class RefusedSlotEscapeTests(unittest.TestCase):
-    """S1-10: a required slot asked ESCAPE_AFTER_ASKS times without landing
-    switches to explicit "help me pick" chips - never a silent default."""
-
     def test_escape_after_repeated_asks(self):
+        # S1-10: repeated unanswered asks switch to one explicit-click
+        # recommendation chip - never a silent default.
+        def line(field, asks):
+            actx = make_actx({"platform": "Google Ads"}, attempted=True,
+                             field_asks={field: asks})
+            return next(x for x in missing_list(NEW_CAMPAIGN, actx) if x.startswith(field))
         for field in ("duration", "budget"):
             with self.subTest(field):
-                actx = make_actx({"platform": "Google Ads"}, attempted=True,
-                                 field_asks={field: 3})
-                line = next(x for x in missing_list(NEW_CAMPAIGN, actx) if x.startswith(field))
-                self.assertIn("want to go with that?", line)
-                self.assertIn("type your own", line)
-                self.assertIn('"answer":', line)           # explicit-click chip
-                self.assertNotIn("Custom", line)           # D13
-                self.assertIn("no silent defaults", line)
-        # Below the threshold: the normal chip ask.
-        actx = make_actx({"platform": "Google Ads"}, attempted=True,
-                         field_asks={"duration": 2})
-        line = next(x for x in missing_list(NEW_CAMPAIGN, actx) if x.startswith("duration"))
-        self.assertIn("How long should the campaign run?", line)
+                self.assertIn('"answer":', line(field, ESCAPE_AFTER_ASKS))
+                self.assertNotIn('"answer":', line(field, ESCAPE_AFTER_ASKS - 1))
 
 
 # ── F20 · review/publish prescription must not leak tool-call syntax ────────

@@ -26,6 +26,7 @@ from app.agents.adzump.agents.creative_essence.models import (
     EssenceVerdict,
 )
 from app.agents.adzump.creative_intelligence.models import Creative
+from tests.agents.adzump._fixtures import FakeStream
 
 _VERDICT_JSON = (
     '{"verdicts": [{"idx": 0, "angle": "own a lakeside home",'
@@ -56,52 +57,29 @@ def _ci(content_hash: str, media_type: str = "image", **creative_fields) -> Crea
 
 
 class DeterministicSeamTests(unittest.TestCase):
-    def test_insight_line_rows(self):
-        from app.agents.adzump.agents.creative_essence.agent import _insight_line
-        from app.agents.adzump.creative_intelligence.models import Essence
-
-        for label, essence, expected in [
-            ("full verdict",
-             Essence(hook_type="offer", hook_text="Pay 10% now",
-                     media_format="static_image"),
-             "offer · “Pay 10% now” · static image"),
-            ("no hook text falls back to angle",
-             Essence(hook_type="aspiration", angle="own a lakeside home",
-                     media_format="static_image"),
-             "aspiration · “own a lakeside home” · static image"),
-            ("nothing labeled",
-             Essence(hook_type="other", media_format="static_image"),
-             "other · static image"),
-        ]:
-            with self.subTest(label):
-                self.assertEqual(_insight_line(essence), expected)
-
     def test_build_parse_collect_shrink(self):
-        for name, text, want_hook in [
-            ("fenced", f"```json\n{_VERDICT_JSON}\n```", "aspiration"),
-            ("bare object", _VERDICT_JSON, "aspiration"),
+        # Off-list enum values coerce to the field default so one invented word
+        # never fails the whole batch (live 2026-09-08).
+        for name, text, field, want in [
+            ("fenced", f"```json\n{_VERDICT_JSON}\n```", "hook_type", "aspiration"),
+            ("bare object", _VERDICT_JSON, "hook_type", "aspiration"),
             ("prose around bare object", f"Here you go: {_VERDICT_JSON} done.",
-             "aspiration"),
-            ("empty text", "", None),
-            ("garbage", "not json at all", None),
-            # Off-list enum values coerce to the field default (live
-            # 2026-09-08: one invented word failed a whole 12-image batch and
-            # forced 12 sequential single-image calls) - the batch PARSES.
+             "hook_type", "aspiration"),
+            ("empty text", "", None, None),
+            ("garbage", "not json at all", None, None),
             ("wrong enum coerces",
-             '{"verdicts": [{"idx": 0, "hook_type": "clickbait"}]}', "other"),
-            # Same leniency for the classification enums: an invented category
-            # coerces to "unknown" - which the gate then rejects fail-closed.
+             '{"verdicts": [{"idx": 0, "hook_type": "clickbait"}]}', "hook_type", "other"),
             ("wrong category coerces to unknown",
              '{"verdicts": [{"idx": 0, "category": "real_estate_stuff"}]}',
-             "other"),
+             "category", "unknown"),
         ]:
             with self.subTest(parse=name):
                 batch = _parse_batch(text)
-                if want_hook is None:
+                if field is None:
                     self.assertIsNone(batch)
                 else:
                     self.assertEqual(len(batch.verdicts), 1)
-                    self.assertEqual(batch.verdicts[0].hook_type, want_hook)
+                    self.assertEqual(getattr(batch.verdicts[0], field), want)
         with self.subTest("collect maps idx -> content_hash, drops out-of-range, None is a noop"):
             chunk = [_ci("aaa"), _ci("bbb")]
             essences: dict = {}
@@ -112,11 +90,6 @@ class DeterministicSeamTests(unittest.TestCase):
             self.assertEqual(list(essences), ["bbb"])
             _collect(None, chunk, essences)
             self.assertEqual(list(essences), ["bbb"])
-        with self.subTest("verdict -> Essence strips idx and dumps camelCase for the store"):
-            essence = EssenceVerdict(idx=3, angle="a", hook_type="urgency").to_essence()
-            self.assertEqual((essence.angle, essence.hook_type), ("a", "urgency"))
-            self.assertNotIn("idx", essence.model_dump())
-            self.assertEqual(essence.model_dump(by_alias=True)["hookType"], "urgency")
         with self.subTest("classification fields ride the verdict into the store shape"):
             verdict = _parse_batch(
                 '{"verdicts": [{"idx": 0, "category": "residential_villa",'
@@ -126,6 +99,7 @@ class DeterministicSeamTests(unittest.TestCase):
                 ' "category_evidence": "OCR: LAKESIDE VILLAS",'
                 ' "category_method": "combined"}]}').verdicts[0]
             stored = verdict.to_essence().model_dump(by_alias=True)
+            self.assertNotIn("idx", stored)  # batch-local index never reaches the store
             self.assertEqual(
                 (stored["category"], stored["advertiserRole"],
                  stored["categoryConfidence"], stored["offeringStage"]),
@@ -137,13 +111,11 @@ class DeterministicSeamTests(unittest.TestCase):
                 _ci("bbb", media_type="video"),
             ], competitor_name="Prestige Tranquility")
             self.assertEqual(len(blocks), 2)
-            for expected in ("[Image 0]", "'Lakeside villas'", "'Book now'",
-                             "'https://rival.in/villas'", "[Image 1]",
-                             "video ad - this is its poster still",
-                             "(no ad copy captured)",
-                             "'Prestige Tranquility'",  # advertiser_role reference
-                             "never as a category signal"):
+            # the image indexes the verdicts map back through, and the copy data
+            for expected in ("[Image 0]", "[Image 1]", "Lakeside villas", "Book now",
+                             "https://rival.in/villas", "Prestige Tranquility"):
                 self.assertIn(expected, text)
+            self.assertLess(text.index("[Image 0]"), text.index("[Image 1]"))
             for block in blocks:
                 self.assertEqual((block["type"], block["source"]["type"]), ("image", "base64"))
         with self.subTest("shrink: undecodable/small pass through, big shrinks to jpeg"):
@@ -179,26 +151,16 @@ class _StubbedAnalyst(EssenceAnalyst):
         return self.batches.pop(0), 100, 10
 
 
-class _ParentStream:
-    is_cancelled = False
-
-    def __init__(self):
-        self.finished: list[dict] = []
-
-    async def emit_agent_finished(self, **kw):
-        self.finished.append(kw)
-
-
 class ExtractTests(unittest.IsolatedAsyncioTestCase):
     async def test_extract_orchestration(self):
         with self.subTest("dedups by hash, skips unhashed, empty input makes no call"):
             agent = _StubbedAnalyst([EssenceBatch(verdicts=[EssenceVerdict(idx=0, angle="x")])])
             essences = await agent.extract([_ci("aaa"), _ci("aaa"), _ci("")],
-                                           _ParentStream(), auth=None)
+                                           FakeStream(), auth=None)
             self.assertEqual(agent.calls, [["aaa"]])
             self.assertEqual(list(essences), ["aaa"])
             idle = _StubbedAnalyst([])
-            self.assertEqual(await idle.extract([], _ParentStream(), auth=None), {})
+            self.assertEqual(await idle.extract([], FakeStream(), auth=None), {})
             self.assertEqual(idle.calls, [])
         with self.subTest("unparseable batch falls back per-creative; absent stays absent"):
             agent = _StubbedAnalyst([
@@ -206,13 +168,13 @@ class ExtractTests(unittest.IsolatedAsyncioTestCase):
                 EssenceBatch(verdicts=[EssenceVerdict(idx=0, angle="solo a")]),
                 None,  # second single fails too - absent from result, not invented
             ])
-            essences = await agent.extract([_ci("aaa"), _ci("bbb")], _ParentStream(), auth=None)
+            essences = await agent.extract([_ci("aaa"), _ci("bbb")], FakeStream(), auth=None)
             self.assertEqual(agent.calls, [["aaa", "bbb"], ["aaa"], ["bbb"]])
             self.assertEqual(list(essences), ["aaa"])
         with self.subTest("chunks past the per-call cap"):
             agent = _StubbedAnalyst([EssenceBatch(), EssenceBatch(verdicts=[])])
             await agent.extract([_ci(f"h{i}") for i in range(MAX_IMAGES_PER_CALL + 1)],
-                                _ParentStream(), auth=None)
+                                FakeStream(), auth=None)
             self.assertEqual([len(c) for c in agent.calls], [MAX_IMAGES_PER_CALL, 1])
         with self.subTest("chunks run concurrently, bounded by MAX_CONCURRENT_CALLS"):
             class _Probe(EssenceAnalyst):
@@ -230,11 +192,11 @@ class ExtractTests(unittest.IsolatedAsyncioTestCase):
 
             probe = _Probe()
             await probe.extract([_ci(f"h{i}") for i in range(MAX_IMAGES_PER_CALL * 4)],
-                                _ParentStream(), auth=None)
+                                FakeStream(), auth=None)
             self.assertGreater(probe.max_in_flight, 1)
             self.assertLessEqual(probe.max_in_flight, MAX_CONCURRENT_CALLS)
         with self.subTest("agent_finished carries summed usage"):
-            parent = _ParentStream()
+            parent = FakeStream()
             agent = _StubbedAnalyst([
                 None,
                 EssenceBatch(verdicts=[EssenceVerdict(idx=0)]),
@@ -245,7 +207,6 @@ class ExtractTests(unittest.IsolatedAsyncioTestCase):
             finished = parent.finished[0]
             self.assertEqual(finished["agent_id"], "creative_essence")
             self.assertEqual(finished["tokens_in"], 300)  # 3 stubbed calls x 100
-            self.assertEqual(finished["summary"], "essence for 2/2 creatives")
 
 
 if __name__ == "__main__":

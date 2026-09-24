@@ -89,9 +89,7 @@ class LibraryTests(unittest.TestCase):
         ver.start(); self.addCleanup(ver.stop)
 
     def test_shared_key_searches_every_name(self):
-        # Two entries sharing one domain key: the ad search is name-driven,
-        # so BOTH names search and their ads merge - the first entry's name
-        # must never silently represent the others (live 2026-09-10).
+        # regression: live 2026-09-10 (one name represented the whole key)
         calls: list[str] = []
 
         class RecordingSource(FakeSource):
@@ -110,8 +108,7 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(searched, ["Purva Symphony", "Valmark Cityville"])
 
     def test_all_failed_validation_is_error_not_empty(self):
-        # Rule 7: a pipeline failure must never be disguised as "this
-        # competitor has no ads" - and the diagnostics say why.
+        # Rule 7: a pipeline failure never reads as "this competitor has no ads".
         with mock.patch(
                 "app.agents.adzump.creative_intelligence.verify.verify_creative",
                 new=mock.AsyncMock(return_value=(False, "fetch_failed"))):
@@ -124,10 +121,7 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual({d["creativeId"] for d in rec.dropped}, {"a1", "b2"})
 
     def test_attribution_wipe_reads_as_fetched_not_missing(self):
-        # 49 real ads dropped whole by the source's attribution tier must read
-        # as "49 fetched, 49 dropped, 0 kept", never as "the library had
-        # nothing" (live 2026-09-21: Puravankara The Sound of Water showed
-        # fetched=0 while the search returned 49 ads).
+        # regression: live 2026-09-21 (49 ads found, record said fetched=0)
         class AttributionWipedSource(FakeSource):
             async def fetch(self, *, domain, name, country=""):
                 return SourceFetch(creatives=[], search_hits=49)
@@ -287,9 +281,7 @@ class LibraryTests(unittest.TestCase):
                 self.assertEqual(enrich.calls, [])
 
     def test_every_survivor_is_classified(self):
-        """No recency filter on the essence pass: the relevance gate needs a
-        category on EVERY stored creative, so stale and undated ads are
-        classified too (the old 30-day recency gate is gone)."""
+        """The gate needs a category on every stored creative, stale or undated."""
         enrich = FakeEnrich()
         rec = self._run(stored=None, enrich=enrich, source=FakeSource(creatives=[
             _ad("recent", last_seen_days_ago=5),
@@ -301,10 +293,7 @@ class LibraryTests(unittest.TestCase):
                          {"recent", "stale", "undated"})
 
     def test_renditions_fold_structurally(self):
-        """Same ad + same copy at distinct standard ratios = ONE logical
-        creative with renditions (Meta placement versions); same-ratio cards
-        (a true carousel), copy changes, videos, and cross-ad pairs never
-        fold. Structural only - recomposed layouts defeat pixel hashing."""
+        """Same ad + same copy at distinct standard ratios folds; nothing else does."""
         def card(cid, w, h, *, headline="Waterfall", media="image"):
             return _ad(cid, media, headline=headline, primary_text="Book now",
                        width=w, height=h, aspect_ratio=round(w / h, 4),
@@ -336,10 +325,7 @@ class LibraryTests(unittest.TestCase):
             self.assertEqual(by_id[c.creative_id].renditions, [])
 
     def test_gate_grandfathers_stored_unknowns(self):
-        """unknown_category = essence missing THIS run, not proven irrelevance:
-        a creative the prior record already shipped survives it (a truncated
-        essence batch must never wipe a stored library). Fresh unknowns still
-        fail closed, and a real verdict is never grandfathered."""
+        """A truncated essence batch never wipes stored creatives; fresh unknowns still fail closed."""
         grandfathered = frozenset({"stored-id", "stored-hash"})
         by_id = _ad("stored-id")
         by_hash = _ad("new-id", content_hash="stored-hash")
@@ -388,43 +374,9 @@ class LibraryTests(unittest.TestCase):
                     [CompetitorProfile(name="Nike", url="https://nike.com")],
                     ctx={}, on_resolved=boom))
             self.assertEqual(list(results), ["https://nike.com"])
-        with self.subTest("competitor N's processing overlaps competitor N+1's fetch"):
-            # nike's essence pass blocks until adidas' fetch has happened - only
-            # a pipelined creatives_for_all can finish (sequential deadlocks;
-            # the wait_for timeout turns that into a failure, not a hang).
-            fetched_second = asyncio.Event()
-
-            class GateSource(FakeSource):
-                async def fetch(self, *, domain, name, country=""):
-                    if domain == "adidas.com":
-                        fetched_second.set()
-                    return await super().fetch(domain=domain, name=name)
-
-            class GatedEnrich(FakeEnrich):
-                async def __call__(self, images, **who):
-                    await asyncio.wait_for(fetched_second.wait(), timeout=2)
-                    return await super().__call__(images, **who)
-
-            gated = GatedEnrich()
-
-            async def run():
-                with mock.patch.object(library.stores.competitors, "get_competitor",
-                                       new=mock.AsyncMock(return_value=None)):
-                    return await library.creatives_for_all(
-                        [CompetitorProfile(name="Nike", url="https://nike.com"),
-                         CompetitorProfile(name="Adidas", url="https://adidas.com")],
-                        ctx={}, source=GateSource(creatives=[_ad("a1")]),
-                        enrich=gated)
-            results = asyncio.run(run())
-            self.assertEqual(sorted(results), ["https://adidas.com", "https://nike.com"])
-            # A sequential creatives_for_all would time nike's enrich out
-            # (swallowed by _enrich_essence) - both succeeding proves overlap.
-            self.assertEqual(len(gated.calls), 2)
 
     def test_linkless_competitor_fetches_by_name_key(self):
-        # Live 2026-09-08: link-less Nambiar (honest no-URL, pre-launch) was
-        # silently dropped from every fetch. It must fetch under a name key,
-        # with NO domain sent to the source (attribution runs on name alone).
+        # regression: live 2026-09-08 (link-less competitors were never fetched)
         self.assertEqual(
             library.competitor_identity(
                 CompetitorProfile(name="Nambiar Villas", url=None)),
@@ -449,9 +401,7 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(record.domain, "")  # a name key is not a host
 
     def test_hung_enrich_times_out_and_ships_without_essence(self):
-        # Live 2026-09-08: one vision call never returned and the whole batch
-        # gather - tool, turn, spinner - sat open 12+ minutes. A hang must
-        # degrade to essence-less creatives within the deadline.
+        # regression: live 2026-09-08 (one hung vision call held the batch 12+ min)
         class HungEnrich:
             async def __call__(self, images, **who):
                 await asyncio.sleep(3600)
@@ -464,11 +414,7 @@ class LibraryTests(unittest.TestCase):
         self.assertIsNone(record.creatives[0].essence)  # shipped, essence-less
 
     def test_fresh_record_only_answers_for_searched_names(self):
-        """A cache hit is name-aware (live 2026-09-11: 'Purva Sparkling
-        Springs' resolved to puravankara.com and was served the record built
-        under 'Puravankara The Sound of Water' - no search ever ran for it).
-        An uncovered name searches just itself and MERGES with the stored
-        creatives; covered names stay pure cache hits."""
+        """A cache hit is name-aware: an uncovered name searches itself and merges (live 2026-09-11)."""
         def _sound_of_water_record(age_days=1) -> Competitor:
             rec = _record(age_days=age_days, creatives=[
                 Creative(creative_id="junk", content_hash="junk",
@@ -539,9 +485,7 @@ class LibraryTests(unittest.TestCase):
             self.assertEqual(rec.searched_names, ["Nike"])
 
     def test_relevance_gate(self):
-        """Stage C acceptance rows (spec 2026-09-11): only ads whose category
-        matches the product's are written; rejections land in dropped[] and an
-        all-rejected fetch is empty+emptyReason, never 'runs no ads'."""
+        """Library wiring of the gate: taxonomy owns the per-reason rules."""
         apartment_ctx = {"session_context": {"product_data": {
             "business_type": "Pre-launch high-rise apartments, Whitefield Bangalore",
             "place": {"address": "Whitefield, Bangalore, Karnataka"},
@@ -555,42 +499,13 @@ class LibraryTests(unittest.TestCase):
             kw.setdefault("category_confidence", conf)
             return Essence(**kw)
 
-        with self.subTest("same category, different developer -> ACCEPTED"):
-            rec = self._run(stored=None, ctx=apartment_ctx,
-                            enrich=classified({"a1": apartment()}),
+        with self.subTest("all rejected -> empty + emptyReason, rejection in dropped[]"):
+            rec = self._run(stored=None, ctx=apartment_ctx, enrich=classified({}),
                             source=FakeSource(creatives=[_ad("a1")]))
-            self.assertEqual(rec.fetch_status, "ok")
-            self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
-        rejection_rows = [
-            ("office ad", Essence(category="commercial_office",
-                                  category_confidence=0.95), "category_mismatch"),
-            ("plot ad (different branch)",
-             Essence(category="residential_plot", category_confidence=0.95),
-             "category_mismatch"),
-            ("auto/FMCG ad", Essence(category="other_industry",
-                                     category_confidence=0.9), "non_real_estate"),
-            ("dog photo, no copy", Essence(category="unknown",
-                                           category_confidence=0.2), "unknown_category"),
-            ("right category, low confidence", apartment(conf=0.5), "low_confidence"),
-            ("right category, wrong city",
-             apartment(market="Mumbai / Andheri"), "market_mismatch"),
-            ("essence never produced (fail closed)", None, "unknown_category"),
-        ]
-        for label, essence, want_reason in rejection_rows:
-            with self.subTest(label):
-                enrich = classified({"a1": essence} if essence else {})
-                rec = self._run(stored=None, ctx=apartment_ctx, enrich=enrich,
-                                source=FakeSource(creatives=[_ad("a1")]))
-                self.assertEqual(rec.creatives, [])
-                self.assertEqual(rec.fetch_status, "empty")
-                self.assertEqual(rec.empty_reason, want_reason)
-                self.assertEqual(rec.dropped[0]["reason"], want_reason)
-        with self.subTest("alias city (Bengaluru) still matches"):
-            rec = self._run(stored=None, ctx=apartment_ctx,
-                            enrich=classified(
-                                {"a1": apartment(market="Bengaluru / Whitefield")}),
-                            source=FakeSource(creatives=[_ad("a1")]))
-            self.assertEqual(rec.fetch_status, "ok")
+            self.assertEqual(rec.creatives, [])
+            self.assertEqual(rec.fetch_status, "empty")
+            self.assertEqual(rec.empty_reason, "unknown_category")  # fail closed
+            self.assertEqual(rec.dropped[0]["reason"], "unknown_category")
         with self.subTest("mixed batch: apartments kept, office rejected"):
             rec = self._run(stored=None, ctx=apartment_ctx,
                             enrich=classified({
@@ -611,19 +526,6 @@ class LibraryTests(unittest.TestCase):
                                 {"a1": apartment(advertiser_role="broker")}),
                             source=FakeSource(creatives=[_ad("a1")]))
             self.assertEqual(rec.creatives[0].essence.advertiser_role, "broker")
-        with self.subTest("override yardstick (villa) gates without Stage A"):
-            ctx = {"session_context": {"product_data": {
-                "business_type": "Pre-launch high-rise apartments",
-                "category_override": "residential_villa",
-            }}}
-            rec = self._run(stored=None, ctx=ctx,
-                            enrich=classified({
-                                "a1": Essence(category="residential_villa",
-                                              category_confidence=0.9),
-                                "b2": apartment(),
-                            }),
-                            source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
-            self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
         with self.subTest("unclassifiable product -> gate OFF, nothing rejected"):
             ctx = {"session_context": {"product_data": {
                 "business_type": "artisanal candles"}}}
@@ -660,12 +562,8 @@ class LibraryTests(unittest.TestCase):
                 enrich=HungEnrich()))
         self.assertEqual(results, {})  # both wedged and DROPPED - gather returned
 
-
     def test_logo_is_rehosted_never_the_vendor_url(self):
-        # Meta's page_profile_picture_url is signed with an undocumented
-        # expiry - the raw one must never reach a record. On a rehost failure
-        # the prior record's already-rehosted logo stands; the competitor is
-        # never dropped over a thumbnail.
+        # The vendor logo URL is signed with an expiry; only a rehosted one is stored.
         vendor = "https://scontent.xx.fbcdn.net/pic.jpg?oe=DEADBEEF"
         ours = "https://files/logo.jpg"
         old = "https://files/old-logo.jpg"

@@ -122,7 +122,7 @@ class ProjectPageFromSiteTests(unittest.TestCase):
             "app.agents.adzump.agents.product.adapters"
             ".web_fetch_adapter.fetch_and_answer",
             new=fake_fetch,
-        ) as fetch:
+        ):
             return asyncio.run(project_page_from_site(
                 "Sobha Magnus", "https://sobha.com/", session
                 if session is not None else _session()))

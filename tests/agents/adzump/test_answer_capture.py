@@ -17,7 +17,6 @@ import asyncio
 import types
 import unittest
 
-from app.agents.adzump.agent import AdzumpAgent
 from app.agents.adzump.answer_parse import field_candidates
 from app.agents.adzump.tools.campaign_data import (
     _field_traceable, _set_campaign_spec, is_clear_decline_reply,
