@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import os
+from logging.handlers import RotatingFileHandler
 
 from app.config import settings, initialize_settings
 from app.services.eureka import register_with_eureka, deregister_from_eureka
@@ -20,6 +22,20 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+# Opt-in file log (LOG_FILE_DIR env, exported by the local start scripts) so
+# runs stay grep-able after the terminal scrollback is gone.
+_log_file_dir = os.getenv("LOG_FILE_DIR")
+if _log_file_dir:
+    os.makedirs(_log_file_dir, exist_ok=True)
+    _file_handler = RotatingFileHandler(
+        os.path.join(_log_file_dir, "ai.log"),
+        maxBytes=2_000_000, backupCount=5,
+    )
+    _file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    logging.getLogger().addHandler(_file_handler)
+
 logger = logging.getLogger(__name__)
 
 

@@ -27,6 +27,9 @@ echo "=============================================="
 export SERVICE_NAME="${SERVICE_NAME:-ai}"
 export SERVICE_PORT="${SERVICE_PORT:-5001}"
 
+# Mirror logs to logs/ai.log (rotating) so they outlive the terminal
+export LOG_FILE_DIR="${LOG_FILE_DIR:-$PROJECT_DIR/logs}"
+
 # Config Server settings
 export CLOUD_CONFIG_SERVER="${CLOUD_CONFIG_SERVER:-localhost}"
 export CONFIG_SERVER_PORT="${CONFIG_SERVER_PORT:-8888}"
