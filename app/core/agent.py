@@ -45,6 +45,16 @@ from app.services.llm_provider import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
+# A turn that burned its whole output budget reasoning ends with no text and no
+# tool: the retry gets this note, and a second empty turn gets the visible line.
+_TRUNCATION_RETRY_NOTE = (
+    "Your previous attempt ran out of output space while reasoning, before it "
+    "said or did anything. Do not deliberate again - take the next action now."
+)
+_TRUNCATION_GIVE_UP_TEXT = (
+    "\n\nSorry, I lost my train of thought there. Could you send your last "
+    "message again?"
+)
 
 
 class _ToolBlockAssembler:
@@ -158,6 +168,8 @@ class BaseAgent:
         max_tokens: int = 16384,
         provider: str | None = None,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
         router_tool: ToolDefinition | None = None,
         defer_schemas: bool = False,
     ) -> None:
@@ -169,6 +181,11 @@ class BaseAgent:
         self.max_tokens = max_tokens
         self._provider_name = provider
         self.context_management = context_management
+        # Extended thinking, opt-in per agent (default off). Only the Anthropic
+        # provider acts on it; the reasoning stream surfaces via emit_thinking.
+        # effort bounds thinking depth (low|medium|high|max); None = API default.
+        self.thinking = thinking
+        self.effort = effort
         if not self.display_name:
             self.display_name = name.replace("_", " ").title()
 
@@ -375,6 +392,8 @@ class BaseAgent:
         stuck_sig: tuple[str, ...] | None = None
         stuck_n = 0
         quarantined: set[str] = set()
+        truncation_retried = False
+        recovery_note = ""
 
         while turn < self.max_turns:
             if event_stream.is_cancelled:
@@ -409,7 +428,8 @@ class BaseAgent:
 
             # Pre-call phase — decorate the per-call messages before the request
             # (Layer 2 per-turn steering injected at the tail). See _apply_pre_call.
-            call_messages = await self._apply_pre_call(session, turn)
+            call_messages = await self._apply_pre_call(session, turn, recovery_note)
+            recovery_note = ""
 
             # Stream the turn + assemble the provider chunks into blocks. Mutates
             # assistant_text_parts (run-scoped) in place; always drains builtin
@@ -458,6 +478,21 @@ class BaseAgent:
             # provider re-emits it. Pop here so it doesn't leak into the persisted
             # usage record.
             reasoning_content = usage.pop("reasoning_content", None) if isinstance(usage, dict) else None
+
+            # Skipped, never recorded: replaying the runaway reasoning would
+            # re-seed the same deliberation on the retry.
+            truncation = self._truncation_step(
+                stop_reason, bool(tool_use_blocks), _text_chunk_count, truncation_retried)
+            if truncation == "retry":
+                logger.warning("Turn %d: empty truncated turn, retrying once", turn)
+                truncation_retried = True
+                recovery_note = _TRUNCATION_RETRY_NOTE
+                continue
+            if truncation == "give_up":
+                logger.warning("Turn %d: empty truncated turn again, giving up", turn)
+                await event_stream.emit_text(_TRUNCATION_GIVE_UP_TEXT)
+                assistant_text_parts.append(_TRUNCATION_GIVE_UP_TEXT)
+                break
 
             session.append_assistant_message(content_blocks, reasoning_content)
 
@@ -714,6 +749,8 @@ class BaseAgent:
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
                 context_management=self.context_management,
+                thinking=self.thinking,
+                effort=self.effort,
             ):
                 # Honor user "stop" — break out of the streaming loop.
                 if event_stream.is_cancelled:
@@ -877,6 +914,17 @@ class BaseAgent:
         not this hook.
         """
         return f"Confirm: {display_name}"
+
+    @staticmethod
+    def _truncation_step(
+        stop_reason: str, has_tool_calls: bool, text_chunks: int, retried: bool,
+    ) -> str | None:
+        """"retry" | "give_up" | None for one streamed turn (pure → unit-tested).
+        Only a turn cut at max_tokens with NOTHING for the user (no text, no
+        tool) counts; a truncated turn that said something stands as-is."""
+        if stop_reason != "max_tokens" or has_tool_calls or text_chunks:
+            return None
+        return "give_up" if retried else "retry"
 
     @staticmethod
     def _stuck_step(
@@ -1592,18 +1640,22 @@ class BaseAgent:
         out[-1] = last
         return out
 
-    async def _apply_pre_call(self, session: BaseSession, turn: int) -> list[dict[str, Any]]:
+    async def _apply_pre_call(
+        self, session: BaseSession, turn: int, recovery_note: str = "",
+    ) -> list[dict[str, Any]]:
         """Pre-call phase — build the decorated message list for this turn's LLM
         request. The single seam for per-call request decoration: invoke the
         per-turn reminder hook and inject its text at the tail of a PER-CALL copy
         of the messages (fresh every turn, never persisted). Future per-call
         contributions plug in HERE, not in _run_loop. Default hook → "" →
-        _with_tail_reminder returns the messages unchanged.
+        _with_tail_reminder returns the messages unchanged. ``recovery_note`` is
+        the loop's one-shot line for a retried truncated turn.
         """
         reminder = await self.build_turn_reminder(session, turn)
         lore_reminder = await self._lore_turn_context(session)
-        if lore_reminder:
-            reminder = f"{reminder}\n{lore_reminder}" if reminder else lore_reminder
+        for extra in (lore_reminder, recovery_note):
+            if extra:
+                reminder = f"{reminder}\n{extra}" if reminder else extra
         return self._with_tail_reminder(session.get_messages(), reminder)
 
     async def _lore_turn_context(self, session: BaseSession) -> str:
@@ -1862,7 +1914,6 @@ class BaseAgent:
             from app.services.lore import access as _access
             from app.services.lore import curator as _curator
             from app.services.lore import ingest as _ingest
-            from app.services.lore import store as _store
 
             # Passive accumulation is still accumulation: an observation becomes
             # an entry at the next curation pass, so it needs the same edit

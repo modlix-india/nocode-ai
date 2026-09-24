@@ -148,5 +148,34 @@ class DeferredElicitationBreakTests(unittest.TestCase):
                     BaseAgent._is_deferred_elicitation(entry), expected)
 
 
+class TruncatedTurnTests(unittest.TestCase):
+    """A turn that spent its output budget reasoning and said/did nothing is
+    retried once, then gets a visible line (live 2026-09-23: 16k tokens of
+    deliberation, no reply, budget lost). OpenAI-style "length" must reach the
+    loop as max_tokens or none of this fires."""
+
+    def test_finish_reason_mapping(self):
+        from app.services.llm_provider import _openai_compatible_stop_reason
+        rows = [("tool_calls", "tool_use"), ("length", "max_tokens"),
+                ("stop", "end_turn"), (None, "end_turn")]
+        for finish, expected in rows:
+            with self.subTest(finish):
+                self.assertEqual(_openai_compatible_stop_reason(finish), expected)
+
+    def test_rows(self):
+        rows = [  # (stop_reason, has_tools, text_chunks, retried, expected)
+            ("max_tokens", False, 0, False, "retry"),
+            ("max_tokens", False, 0, True, "give_up"),
+            ("max_tokens", False, 3, False, None),  # said something: stands
+            ("max_tokens", True, 0, False, None),   # called a tool: stands
+            ("end_turn", False, 0, False, None),
+            ("tool_use", True, 0, False, None),
+        ]
+        for stop, tools, chunks, retried, expected in rows:
+            with self.subTest(stop=stop, tools=tools, chunks=chunks, retried=retried):
+                self.assertEqual(
+                    BaseAgent._truncation_step(stop, tools, chunks, retried), expected)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.config import settings
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
@@ -296,6 +297,11 @@ class ProductAgent(BaseAgent):
             max_turns=ANALYST_MAX_TURNS,
             max_tokens=ANALYST_MAX_TOKENS,
             provider=ANALYST_PROVIDER,
+            # Adaptive thinking ON for the analyst so its 36->4 judgment streams
+            # to the UI (interleaved with the web_search/fetch tool loop). This
+            # is the only agent that opts in; everything else stays thinking-off.
+            thinking=settings.ADZUMP_ANALYST_THINKING,
+            effort=settings.ADZUMP_ANALYST_EFFORT,
             # Trigger sits ABOVE the full search payload (7 queries of server
             # results ride the transcript at ~30-80k tokens) and web_search
             # results are excluded outright: they are the competitor-judgment

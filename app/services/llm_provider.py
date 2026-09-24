@@ -410,8 +410,15 @@ class LLMProvider(ABC):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream a completion with tool-use support.
+
+        ``thinking`` opts this call into extended/adaptive thinking; only
+        providers that support it act on it, the rest ignore it.
+        ``effort`` bounds thinking depth (low|medium|high|max) - Anthropic
+        only; None means the API default (high).
 
         Yields StreamChunk objects as they arrive. Override in subclasses
         for native streaming. Default: falls back to non-streaming call
@@ -706,6 +713,8 @@ class AnthropicProvider(LLMProvider):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Claude API."""
         model = self.get_model(model_tier)
@@ -728,6 +737,18 @@ class AnthropicProvider(LLMProvider):
             model=model, max_tokens=max_tokens,
             system=system, messages=messages, tools=tools,
         )
+        if thinking:
+            # Adaptive thinking: Claude decides when/how much to think and
+            # auto-enables interleaved thinking with tool use (no beta header).
+            # Sonnet 4.6 returns summarized thinking by default; `display` is
+            # not set here because that field is Opus-4.7+/Sonnet-5 only and
+            # 4.6 would reject it. On a model bump, add display="summarized".
+            stream_kwargs["thinking"] = {"type": "adaptive"}
+        if effort:
+            # Bounds adaptive thinking depth. Without it the API defaults to
+            # "high" - a 101k-token final judgment turn spent 6.5 min thinking
+            # (live 2026-09-21). Sonnet 4.6 accepts low|medium|high|max.
+            stream_kwargs["output_config"] = {"effort": effort}
         if context_management:
             extra_headers = extra_headers or {}
             extra_headers["anthropic-beta"] = (
@@ -833,6 +854,12 @@ class AnthropicProvider(LLMProvider):
                 dtype = getattr(delta, "type", "")
                 if dtype == "text_delta":
                     yield StreamChunk(type="text_delta", text=delta.text)
+                elif dtype == "thinking_delta":
+                    # Adaptive-thinking summary text - surfaced to the UI via
+                    # the same reasoning_delta -> emit_thinking path the OpenAI
+                    # and DeepSeek providers use. The signature rides the final
+                    # assembled block (message_complete), not the stream.
+                    yield StreamChunk(type="reasoning_delta", text=getattr(delta, "thinking", "") or "")
                 elif dtype == "input_json_delta":
                     btype = block_types_by_index.get(idx, "")
                     if btype == "tool_use":
@@ -1182,6 +1209,8 @@ class OpenAIProvider(LLMProvider):
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,  # unused: reasoning models steer via effort, not this flag
+        effort: str | None = None,  # unused: Anthropic-only knob
         extra_request_kwargs: Optional[Dict[str, Any]] = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Responses API.
@@ -1457,6 +1486,17 @@ def _openai_compatible_usage(usage: Any) -> dict[str, int]:
         "cache_creation_input_tokens": 0,  # DeepSeek's cache is automatic; no explicit writes
         "cache_read_input_tokens": cache_read,
     }
+
+
+def _openai_compatible_stop_reason(finish_reason: str | None) -> str:
+    """OpenAI-style ``finish_reason`` in the Anthropic vocabulary the agent loop
+    reads. "length" must stay max_tokens: read as end_turn it hid every turn
+    that spent its whole output budget reasoning and ended with nothing."""
+    if finish_reason == "tool_calls":
+        return "tool_use"
+    if finish_reason == "length":
+        return "max_tokens"
+    return "end_turn"
 
 
 def _as_openai_image_part(block: dict) -> dict | None:
@@ -1795,15 +1835,11 @@ class DeepSeekProvider(LLMProvider):
                     "input": json_lib.loads(tc.function.arguments),
                 })
 
-        stop_reason = "end_turn"
-        if choice.finish_reason == "tool_calls":
-            stop_reason = "tool_use"
-
         result: Dict[str, Any] = {
             "content": content_blocks,
             "usage": _openai_compatible_usage(response.usage),
             "model": model,
-            "stop_reason": stop_reason,
+            "stop_reason": _openai_compatible_stop_reason(choice.finish_reason),
         }
 
         # Extract reasoning_content for thinking mode
@@ -1818,6 +1854,8 @@ class DeepSeekProvider(LLMProvider):
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,  # unused: DeepSeek/MiniMax gate thinking via DEEPSEEK_THINKING_ENABLED
+        effort: str | None = None,  # unused: Anthropic-only knob
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion via Chat Completions API (OpenAI-compatible)."""
         import json as json_lib
@@ -1937,7 +1975,7 @@ class DeepSeekProvider(LLMProvider):
                     if tc.function and tc.function.arguments:
                         tool_call_buffer[idx]["arguments"] += tc.function.arguments
             if finish_reason:
-                final_stop_reason = "tool_use" if finish_reason == "tool_calls" else "end_turn"
+                final_stop_reason = _openai_compatible_stop_reason(finish_reason)
                 for idx, tc_data in tool_call_buffer.items():
                     if tc_data["arguments"]:
                         yield StreamChunk(type="tool_input_delta",

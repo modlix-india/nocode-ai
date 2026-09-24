@@ -317,6 +317,8 @@ class Settings(BaseSettings):
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-v4-flash-vision-exp). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
     ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); competitor research stays Claude (Anthropic-only web_search); vision sub-agents on gpt-4o-mini until deepseek-v4-flash-vision-exp is benched for essence
+    ADZUMP_ANALYST_THINKING: bool = True  # Extended (adaptive) thinking for the Product Analyst ONLY - its reasoning streams to the UI during the 36->4 judgment. Off everywhere else (BaseAgent default). Toggle to disable without a code change.
+    ADZUMP_ANALYST_EFFORT: str = "medium"  # Bounds the analyst's adaptive-thinking depth (low|medium|high|max). Unset effort = API default "high": a 101k-token final judgment turn spent 6.5 min thinking (live 2026-09-21). The re-judge is a judgment task with a ~2k-token JSON output - medium suits it.
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
     # balanced tier as AppBuilder, so the two agents share one model and one set of
