@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_THINKING_ENABLED: bool = True            # Enable thinking/reasoning mode for balanced tier
 
-    # MiniMax Settings — OpenAI-compatible Chat Completions API.
+    # MiniMax Settings - OpenAI-compatible Chat Completions API.
     # Can be overridden by config server: ai.secrets.minimaxAPIKey.
     # Default base URL is the international endpoint; the China endpoint
     # is `https://api.minimaxi.chat/v1` if the user prefers that.
@@ -115,7 +115,7 @@ class Settings(BaseSettings):
     # flagship; the `-highspeed` variants trade some quality for speed
     # and lower cost.
     MINIMAX_MODEL_FAST: str = "MiniMax-M2.7-highspeed"  # Fast/cheap tier
-    MINIMAX_MODEL_BALANCED: str = "MiniMax-M3"           # Flagship — tool use + reasoning
+    MINIMAX_MODEL_BALANCED: str = "MiniMax-M3"           # Flagship - tool use + reasoning
 
     # Gemini Settings
     # Chosen as the CFA default after the Phase 8 bench: 1M context window,
@@ -306,15 +306,15 @@ class Settings(BaseSettings):
     # Used for Google AI services (e.g. image generation)
     GOOGLE_API_KEY: str = ""
 
-    # Google Maps key — separate from the Gemini/LLM key so they can be
+    # Google Maps key - separate from the Gemini/LLM key so they can be
     # rotated / restricted independently. Requires "Geocoding API" and
     # "Maps Static API" enabled on the GCP project.
     # Can be overridden by config server: ai.secrets.googleMapsAPIKey
     GOOGLE_MAPS_API_KEY: str = ""
 
-    # Google Maps Map ID — required for Vector rendering with Feature Layers
+    # Google Maps Map ID - required for Vector rendering with Feature Layers
     # (POSTAL_CODE, LOCALITY, COUNTRY, etc.). Must be a real Map ID from
-    # Google Cloud Console — DEMO_MAP_ID does NOT support Feature Layers.
+    # Google Cloud Console - DEMO_MAP_ID does NOT support Feature Layers.
     # Can be overridden by config server: ai.secrets.googleMapID
     GOOGLE_MAP_ID: str = ""
 
@@ -360,7 +360,7 @@ class Settings(BaseSettings):
     # Can be overridden by config server: ai.gateway.url
     GATEWAY_URL: str = "http://localhost:8080"
 
-    # Standalone mode — when true, the AI service reads the X-Path-Prefix header
+    # Standalone mode - when true, the AI service reads the X-Path-Prefix header
     # from incoming requests and prepends it to all outgoing API calls.
     # This allows routing through the webpack dev server with the correct
     # /{appCode}/{clientCode}/page prefix. Has no effect in production.
@@ -430,7 +430,9 @@ class Settings(BaseSettings):
 
     # Per-agent LLM provider overrides (fall back to LLM_PROVIDER if not set)
     APPBUILDER_PROVIDER: str = "deepseek"  # AppBuilder LLM provider — DeepSeek, running the balanced tier (DEEPSEEK_MODEL_BALANCED = deepseek-flash). Native vision means `describe_image`/Gemini-describe is no longer on the screenshot path.
-    ADZUMP_PROVIDER: str = "openai"  # Adzump (legacy) LLM provider
+    ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); competitor research stays Claude (Anthropic-only web_search); the vision sub-agents pin their own model (agents/vision, agents/creative_essence)
+    ADZUMP_ANALYST_THINKING: bool = True  # Extended (adaptive) thinking for the Product Analyst ONLY - its reasoning streams to the UI during the 36->4 judgment. Off everywhere else (BaseAgent default). Toggle to disable without a code change.
+    ADZUMP_ANALYST_EFFORT: str = "medium"  # Bounds the analyst's adaptive-thinking depth (low|medium|high|max). Unset effort = API default "high": a 101k-token final judgment turn spent 6.5 min thinking (live 2026-09-21). The re-judge is a judgment task with a ~2k-token JSON output - medium suits it.
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
     # balanced tier as AppBuilder, so the two agents share one model and one set of
@@ -472,7 +474,22 @@ class Settings(BaseSettings):
     # than the CDN one wins, so regenerating after a component change takes
     # effect without editing this.
     COMPONENT_CATALOG_LOCAL_PATH: str = ""
-    
+
+    # ── Competitor creative library ──
+    # scrapecreators.com - the competitor-ad source (a Meta Ad Library scrape:
+    # real is_active + country filter).
+    SCRAPECREATORS_API_KEY: str = ""
+    SCRAPECREATORS_BASE_URL: str = "https://api.scrapecreators.com"
+    # Competitor-creative library scope.
+    #   False (default, current): store under the logged-in client's own
+    #     clientCode - simple, uses the user's JWT directly.
+    #   True (future): one shared SYSTEM-owned collection across all clients
+    #     (reached via clientCode=SYSTEM, no token). Needs the SYSTEM-side
+    #     CompetitorCreativeLibrary storage created first, then flip this.
+    CREATIVE_LIBRARY_SHARED: bool = False
+    # A competitor older than this many days is refetched on next request.
+    CREATIVE_LIBRARY_FRESHNESS_DAYS: int = 30
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -510,6 +527,7 @@ class Settings(BaseSettings):
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",
             ("componentCatalogUrl",): "COMPONENT_CATALOG_URL",
+            ("adzump", "scrapeCreatorsAPIKey"): "SCRAPECREATORS_API_KEY",
         }
         
         for keys, attr in mappings.items():
@@ -556,10 +574,10 @@ class Settings(BaseSettings):
         except (KeyError, TypeError, AttributeError):
             pass
 
-        # Agent-level config — adzump credentials under ai.adzump.*
+        # Agent-level config - adzump credentials under ai.adzump.*
         try:
-            from app.agents.adzump.config import load_from_config_server as _load_adzump
-            _load_adzump(config)
+            from app.agents.adzump.config import load_adzump_config
+            load_adzump_config(config)
             logger.info("Applied config server values for adzump credentials")
         except Exception as e:
             logger.warning(f"Failed to load adzump config: {e}")
@@ -581,10 +599,10 @@ async def initialize_settings():
         config = await initialize_config_from_server()
         settings.apply_config_server_values(config)
     else:
-        # No config server — still load adzump config from env vars alone.
+        # No config server - still load adzump config from env vars alone.
         try:
-            from app.agents.adzump.config import load_from_config_server as _load_adzump
-            _load_adzump({})
+            from app.agents.adzump.config import load_adzump_config
+            load_adzump_config({})
         except Exception as e:
             logger.warning(f"Failed to load adzump config from env: {e}")
 

@@ -20,8 +20,7 @@ import asyncio
 import base64
 import logging
 import time
-from urllib.parse import urlparse
-
+from app.agents.adzump._shared import host_of
 from app.agents.adzump.agents.product.adapters.html_parser import parse_html
 from app.agents.adzump.agents.product.models import ScrapeResult, ScrapeTimings
 
@@ -234,7 +233,7 @@ async def _fetch_page(
                         if any(token in lower_url for token in _PIXEL_PATH_TOKENS):
                             return
                         # Host-based tracking/ad-network filter.
-                        host = (urlparse(resp_url).netloc or "").lower().removeprefix("www.")
+                        host = host_of(resp_url)
                         if any(host == h or host.endswith("." + h) for h in _AD_TRACKING_HOSTS):
                             return
                         # Size filter - known small images are noise; unknown size kept.
@@ -300,15 +299,17 @@ async def _fetch_page(
                     await _dismiss_cookie_banner(page)
                     _safe_set(timings, "cookie_ms", _ms(_t))
 
-                    # Early artifacts: top-of-page screenshot + DOM-ready HTML.
-                    # Both fire callbacks so the caller can show a screenshot at
-                    # t≈3s and start summary generation in parallel with scroll.
-                    # (~0 in the eval harness, which passes no early callbacks.)
+                    # Early artifacts: top-of-page (above-the-fold) screenshot +
+                    # DOM-ready HTML. This early shot IS the craft-panel hero -
+                    # captured the moment we land (after networkidle + cookie
+                    # dismissal, before scroll), so it's the first-screen view the
+                    # user expects. Quality 90 (was 75): it's the persistent panel
+                    # image now, not a throwaway preview, so it must be crisp.
                     _t = time.monotonic()
                     if on_early_screenshot:
                         await _emit(on_progress, "capture")
                         try:
-                            early_bytes = await page.screenshot(type="jpeg", quality=75)
+                            early_bytes = await page.screenshot(type="jpeg", quality=90)
                             await on_early_screenshot(
                                 base64.b64encode(early_bytes).decode("ascii"),
                             )

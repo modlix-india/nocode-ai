@@ -3,7 +3,7 @@
 Carries the DURABLE, turn-invariant content: persona, non-negotiable rules, the
 tool/capability map, platform specifics, and output discipline. The per-turn
 workflow - current state + the exact next tool to call - lives in ``agent.py``
-(``_next_action`` → the ``<system-reminder>``), NOT here. Keep turn-specific
+(``missing_list`` → the ``<system-reminder>``), NOT here. Keep turn-specific
 steps out of this prefix; it is cached by Anthropic and must stay turn-invariant.
 """
 
@@ -59,7 +59,7 @@ def build_adzump_context() -> BaseContext:
     """Build the BaseContext for the Adzump chat agent.
 
     Static prefix is persona + durable rules + tool map (cached). The workflow
-    tree lives in ``AdzumpAgent._next_action`` and is rendered per-turn.
+    journey lives in ``workflow.missing_list`` and is rendered per-turn.
     """
     ctx = BaseContext(
         doc_paths=[],

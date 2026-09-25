@@ -18,8 +18,8 @@ from pathlib import Path
 from app.core.context import BaseContext
 
 
-# DRAFT-NOTE · prompt currently lives in the product agent's prompt folder.
-# When we move it (D3 in implementation-notes.md), change this path.
+# The prompt lives in the product agent's prompt folder; if it moves,
+# change this path.
 _SELECT_PROMPT_PATH = (
     Path(__file__).resolve().parent.parent
     / "product" / "prompts" / "product_assets.txt"
@@ -67,7 +67,7 @@ Hard caps: at most 3 logos. Use empty list/string/0 when there's no signal - do 
 
 
 def _load_select_prompt() -> str:
-    """Read the gpt-4o-mini select prompt + append the JSON contract."""
+    """Read the vision select prompt + append the JSON contract."""
     base = _SELECT_PROMPT_PATH.read_text(encoding="utf-8")
     return base + _JSON_OUTPUT_CONTRACT
 

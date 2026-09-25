@@ -24,6 +24,47 @@ def build_ds_headers(context: dict) -> dict[str, str]:
     return headers
 
 
+# CoreServices.Storage endpoints - the gateway contract behind product_service's
+# Modlix AISuggestedData mirror (its only user since the MySQL move).
+STORAGE_READ_PAGE = "/api/core/function/execute/CoreServices.Storage/ReadPage"
+STORAGE_CREATE = "/api/core/function/execute/CoreServices.Storage/Create"
+STORAGE_UPDATE = "/api/core/function/execute/CoreServices.Storage/Update"
+
+
+def storage_headers(ctx: dict, app_code: str, client_code: str | None = None) -> dict[str, str]:
+    """Headers for CoreServices.Storage calls. ``app_code`` pins the collection's
+    appCode scope. ``client_code`` overrides the session's clientCode (e.g. the
+    SYSTEM-shared creative library); omitted, the user's own scope applies."""
+    h = build_ds_headers(ctx)
+    if client_code:
+        h["clientCode"] = client_code
+    h["AppCode"] = app_code
+    h["Content-Type"] = "application/json"
+    return h
+
+
+def extract_storage_records(raw: Any) -> list[dict]:
+    """Unwrap CoreServices.Storage's response envelope into a flat record list.
+    The gateway wraps the storage result in two ``result`` levels, then either
+    has ``content`` (paged) or returns records directly. Tolerates both."""
+    if raw is None:
+        return []
+    data = raw
+    if isinstance(data, list) and data:
+        data = data[0]
+    for _ in range(2):  # 2-level unwrap of the known result.result envelope
+        if isinstance(data, dict) and "result" in data:
+            data = data["result"]
+        else:
+            break
+    if data is None:
+        return []
+    if isinstance(data, dict) and "content" in data:
+        content = data["content"]
+        return content if isinstance(content, list) else [content]
+    return data if isinstance(data, list) else [data]
+
+
 def short_url(url: str, max_len: int = 55) -> str:
     """Render a URL compactly for live progress strings shown in the UI.
 
@@ -32,7 +73,7 @@ def short_url(url: str, max_len: int = 55) -> str:
     - Hard-caps length, end-truncates with ``…``.
 
     Display-only - never persist this form. Stored URLs always use the full
-    URL (see business_storage._normalize_url for the storage-canonical form).
+    URL (see normalize_business_url for the storage-canonical form).
     """
     from urllib.parse import urlparse
     if not url:
@@ -63,8 +104,8 @@ def clean_input_url(raw) -> str | None:
     Trims whitespace, defaults the scheme to ``https://`` if missing,
     and returns ``None`` when the input is empty or whitespace-only.
     Leaves explicit ``http://`` alone - caller decides whether to keep
-    or force-upgrade to https (see business_storage._normalize_url for
-    the storage-canonicalization concern).
+    or force-upgrade to https (see normalize_business_url
+    for the storage-canonicalization concern).
     """
     url = (raw or "").strip()
     if not url:
@@ -74,28 +115,53 @@ def clean_input_url(raw) -> str | None:
     return url
 
 
+def normalize_business_url(url: str) -> str:
+    """The storage-canonical business URL - the key for adzump_products.url,
+    adzump_competitors.url and the Modlix businessUrl. Forces https (http/https
+    never split one business into two records), lowercases the host, strips
+    ``www.``, the trailing slash, and any query/fragment (tracking params)."""
+    from urllib.parse import urlparse
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    # urlparse needs "//" to populate netloc; a bare "www.x.com/p" lands in path.
+    p = urlparse(raw if "//" in raw else f"//{raw}")
+    host = (p.netloc or "").lower().removeprefix("www.")
+    path = (p.path or "").rstrip("/")
+    return f"https://{host}{path}"
+
+
 import json as _json
 
-_JSON_BLOCK_RE = _re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", _re.DOTALL)
+_JSON_FENCE_RE = _re.compile(r"```json\s*\n(.*?)\n```", _re.DOTALL)
 
 
 def extract_json(text: str) -> dict | None:
-    """Pull the first JSON object out of an LLM response (```json ...``` or raw)."""
+    """Pull the first JSON object out of an LLM response. The one parser for
+    every final-JSON sub-agent (vision, creative_essence, product) - handles a
+    ```json fence, a fence without a language tag, a bare object, and falls back
+    to the first {...} span. None when nothing parses."""
     if not text:
         return None
-    match = _JSON_BLOCK_RE.search(text)
-    candidate = match.group(1) if match else None
-    if candidate is None:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end > start:
-            candidate = text[start : end + 1]
-    if not candidate:
+    m = _JSON_FENCE_RE.search(text)
+    raw = m.group(1) if m else text.strip()
+    # Strip stray code fences if the model emitted ``` without a language tag.
+    raw = _re.sub(r"^```[a-z]*\s*", "", raw)
+    raw = _re.sub(r"\s*```\s*$", "", raw)
+    try:
+        payload = _json.loads(raw)
+        if isinstance(payload, dict):
+            return payload
+    except _json.JSONDecodeError:
+        pass
+    start, end = raw.find("{"), raw.rfind("}")
+    if start == -1 or end <= start:
         return None
     try:
-        return _json.loads(candidate)
+        payload = _json.loads(raw[start : end + 1])
     except _json.JSONDecodeError:
         return None
+    return payload if isinstance(payload, dict) else None
 
 
 # ─── Shared URL / host helpers ────────────────────────────────────────────
@@ -157,6 +223,18 @@ def primary_screenshot_url(product_data: dict) -> str:
     pages = product_data.get("pages") or {}
     page = pages.get(product_data.get("primary_url") or "") or {}
     return page.get("screenshot_url") or ""
+
+
+def resolve_url(session_ctx: dict) -> str:
+    """Find the business URL across the various places it can live."""
+    profile = session_ctx.get("product_profile") or {}
+    if profile.get("url"):
+        return profile["url"]
+    product = session_ctx.get("product_data") or {}
+    pages = product.get("pages_analyzed") or []
+    if pages:
+        return pages[0]
+    return ""
 
 
 # ─── Shared progress emission ────────────────────────────────────────────

@@ -1,43 +1,67 @@
-"""Agent-level credential config for adzump.
+"""Adzump's agent-level ad-platform credentials.
 
-Sourced from ``ai.adzump.*`` in the nocode-saas config server at startup,
-with env-var overrides for local dev. Per-user OAuth tokens are NOT here -
-those come from the connection service per request.
+Each field resolves env var first (local-dev override), then the config
+server's ``ai.adzump.<platform>`` block, else None. Both names derive from
+the field name:
 
-Access via ``get_adzump_config()``. Models are frozen; ``load_from_config_server``
-replaces the singleton wholesale on reload.
+    GoogleAdsCredentials.developer_token
+        env     ADZUMP_GOOGLE_ADS_DEVELOPER_TOKEN
+        config  ai.adzump.googleAds.developerToken
+
+Per-user OAuth tokens are not here - they come from the connection service
+per request. Read via ``get_adzump_config()``; ``load_adzump_config()`` swaps
+the frozen singleton wholesale.
 """
 
 from __future__ import annotations
 
 import os
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 
-class GoogleAdsCreds(BaseModel):
+class _PlatformCredentials(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    developer_token: str | None = None
-    # Direct access token (short-lived). Overrides the refresh/connection-service
-    # path entirely. Useful for local dev when you want to paste a fresh token.
-    access_token: str | None = None
-    refresh_token: str | None = None
+    ENV_PREFIX: ClassVar[str]
+    CONFIG_KEY: ClassVar[str]
+
+    @classmethod
+    def resolve(cls, adzump_block: dict) -> Self:
+        """Env var, then config value, per field; blank counts as unset."""
+        block = adzump_block.get(cls.CONFIG_KEY) or {}
+        return cls(**{
+            field: os.getenv(cls.ENV_PREFIX + field.upper()) or block.get(to_camel(field)) or None
+            for field in cls.model_fields
+        })
+
+
+class GoogleAdsCredentials(_PlatformCredentials):
+    ENV_PREFIX = "ADZUMP_GOOGLE_ADS_"
+    CONFIG_KEY = "googleAds"
+
+    developer_token: str | None = Field(default=None, repr=False)
+    # Short-lived token pasted for local dev; skips the refresh + connection-service path.
+    access_token: str | None = Field(default=None, repr=False)
+    refresh_token: str | None = Field(default=None, repr=False)
     client_id: str | None = None
-    client_secret: str | None = None
+    client_secret: str | None = Field(default=None, repr=False)
 
 
-class MetaCreds(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class MetaCredentials(_PlatformCredentials):
+    ENV_PREFIX = "ADZUMP_META_"
+    CONFIG_KEY = "meta"
 
-    access_token: str | None = None
+    access_token: str | None = Field(default=None, repr=False)
 
 
 class AdzumpConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    google_ads: GoogleAdsCreds = GoogleAdsCreds()
-    meta: MetaCreds = MetaCreds()
+    google_ads: GoogleAdsCredentials = GoogleAdsCredentials()
+    meta: MetaCredentials = MetaCredentials()
 
 
 _adzump_config = AdzumpConfig()
@@ -47,26 +71,11 @@ def get_adzump_config() -> AdzumpConfig:
     return _adzump_config
 
 
-def load_from_config_server(raw: dict) -> None:
-    """Rebuild the singleton from the ``ai.adzump.*`` block of the config payload.
-
-    Env-var overrides win over config-server values (local-dev escape hatch).
-    Empty strings and missing keys both resolve to None.
-    """
+def load_adzump_config(server_config: dict | None) -> None:
+    """Rebuild from the config server payload's ``adzump`` block ({} = env only)."""
     global _adzump_config
-    adzump = (raw or {}).get("adzump") or {}
-    gads = adzump.get("googleAds") or {}
-    meta = adzump.get("meta") or {}
-
+    adzump_block = (server_config or {}).get("adzump") or {}
     _adzump_config = AdzumpConfig(
-        google_ads=GoogleAdsCreds(
-            developer_token=os.getenv("ADZUMP_GOOGLE_ADS_DEVELOPER_TOKEN") or gads.get("developerToken") or None,
-            access_token=os.getenv("ADZUMP_GOOGLE_ADS_ACCESS_TOKEN") or gads.get("accessToken") or None,
-            refresh_token=os.getenv("ADZUMP_GOOGLE_ADS_REFRESH_TOKEN") or gads.get("refreshToken") or None,
-            client_id=os.getenv("ADZUMP_GOOGLE_ADS_CLIENT_ID") or gads.get("clientId") or None,
-            client_secret=os.getenv("ADZUMP_GOOGLE_ADS_CLIENT_SECRET") or gads.get("clientSecret") or None,
-        ),
-        meta=MetaCreds(
-            access_token=os.getenv("ADZUMP_META_ACCESS_TOKEN") or meta.get("accessToken") or None,
-        ),
+        google_ads=GoogleAdsCredentials.resolve(adzump_block),
+        meta=MetaCredentials.resolve(adzump_block),
     )

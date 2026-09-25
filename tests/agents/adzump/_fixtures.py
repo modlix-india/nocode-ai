@@ -1,7 +1,7 @@
 """Shared test fixtures for Adzump agent tests.
 
 ONE place to build the scaffolding every test needs - a session stand-in, the
-`set_campaign_spec` context pair, a `CampaignContext`, and a fake event stream -
+`set_campaign_spec` context pair, a `AdzumpContext`, and a fake event stream -
 so test files stop re-rolling their own `types.SimpleNamespace` + `RE`/`SAAS`
 constants + `_ctx`/`_session` helpers (the duplication that made the suite read
 as "generated on the fly").
@@ -17,7 +17,8 @@ from __future__ import annotations
 import types
 from typing import Any
 
-from app.agents.adzump.agent import CampaignContext
+from app.agents.adzump.agent import AdzumpContext
+from app.agents.adzump.models import OfferResolution
 
 # Canonical product_data shapes. Override fields per test:
 #   make_session(product={**RE, "product_name": "Foo"})
@@ -75,7 +76,7 @@ def spec_context(
     return {"session_context": session.context, "_session": session}, session.context
 
 
-def make_cctx(
+def make_actx(
     spec: dict,
     *,
     product: dict | None = None,
@@ -83,12 +84,15 @@ def make_cctx(
     account_names: dict | None = None,
     competitor_names: list | None = None,
     attempted: bool = False,
-    ig_offered: bool = False,
-    awaiting: str | None = None,
+    ig_fetched: bool = False,
     turn: int = 1,
-) -> CampaignContext:
-    """A `CampaignContext` for `_next_action` / prescription tests."""
-    return CampaignContext(
+    creatives_resolved: bool = False,
+    pending_ask: str | None = None,
+    field_asks: dict | None = None,
+    pending_location: str | None = None,
+) -> AdzumpContext:
+    """A `AdzumpContext` for `missing_list` / prescription tests."""
+    return AdzumpContext(
         product=dict(product if product is not None else RE),
         product_profile={},
         competitor_names=competitor_names or [],
@@ -98,9 +102,13 @@ def make_cctx(
         set_at={},
         current_turn=turn,
         last_user=last_user,
-        pending_location=None,
-        ig_offered=ig_offered,
-        awaiting_custom_field=awaiting,
+        pending_location=pending_location,
+        ig_accounts_fetched=ig_fetched,
+        pending_ask_field=pending_ask,
+        field_asks=dict(field_asks or {}),
+        competitor_creatives_resolution=(
+            OfferResolution.FULFILLED if creatives_resolved
+            else OfferResolution.OPEN),
     )
 
 
@@ -112,10 +120,21 @@ def elicitation(field: str, answers: dict | None = None, *, expects: str = "sing
 
 
 class FakeStream:
-    """Captures `emit_text` calls - the happy path most tool tests need."""
+    """Records what a tool or sub-agent emits: text, data events, and the
+    agent-finished events a parent stream receives."""
+
+    is_cancelled = False
 
     def __init__(self) -> None:
         self.texts: list[str] = []
+        self.data: list[tuple[str, Any]] = []
+        self.finished: list[dict[str, Any]] = []
 
     async def emit_text(self, text: str) -> None:
         self.texts.append(text)
+
+    async def emit_data(self, name: str, payload: Any) -> None:
+        self.data.append((name, payload))
+
+    async def emit_agent_finished(self, **event: Any) -> None:
+        self.finished.append(event)

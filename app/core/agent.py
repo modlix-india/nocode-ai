@@ -178,6 +178,8 @@ class BaseAgent:
         max_tokens: int = 16384,
         provider: str | None = None,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
         router_tool: ToolDefinition | None = None,
         defer_schemas: bool = False,
     ) -> None:
@@ -189,6 +191,11 @@ class BaseAgent:
         self.max_tokens = max_tokens
         self._provider_name = provider
         self.context_management = context_management
+        # Extended thinking, opt-in per agent (default off). Only the Anthropic
+        # provider acts on it; the reasoning stream surfaces via emit_thinking.
+        # effort bounds thinking depth (low|medium|high|max); None = API default.
+        self.thinking = thinking
+        self.effort = effort
         if not self.display_name:
             self.display_name = name.replace("_", " ").title()
 
@@ -846,6 +853,8 @@ class BaseAgent:
                 model_tier=effective_tier,
                 max_tokens=self.max_tokens,
                 context_management=self.context_management,
+                thinking=self.thinking,
+                effort=self.effort,
             ):
                 # Honor user "stop" — break out of the streaming loop.
                 if event_stream.is_cancelled:
@@ -962,7 +971,15 @@ class BaseAgent:
         """True if a completed tool was a deferred elicitation — either by
         static declaration (kind='elicitation', elicit_mode='deferred') or by
         a runtime signal (ToolResult.data['elicited']=True, e.g. analyze_product
-        when assets are missing). Blocking elicitations are excluded."""
+        when assets are missing). Blocking elicitations are excluded.
+
+        A FAILED call is never an elicitation: nothing was asked, and the
+        tool's corrective error exists precisely so the model re-calls in the
+        SAME turn (e.g. present_options' self-healing refusal). Breaking on it
+        would end the turn with silence and re-fire forever (live 2026-09-04:
+        gpt-4o's answer-less options refused → elicitation_break → dead loop)."""
+        if not log_entry.get("success"):
+            return False
         static = (
             log_entry.get("kind") == "elicitation"
             and log_entry.get("elicit_mode") == "deferred"
@@ -1175,10 +1192,10 @@ class BaseAgent:
         )
         tool_content = result.to_tool_result_content()
 
-        # Use a short display summary for the SSE event — the UI only
-        # shows 80 chars anyway and very large payloads (e.g. full page
-        # trees) can fragment SSE lines and stall the spinner.
-        display_summary = result.summary or result.error or tool_content
+        # What the user's tool row shows (never `error` - that text steers the
+        # model; see ToolResult.to_display_text). Kept short: the UI truncates,
+        # and very large payloads can fragment SSE lines and stall the spinner.
+        display_summary = result.to_display_text(tool_content)
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)
 
@@ -1201,9 +1218,13 @@ class BaseAgent:
         # posted to chat AND persisted (append to the run-scoped parts the saved
         # turn is built from, so it survives refresh). The model writes only a
         # lead-in (tool-text contract); no de-dup — a rare verbatim echo is OK.
+        # Framed as its own paragraph: the parts are "".join'd (they're stream
+        # deltas) and the UI concatenates text events, so an unseparated summary
+        # glues onto surrounding prose ("…Pride EuphoraFetched creatives…").
         if result.audience in ("user", "both") and result.success and result.summary:
-            await event_stream.emit_text(result.summary)
-            assistant_text_parts.append(result.summary)
+            paragraph = f"\n\n{result.summary}\n\n"
+            await event_stream.emit_text(paragraph)
+            assistant_text_parts.append(paragraph)
 
         # Learning loop: track tool errors for pitfall detection
         if not result.success:
@@ -1248,7 +1269,9 @@ class BaseAgent:
             "display_name": display_name,
             "input": tool_input,
             "success": result.success,
-            "summary": result.summary or result.error or "",
+            # Rebuilds the user's tool rows on refresh - same display rule as
+            # the SSE event (sans the model-content fallback).
+            "summary": result.to_display_text(),
             "ms": round((time.monotonic() - _started) * 1000),
             "tool_use_id": tool_use_id,
             "kind": getattr(tool, "kind", "tool") if tool else "tool",
@@ -2035,7 +2058,6 @@ class BaseAgent:
             from app.services.lore import access as _access
             from app.services.lore import curator as _curator
             from app.services.lore import ingest as _ingest
-            from app.services.lore import store as _store
 
             # Passive accumulation is still accumulation: an observation becomes
             # an entry at the next curation pass, so it needs the same edit

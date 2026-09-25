@@ -342,7 +342,7 @@ class LLMProvider(ABC):
             - usage: Token usage info
         """
         pass
-    
+
     @abstractmethod
     def supports_vision(self) -> bool:
         """Whether this provider supports vision/image inputs"""
@@ -391,8 +391,15 @@ class LLMProvider(ABC):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream a completion with tool-use support.
+
+        ``thinking`` opts this call into extended/adaptive thinking; only
+        providers that support it act on it, the rest ignore it.
+        ``effort`` bounds thinking depth (low|medium|high|max) - Anthropic
+        only; None means the API default (high).
 
         Yields StreamChunk objects as they arrive. Override in subclasses
         for native streaming. Default: falls back to non-streaming call
@@ -550,7 +557,7 @@ class AnthropicProvider(LLMProvider):
             "model": model,
             "stop_reason": response.stop_reason
         }
-    
+
     async def create_completion_with_tools(
         self,
         system_prompt: Any,
@@ -639,6 +646,8 @@ class AnthropicProvider(LLMProvider):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Claude API."""
         model = self.get_model(model_tier)
@@ -661,6 +670,18 @@ class AnthropicProvider(LLMProvider):
             model=model, max_tokens=max_tokens,
             system=system, messages=messages, tools=tools,
         )
+        if thinking:
+            # Adaptive thinking: Claude decides when/how much to think and
+            # auto-enables interleaved thinking with tool use (no beta header).
+            # Sonnet 4.6 returns summarized thinking by default; `display` is
+            # not set here because that field is Opus-4.7+/Sonnet-5 only and
+            # 4.6 would reject it. On a model bump, add display="summarized".
+            stream_kwargs["thinking"] = {"type": "adaptive"}
+        if effort:
+            # Bounds adaptive thinking depth. Without it the API defaults to
+            # "high" - a 101k-token final judgment turn spent 6.5 min thinking
+            # (live 2026-09-21). Sonnet 4.6 accepts low|medium|high|max.
+            stream_kwargs["output_config"] = {"effort": effort}
         if context_management:
             extra_headers = extra_headers or {}
             extra_headers["anthropic-beta"] = (
@@ -766,6 +787,12 @@ class AnthropicProvider(LLMProvider):
                 dtype = getattr(delta, "type", "")
                 if dtype == "text_delta":
                     yield StreamChunk(type="text_delta", text=delta.text)
+                elif dtype == "thinking_delta":
+                    # Adaptive-thinking summary text - surfaced to the UI via
+                    # the same reasoning_delta -> emit_thinking path the OpenAI
+                    # and DeepSeek providers use. The signature rides the final
+                    # assembled block (message_complete), not the stream.
+                    yield StreamChunk(type="reasoning_delta", text=getattr(delta, "thinking", "") or "")
                 elif dtype == "input_json_delta":
                     btype = block_types_by_index.get(idx, "")
                     if btype == "tool_use":
@@ -855,7 +882,17 @@ class OpenAIProvider(LLMProvider):
         from openai import OpenAI
         from app.config import settings
 
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        import httpx as _httpx
+        # Explicit timeouts: the SDK default (600s/attempt x retries) let one
+        # stalled vision call wedge a whole creatives batch for 12+ minutes
+        # (live 2026-09-08). read=180s applies BETWEEN stream chunks too, so a
+        # stalled stream breaks instead of hanging; the SDK's own retries then
+        # re-attempt the call.
+        self.client = OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=_httpx.Timeout(180.0, connect=10.0, pool=30.0),
+            max_retries=2,
+        )
         self.settings = settings
         self._models = {
             "fast": settings.OPENAI_MODEL_FAST,
@@ -1072,6 +1109,8 @@ class OpenAIProvider(LLMProvider):
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,  # unused: reasoning models steer via effort, not this flag
+        effort: str | None = None,  # unused: Anthropic-only knob
         extra_request_kwargs: Optional[Dict[str, Any]] = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Responses API.
@@ -1106,10 +1145,18 @@ class OpenAIProvider(LLMProvider):
                 kwargs["reasoning"] = reasoning_config
             if extra_request_kwargs:
                 kwargs.update(extra_request_kwargs)
-            stream = self.client.responses.create(**kwargs)
-            for event in stream:
-                queue.put_nowait(event)
-            queue.put_nowait(_sentinel)
+            try:
+                stream = self.client.responses.create(**kwargs)
+                for event in stream:
+                    queue.put_nowait(event)
+            except Exception as e:
+                # Same contract as the DeepSeek worker: a create() failure
+                # (e.g. 400 on a bad image) must reach the consumer, not die
+                # in the executor future while `await queue.get()` hangs
+                # forever (live 2026-09-10).
+                queue.put_nowait(_StreamError(e))
+            finally:
+                queue.put_nowait(_sentinel)
 
         asyncio.get_event_loop().run_in_executor(None, _run_stream)
 
@@ -1123,6 +1170,8 @@ class OpenAIProvider(LLMProvider):
             event = await queue.get()
             if event is _sentinel:
                 break
+            if isinstance(event, _StreamError):
+                raise event.exc
 
             etype = getattr(event, 'type', '')
 
@@ -1224,10 +1273,11 @@ class OpenAIProvider(LLMProvider):
 
 
 class _StreamError:
-    """Queue-passable wrapper for exceptions raised inside the streaming
-    worker thread of `DeepSeekProvider.stream_completion_with_tools` (and
-    MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
-    leaves the consumer's `await queue.get()` hung forever.
+    """Queue-passable wrapper for exceptions raised inside a streaming
+    worker thread (`OpenAIProvider` Responses and
+    `DeepSeekProvider.stream_completion_with_tools`, including MiniMax which
+    inherits it). Without this, a TLS drop, 5xx, or 400 leaves the
+    consumer's `await queue.get()` hung forever.
     """
 
     __slots__ = ("exc",)
@@ -1721,6 +1771,8 @@ class DeepSeekProvider(LLMProvider):
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,  # unused: DeepSeek/MiniMax gate thinking via DEEPSEEK_THINKING_ENABLED
+        effort: str | None = None,  # unused: Anthropic-only knob
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion via Chat Completions API (OpenAI-compatible)."""
         import json as json_lib

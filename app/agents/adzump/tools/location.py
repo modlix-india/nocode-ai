@@ -11,6 +11,7 @@ import logging
 from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import product_location_str as _detected_location
+from app.agents.adzump.models import LocationProposal
 from app.agents.adzump.tools.campaign_data import is_real_estate
 from app.agents.adzump.agents.location.agent import get_location_agent
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 async def _confirm_location(params: dict, context: dict) -> ToolResult:
     session_ctx = context.get("session_context") or {}
-    product = session_ctx.get("product_data") or {}
+    product = session_ctx.setdefault("product_data", {})
     business_type = (product.get("business_type") or "").strip()
 
     if not is_real_estate(business_type):
@@ -50,6 +51,16 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
         "api_key": settings.GOOGLE_MAPS_API_KEY,
         "location_found": bool(detected),
     }
+    # One geocode, here: the map pins what we send (a self-geocode relabelled
+    # the location with Google's formatted address even when the pin never
+    # moved), and the country code lands now - the ad search filters on it.
+    proposal = LocationProposal(address=detected)
+    geo = await _geocode(display or detected)
+    if geo:
+        proposal.lat, proposal.lng = geo["lat"], geo["lng"]
+        payload["coordinates"] = {"lat": geo["lat"], "lng": geo["lng"]}
+        if geo.get("country_code"):
+            product.setdefault("place", {})["country_code"] = geo["country_code"]
 
     # The tool declares no parameters (see ToolDefinition below) - the prompt
     # is always built here, never model-supplied.
@@ -66,7 +77,7 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
         await stream.emit_text(f"\n\n{prompt}\n")
         await stream.emit_data("location_map", payload)
 
-    session_ctx["_pending_location_confirm"] = detected
+    session_ctx["_pending_location_confirm"] = proposal.model_dump()
 
     return ToolResult(
         success=True,
@@ -77,6 +88,22 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
             "user's reply."
         ),
     )
+
+
+async def _geocode(query: str) -> dict | None:
+    """Server-side geocode of the confirm query; None leaves the map to geocode."""
+    if not query:
+        return None
+    from app.agents.adzump.adapters.google.maps import GoogleMapsClient
+
+    try:
+        geo = await GoogleMapsClient().geocode(query)
+    except Exception as e:
+        logger.warning("confirm_location geocode failed for %r: %s", query, e)
+        return None
+    if not geo or geo.get("lat") is None or geo.get("lng") is None:
+        return None
+    return geo
 
 
 async def _manage_targeting_locations(params: dict, context: dict) -> ToolResult:

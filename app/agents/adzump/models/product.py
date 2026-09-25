@@ -17,6 +17,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.agents.adzump.models.offer_state import OfferState
 from app.agents.adzump.models.place import Place
 from app.agents.adzump.agents.location.models import TargetArea
 from app.agents.adzump.agents.product.models import SiteLink
@@ -69,6 +70,18 @@ class Assets(BaseModel):
     images: list[Image] = Field(default_factory=list)
 
 
+class AdAccounts(BaseModel):
+    """One platform's account picks. Business-level, not campaign-level: a new
+    campaign for this product reuses them (Kailash 2026-09-23)."""
+
+    parent_account: str = ""
+    account: str = ""
+    fb_page: str = ""
+    ig_page: str = ""
+    instagram: OfferState = OfferState.UNSET  # DECLINED = Facebook-only
+    names: dict[str, str] = Field(default_factory=dict)  # id -> display name
+
+
 class Product(BaseModel):
     """``extra="allow"`` - unknown keys never reject a live dict; they surface
     via ``model_extra`` (warned at runtime, failed in tests)."""
@@ -79,12 +92,29 @@ class Product(BaseModel):
     product_name: str = ""
     business_type: str = ""
     business_scale: Literal["local", "regional", "national", "international"] = "national"  # picks the geo tool
-    summary: str = ""
+    summary: str = ""  # the analyst's compact machine brief (prompt context, classification signal)
+    # The SummaryAgent's rich display profile (the panel's "Product Summary").
+    # Session home is product_profile["summary"]; persisted here so a resumed
+    # product shows the text the user originally saw, not the machine brief.
+    profile_summary: str = ""
     place: Place = Field(default_factory=Place)  # where the business IS; ads go to target_areas
     pricing: str = ""
     contact: Contact = Field(default_factory=Contact)
     unique_features: list[str] = Field(default_factory=list)
     products_services: list[str] = Field(default_factory=list)
+
+    # ── Category classification (Stage A, creative_intelligence/taxonomy.py) -
+    #    the relevance gate's yardstick for competitor creatives. Derived ONCE
+    #    per record from the profile text above; the override wins and is the
+    #    correction path when derivation got it wrong. ──
+    category: str = ""          # taxonomy enum value
+    subcategory: str = ""
+    market: str = ""            # free text from place; city-token matched
+    offering_stage: str = ""    # pre_launch | under_construction | ...
+    category_source: str = ""   # which signal decided it (audit)
+    category_confidence: float = 0.0
+    taxonomy_version: str = ""          # vintage; a bump triggers re-derivation
+    category_override: str = ""  # manual, skips Stage A entirely
 
     # ── Scrape state ──
     primary_url: str = ""
@@ -99,6 +129,9 @@ class Product(BaseModel):
     # ── Geo targeting - written by finalize_targets ──
     # Platform handle nested per-area; "mapped" = handle presence (platform.is_mapped_for)
     target_areas: list[TargetArea] = Field(default_factory=list)
+
+    # ── Ad accounts per platform (Platform value) - reused by the next campaign ──
+    ad_accounts: dict[str, AdAccounts] = Field(default_factory=dict)
 
 
 def check_product(product_data: dict, where: str) -> None:

@@ -15,7 +15,6 @@ import base64
 import logging
 from functools import partial
 from hashlib import md5
-from urllib.parse import urlparse
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump.agents.product.adapters.playwright_adapter import scrape_page
@@ -112,8 +111,14 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
     scrape_id = md5(url.encode()).hexdigest()[:8]
     # Thread scrape_id so every stage_emit downstream tags its log line.
     context["scrape_id"] = scrape_id
-    # Filename example: apple.com_a3b8f1c2.jpg - host makes it human-readable
-    screenshot_filename = f"{host_of(url)}_{scrape_id}.jpg".lstrip("_")
+    # Filename example: apple.com_a3b8f1c2_9f2c1a.jpg - host makes it
+    # human-readable, the BYTES hash makes every distinct capture a distinct
+    # object. A url-only name recycled one key across runs, and the file
+    # service froze whichever version a pod served first (live 2026-09-16:
+    # the panel showed a 5-day-old full-page ribbon while storage held the
+    # correct hero). Same rule as _uploads._asset_filename.
+    def _screenshot_name(data: bytes) -> str:
+        return f"{host_of(url)}_{scrape_id}_{md5(data).hexdigest()[:6]}.jpg".lstrip("_")
     # State shared with the streaming callbacks below. Plain dict (BashTool-style
     # mutable captures) instead of `nonlocal` rewrites - fewer syntactic gymnastics,
     # same lifetime: locals on `_scrape_url`'s frame.
@@ -124,16 +129,21 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
     # ── 4. Streaming callbacks (mutate `state` in place) ────────────
     async def paint_initial_screenshot(b64: str) -> None:
         if not b64 or not stream:
+            logger.info("panel_hero_skip: b64=%s stream=%s (early hero not painted)",
+                        bool(b64), bool(stream))
             return
         try:
+            hero_bytes = base64.b64decode(b64)
             uploaded = await upload_screenshot(
-                base64.b64decode(b64), screenshot_filename, context,
+                hero_bytes, _screenshot_name(hero_bytes), context,
             )
         except Exception as e:
-            logger.debug("screenshot_upload_failed: %s", str(e)[:120])
+            logger.warning("panel_hero_upload_failed: %s", str(e)[:120])
             return
         if not uploaded:
+            logger.info("panel_hero_upload_none")
             return
+        logger.info("panel_hero_ok: early viewport hero uploaded url=%s", uploaded[:90])
         state["screenshot_url"] = uploaded
         if is_primary and craft_id:
             try:
@@ -202,6 +212,8 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
     # ── 6. Build result data + accumulate site links ────────────────
     # Success - record the page (early screenshot now; post-scroll upgrades it).
     pages[url] = {"screenshot_url": state["screenshot_url"] or ""}
+    logger.info("panel_source: early_hero_present=%s url=%s",
+                bool(state["screenshot_url"]), (state["screenshot_url"] or "")[:90])
     page = result.content
     data: dict = {
         "url": url,
@@ -219,28 +231,33 @@ async def _scrape_url(params: dict, context: dict) -> ToolResult:
     # Shift 2 (2026-05-21): stash the full-page screenshot bytes in context so
     # the asset picker can prepend them as image block #0 in its vision call.
     # The adapter has already downsampled to ≤ 2000 px long-edge.
+    # Full-page screenshot = vision spatial context for the asset picker ONLY.
+    # The craft panel keeps the early first-load hero that
+    # paint_initial_screenshot already painted the moment we landed on the site -
+    # we do NOT swap it for the tall, unreadable full-page ribbon.
     if result.screenshot:
         context["full_page_screenshot_b64"] = result.screenshot
 
-    # ── 7. Post-scroll screenshot + non-primary craft section ───────
-    # If the summary task is running in parallel it already painted the
-    # panel with the provisional URL; id-based replace swaps to the
-    # final URL without disturbing the streaming summary text.
-    if result.screenshot and stream:
+    # ── 7. Panel fallback + non-primary craft section ───────────────
+    # Only if the early hero paint never landed (capture failed) do we fall
+    # back to the full page so the panel isn't empty.
+    if not state["screenshot_url"] and result.screenshot and stream:
+        logger.info("panel_source: FALLING BACK to full-page (early hero absent)")
         try:
+            fallback_bytes = base64.b64decode(result.screenshot)
             uploaded = await upload_screenshot(
-                base64.b64decode(result.screenshot), screenshot_filename, context,
+                fallback_bytes, _screenshot_name(fallback_bytes), context,
             )
             if uploaded:
                 state["screenshot_url"] = uploaded
                 pages[url]["screenshot_url"] = uploaded
-                if is_primary and craft_id and state["profile_task"] is not None:
+                if is_primary and craft_id:
                     try:
                         await stream.emit_craft(craft_id, url, [
                             {"id": "panel_image", "type": "image", "url": uploaded},
                         ], append=True)
                     except Exception as e:
-                        logger.debug("image_swap_failed: %s", str(e)[:120])
+                        logger.debug("panel_fallback_emit_failed: %s", str(e)[:120])
         except Exception as e:
             logger.warning("final_screenshot_upload_failed: url=%s err=%s", url, str(e)[:200])
 
@@ -322,14 +339,8 @@ def _has_enough_text_for_summary(page) -> bool:
 
 def _is_same_website(a: str, b: str) -> bool:
     """Rough check: both URLs share the same registered domain suffix."""
-    try:
-        # removeprefix, not lstrip - lstrip("www.") treats "www." as a char SET
-        # {w, .} and would mangle real domains like "wisco.com" → "isco.com".
-        ha = urlparse(a).netloc.lower().removeprefix("www.")
-        hb = urlparse(b).netloc.lower().removeprefix("www.")
-        return bool(ha) and bool(hb) and (ha == hb or ha.endswith("." + hb) or hb.endswith("." + ha))
-    except Exception:
-        return False
+    ha, hb = host_of(a), host_of(b)
+    return bool(ha) and bool(hb) and (ha == hb or ha.endswith("." + hb) or hb.endswith("." + ha))
 
 
 def _trim_paragraphs(paragraphs: list[str]) -> list[str]:

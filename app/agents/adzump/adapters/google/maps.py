@@ -15,6 +15,10 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 MAPS_API_BASE_URL = "https://maps.googleapis.com/maps/api"
+PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+# Bias circle for business-profile lookups: wide enough for a metro area,
+# narrow enough to break same-name-other-city ties. Places caps it at 50km.
+PLACES_BIAS_RADIUS_METERS = 50000.0
 DEFAULT_HTTP_TIMEOUT_SECONDS = 10.0
 MAX_RETRIES = 3
 
@@ -73,6 +77,50 @@ class GoogleMapsClient:
                 )
                 return None
         return None
+
+    async def find_business_listings(
+        self, name: str, *, lat: float | None = None, lng: float | None = None,
+        page_size: int = 3,
+    ) -> list[dict]:
+        """Google Business Profile lookup via Places Text Search (New).
+
+        Returns up to ``page_size`` listings matching ``name`` in ranking
+        order, biased to the given point when provided - each as
+        ``{"name", "website"}`` (website may be ""). Empty list when there is
+        no listing or the API is unavailable. The caller owns acceptance
+        (name similarity, host quality) - this is a dumb lookup."""
+        if not self.api_key or not name.strip():
+            return []
+        body: dict = {"textQuery": name, "pageSize": page_size}
+        if lat is not None and lng is not None:
+            body["locationBias"] = {"circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": PLACES_BIAS_RADIUS_METERS,
+            }}
+        headers = {
+            "X-Goog-Api-Key": self.api_key,
+            "X-Goog-FieldMask": "places.displayName,places.websiteUri",
+            "Content-Type": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.post(
+                    PLACES_SEARCH_URL, headers=headers, json=body)
+        except Exception as e:
+            logger.warning("places_search failed for %r: %s: %s",
+                           name, type(e).__name__, e)
+            return []
+        if response.status_code != 200:
+            logger.warning("places_search non-200 for %r: %d %s",
+                           name, response.status_code, response.text[:200])
+            return []
+        return [
+            {
+                "name": ((place.get("displayName") or {}).get("text") or "").strip(),
+                "website": (place.get("websiteUri") or "").strip(),
+            }
+            for place in (response.json() or {}).get("places") or []
+        ]
 
     async def reverse_geocode(self, lat: float, lng: float) -> list[dict]:
         """Fetch reverse-geocoding candidate locations for coordinates."""

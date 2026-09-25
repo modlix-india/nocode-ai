@@ -166,7 +166,10 @@ class _QuietStream(AgentEventStream):
     ``parent=None`` (the eval / offline path)."""
 
     def __init__(self, parent: AgentEventStream | None = None) -> None:
-        self._parent = parent  # intentionally no super().__init__()
+        # Base state first: un-overridden members (drain_steers, emit_complete,
+        # ...) read it; the local queue is never consumed - overrides delegate.
+        super().__init__()
+        self._parent = parent
 
     @property
     def is_cancelled(self) -> bool:

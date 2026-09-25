@@ -23,9 +23,9 @@ import asyncio
 import base64
 import json
 import logging
-from io import BytesIO
 from pathlib import Path
 
+from app.agents.adzump._uploads import shrink_image_to_jpeg
 from app.agents.adzump.agents.product.models import (
     PageContent,
     ProductAssets,
@@ -42,10 +42,12 @@ FETCH_TIMEOUT_S = 8.0
 MAX_BYTES_PER_IMAGE = 5 * 1024 * 1024
 MIN_USEFUL_BYTES = 2 * 1024  # below this is almost always a decorative icon
 
-# LLM-input thumbnail size - small enough to keep token cost low but big
-# enough that a vision model can read the gist (testimonial vs villa vs award).
-THUMB_LONG_EDGE = 256
-THUMB_JPEG_QUALITY = 75
+# LLM-input thumbnail size. These thumbs ARE the asset picker's primary signal
+# (logo vs product photo vs award badge), so 256 px was too small - the model's
+# own reasoning showed it guessing at unreadable tiles. 512 px keeps text and
+# on-image detail legible; token cost is still modest at this count.
+THUMB_LONG_EDGE = 512
+THUMB_JPEG_QUALITY = 85
 
 # Source-quality priority for pre-filtering when we have more candidates than TOP_N.
 _SOURCE_PRIORITY = {
@@ -96,8 +98,8 @@ def _prefilter_candidates(images: list[SiteImage], top_n: int) -> list[SiteImage
     by DOM/insertion order within each priority tier - so the LLM sees
     candidates in roughly the order they appear on the page.
 
-    v9 (2026-05-22, Shift 6): SVG-penalty branch retired. SVGs are filtered
-    upstream in html_parser; no SVG candidates reach the prefilter."""
+    SVGs are filtered upstream in html_parser; no SVG candidates reach the
+    prefilter."""
     if len(images) <= top_n:
         return list(images)
 
@@ -233,25 +235,14 @@ async def select_product_assets(
 
     await stage_emit(context, ScrapeStage.SELECT, tool_use_id=select_tuid)
 
-    # Build the vision message: prompt text + summary + per-candidate thumbs.
-    # SVG candidates have no thumbnail (vector - see _fetch_one); they appear
-    # as text-only entries and the LLM reviews by metadata signals.
-    n_svg = sum(1 for c in available if fetched[c.src].get("is_svg"))
     meta_json = _render_candidate_meta(available)
-    intro = (
-        "Business summary:\n"
-        f"{(summary or '(no summary available)').strip()[:2000]}\n\n"
-        f"Candidates ({len(available)} total, {n_svg} SVG with no thumbnail, "
-        f"in index order):\n"
-        f"{meta_json}"
-    )
     # Diagnostic: capture the exact metadata the LLM sees. Truncated for log
     # noise control. When picks are unexpectedly empty, this is the first
     # thing to check - the prompt rules are only useful if the data backs them.
     _stage("llm_input_meta", n=len(available), meta=meta_json[:1200])
 
     # Vision pick runs through VisionAnalyst (single-shot BaseAgent that
-    # wraps the gpt-4o-mini call). The agent handles message construction,
+    # wraps the vision-model call). The agent handles message construction,
     # Anthropic→OpenAI image-block conversion, JSON parsing, and resolve
     # internally - the caller still owns the safety net + bytes dict.
     if context.get("auth") is None:
@@ -385,51 +376,21 @@ async def _fetch_one(client, url: str) -> dict | None:
 # 5000–15000 px tall; we cap at 2000 px long-edge so the vision LLM input
 # stays predictable and the storage upload doesn't blow up. Decided via the
 # grilling session - Q1: "scaled full-page" (≤ 2000 px) was the user pick.
-SCREENSHOT_LONG_EDGE = 2000
-SCREENSHOT_JPEG_QUALITY = 75
+SCREENSHOT_LONG_EDGE = 3000  # full-page = vision context only (panel shows the hero); more px = less width-collapse on tall pages
+SCREENSHOT_JPEG_QUALITY = 90
 
 
 def _downscale_screenshot_to_jpeg_bytes(image_bytes: bytes) -> bytes | None:
     """Resample a full-page screenshot so its long edge ≤ SCREENSHOT_LONG_EDGE.
-    Accepts JPEG/PNG bytes; emits JPEG. No mode coercion needed - Playwright
-    emits RGB JPEG with no alpha channel.
-    """
-    try:
-        from PIL import Image
-
-        img = Image.open(BytesIO(image_bytes))
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        if max(img.size) > SCREENSHOT_LONG_EDGE:
-            img.thumbnail((SCREENSHOT_LONG_EDGE, SCREENSHOT_LONG_EDGE))
-        out = BytesIO()
-        img.save(out, "JPEG", quality=SCREENSHOT_JPEG_QUALITY)
-        return out.getvalue()
-    except Exception:
-        return None
+    Accepts JPEG/PNG bytes; emits JPEG."""
+    return shrink_image_to_jpeg(
+        image_bytes, long_edge=SCREENSHOT_LONG_EDGE, quality=SCREENSHOT_JPEG_QUALITY)
 
 
 def _downscale_to_jpeg_bytes(image_bytes: bytes, content_type: str) -> bytes | None:
     """Resize the image so its long edge is THUMB_LONG_EDGE; return JPEG bytes.
-    Composites transparent backgrounds onto white so the vision LLM (and the
-    UI thumbnail tile) see the actual image, not the alpha channel."""
-    try:
-        from PIL import Image
-
-        img = Image.open(BytesIO(image_bytes))
-        if img.mode in ("RGBA", "LA", "P"):
-            img = img.convert("RGBA")
-            background = Image.new("RGB", img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1])
-            img = background
-        else:
-            img = img.convert("RGB")
-
-        if max(img.size) > THUMB_LONG_EDGE:
-            img.thumbnail((THUMB_LONG_EDGE, THUMB_LONG_EDGE))
-
-        out = BytesIO()
-        img.save(out, "JPEG", quality=THUMB_JPEG_QUALITY)
-        return out.getvalue()
-    except Exception:
-        return None
+    The shared shrink rule composites transparent backgrounds onto white so the
+    vision LLM (and the UI thumbnail tile) see the actual image, not the alpha
+    channel."""
+    return shrink_image_to_jpeg(
+        image_bytes, long_edge=THUMB_LONG_EDGE, quality=THUMB_JPEG_QUALITY)

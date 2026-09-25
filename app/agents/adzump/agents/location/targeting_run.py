@@ -222,7 +222,7 @@ def build_run_result(
         f"Summary: {user_summary}"
     )
     # audience="both" - orchestrator reasons over the summary later (State
-    # block, _next_action), AND the framework emits it as chat text so the
+    # block, missing_list), AND the framework emits it as chat text so the
     # user sees it without depending on the orchestrator LLM's lead-in (the
     # historic dead-end path documented at AGENT.md). Matches
     # `analyze_competitors`'s audience="both" pattern.

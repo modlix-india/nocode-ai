@@ -3,7 +3,10 @@
 from app.core.tools.base import ToolDefinition
 
 from app.agents.adzump.agents.product.tools.scrape import scrape_url
-from app.agents.adzump.agents.product.tools.comp_discovery import shortlist_competitors
+from app.agents.adzump.agents.product.tools.comp_discovery import (
+    extract_candidates,
+    fetch_candidates,
+)
 from app.agents.adzump._shared import AGGREGATOR_HOSTS
 
 
@@ -15,9 +18,8 @@ anthropic_web_search = ToolDefinition(
     name="web_search",
     description=(
         "Search the public web. Runs server-side - issue ONE focused query "
-        "per call. You MUST search at least 5 times with different angles "
-        "(product format, location, price tier, category) before calling "
-        "shortlist_competitors."
+        "per call. Run the 7 queries from your system prompt (5 discovery "
+        "+ 2 review) before calling extract_candidates."
     ),
     display_name="Web Search",
     parameters=[],
@@ -69,5 +71,6 @@ PRODUCT_TOOLS = [
     scrape_url,
     anthropic_web_search,
     anthropic_web_fetch,
-    shortlist_competitors,
+    extract_candidates,
+    fetch_candidates,
 ]
