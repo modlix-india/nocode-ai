@@ -1,8 +1,9 @@
-"""Unit: products_router - the UI's product library reads + product delete.
+"""Unit: products_router - the UI's product library reads + deletes.
 
 Every route scopes its store call to the caller's client_code (another
-client's id must read as a 404, never leak), and responses are snake_case
-throughout, the nested Creative included.
+client's id must read as a 404, never leak), deletes stamp the caller as
+updated_by, and responses are snake_case throughout, the nested Creative
+included.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from app.agents.adzump.models.product import Product
 from app.core.base_auth import require_auth_context
 
 CLIENT = "GRMEL"
+USER = 11
 STORES = "app.agents.adzump.stores"
 
 
@@ -27,7 +29,7 @@ def _client() -> TestClient:
     app = FastAPI()
     app.include_router(products_router.router)
     app.dependency_overrides[require_auth_context] = (
-        lambda: types.SimpleNamespace(client_code=CLIENT))
+        lambda: types.SimpleNamespace(client_code=CLIENT, user_id=USER))
     return TestClient(app)
 
 
@@ -40,6 +42,10 @@ class ProductsRouterTests(unittest.TestCase):
             ("delete", "/products/7", "products.delete_product", True, (CLIENT, 7)),
             ("get", "/products/7/competitors",
              "competitors.list_product_competitors", [], (CLIENT, 7)),
+            ("delete", "/products/7/competitors/3",
+             "competitors.delete_competitor", True, (CLIENT, 7, 3, USER)),
+            ("delete", "/products/7/competitors/3/creatives/ad-9",
+             "competitors.delete_creative", True, (CLIENT, 7, 3, "ad-9", USER)),
             ("get", "/products/7/creatives",
              "competitors.list_product_creatives", {}, (CLIENT, 7, None)),
             ("get", "/products/7/creatives?competitor_id=3",
@@ -53,12 +59,15 @@ class ProductsRouterTests(unittest.TestCase):
                 store.assert_awaited_once_with(*args)
 
     def test_unknown_product_is_404(self):
-        rows = [("get", "products.get_product_by_id", None),
-                ("delete", "products.delete_product", False)]
-        for method, fn, miss in rows:
-            with self.subTest(method), mock.patch(
+        rows = [("get", "/products/9", "products.get_product_by_id", None),
+                ("delete", "/products/9", "products.delete_product", False),
+                ("delete", "/products/9/competitors/3", "competitors.delete_competitor", False),
+                ("delete", "/products/9/competitors/3/creatives/ad-9",
+                 "competitors.delete_creative", False)]
+        for method, path, fn, miss in rows:
+            with self.subTest(f"{method} {path}"), mock.patch(
                     f"{STORES}.{fn}", new=mock.AsyncMock(return_value=miss)):
-                self.assertEqual(getattr(_client(), method)("/products/9").status_code, 404)
+                self.assertEqual(getattr(_client(), method)(path).status_code, 404)
 
     def test_delete_returns_no_content(self):
         with mock.patch(f"{STORES}.products.delete_product",
@@ -71,7 +80,9 @@ class ProductsRouterTests(unittest.TestCase):
                    "country_code": "IN", "summary": "s",
                    "updated_at": datetime(2026, 9, 24, 10, 0)}
         competitor = {"id": 3, "name": "B", "url": None, "logo_url": None,
-                      "location": None, "pricing": None, "creative_status": "pending",
+                      "business_type": "villas", "location": None, "pricing": None,
+                      "key_usps": ["lake view"], "weakness": None,
+                      "why_competitor": "same buyer", "creative_status": "pending",
                       "total_creatives": 0, "active_creatives": 0,
                       "creatives_fetched_at": None}
         with mock.patch(f"{STORES}.products.list_products",

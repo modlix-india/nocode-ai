@@ -500,5 +500,23 @@ class ResumeGateTests(unittest.TestCase):
                 self.assertEqual("_pending_elicitation" in s.context, survives)
 
 
+class LoopCompleteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_context_is_saved_after_the_end_of_turn_hooks(self):
+        # The loop saves the context before _on_loop_complete; the autosave
+        # writes competitor row ids back into it, and the next request reloads
+        # the context from the database - so it must be saved again after.
+        order: list[str] = []
+        session = mock.Mock()
+        session.save_context = mock.AsyncMock(side_effect=lambda: order.append("save_context"))
+        agent = AdzumpAgent.__new__(AdzumpAgent)
+        with mock.patch("app.core.agent.BaseAgent._on_loop_complete", new=mock.AsyncMock()), \
+             mock.patch.object(AdzumpAgent, "_autosave_campaign",
+                               new=mock.AsyncMock(side_effect=lambda s: order.append("autosave"))), \
+             mock.patch.object(AdzumpAgent, "_map_targets_for_new_platform", new=mock.AsyncMock()), \
+             mock.patch.object(AdzumpAgent, "_emit_stored_targeting_panel", new=mock.AsyncMock()):
+            await agent._on_loop_complete(session, [])
+        self.assertEqual(order, ["autosave", "save_context"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -510,6 +510,9 @@ class AdzumpAgent(BaseAgent):
         await self._autosave_campaign(session)
         await self._map_targets_for_new_platform(session)
         await self._emit_stored_targeting_panel(session)
+        # The loop saved the context before these hooks ran; the autosave writes
+        # competitor row ids back into it, and the next request reloads it.
+        await session.save_context()
 
     async def _autosave_campaign(self, session: BaseSession) -> None:
         """Every-turn durable save of whatever the spec holds (draft status)."""

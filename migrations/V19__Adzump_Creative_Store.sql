@@ -9,8 +9,10 @@
 --   adzump_flows         one row per (client, product, session, flow). Universal
 --                             per-flow session state (new_campaign: the campaign
 --                             draft) so any flow resumes from the last point.
---   adzump_competitors      one row per (client, product, competitor). Identity +
---                             fetch-ledger. A competitor is its canonical website
+--   adzump_competitors      one row per (client, product, competitor): the home of
+--                             a product's competitor list (analyst profile, website
+--                             pin, fetch-ledger); a chat resumes from these rows and
+--                             writes its list back. A competitor is its canonical website
 --                             (https://host/path - project pages on one developer
 --                             site stay separate), else its name while no website
 --                             is known.
@@ -79,10 +81,17 @@ CREATE TABLE IF NOT EXISTS `adzump_competitors` (
     `client_code`       CHAR(12)     NOT NULL COMMENT 'Owning client (tenant) code',
     `product_id`        BIGINT UNSIGNED NOT NULL COMMENT 'FK adzump_products.id',
     `name`              VARCHAR(255) NOT NULL COMMENT 'Competitor name; the identity while url is NULL',
+    `status`            ENUM('active','deleted') NOT NULL DEFAULT 'active'
+                         COMMENT 'deleted = removed by the user (UI or chat); the row stays so research never re-suggests it and a re-add brings its ads back',
     `url`               VARCHAR(512) DEFAULT NULL COMMENT 'Canonical website (https://host/path); NULL while none is known - the name identifies the row then',
+    `url_source`        VARCHAR(16)  DEFAULT NULL COMMENT 'user when the user pinned the website; research never overrides it',
     `logo_url`          TEXT         DEFAULT NULL COMMENT 'Brand logo, Files service asset',
+    `business_type`     VARCHAR(255) DEFAULT NULL COMMENT 'Analyst: what they sell',
     `location`          VARCHAR(255) DEFAULT NULL COMMENT 'Competitor location',
     `pricing`           VARCHAR(255) DEFAULT NULL COMMENT 'Pricing summary',
+    `key_usps`          JSON         DEFAULT NULL COMMENT 'Analyst: selling points, list of strings',
+    `weakness`          TEXT         DEFAULT NULL COMMENT 'Analyst: where they are weaker',
+    `why_competitor`    TEXT         DEFAULT NULL COMMENT 'Analyst: why they compete for the same buyer',
     `searched_names`    JSON         DEFAULT NULL COMMENT 'Ad-library names already searched for this record; an uncovered name triggers a fresh search + merge',
     `creatives_fetched_at` TIMESTAMP NULL DEFAULT NULL COMMENT 'When creatives were last fetched; drives is_stale',
     `creative_status`   ENUM('pending','ok','empty','error') NOT NULL DEFAULT 'pending'
@@ -111,6 +120,8 @@ CREATE TABLE IF NOT EXISTS `adzump_creatives` (
     `product_id`      BIGINT UNSIGNED NOT NULL COMMENT 'FK adzump_products.id',
     `format`          ENUM('single','carousel','video','collection') NOT NULL DEFAULT 'single' COMMENT 'Ad shape',
     `source_type`     ENUM('competitor','generated','uploaded') NOT NULL COMMENT 'Origin of the creative',
+    `status`          ENUM('active','deleted') NOT NULL DEFAULT 'active'
+                       COMMENT 'deleted = hidden by the user; the row stays so a refetch never brings the ad back',
     `is_public`       TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'Surfaced in the shared Explore library',
     `is_active`       TINYINT(1)   DEFAULT NULL COMMENT 'Currently running (competitor)',
     `days_running`    INT          DEFAULT NULL COMMENT 'Days live (competitor)',

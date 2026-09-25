@@ -1,9 +1,9 @@
 """Product service - saves and restores the user's product and campaign draft.
 
 MySQL (``app.agents.adzump.stores``) is the store of record: ``save_campaign``
-writes the typed Product, the new_campaign flow draft and the curated
-competitor rows; ``hydrate_from_storage`` restores a returning product from
-them. The Modlix ``AISuggestedData`` record is a warn-only mirror of the
+writes the typed Product, the new_campaign flow draft and the competitor list
+(the adzump_competitors rows are its only home); ``hydrate_from_storage``
+restores a returning product from them. The Modlix ``AISuggestedData`` record is a warn-only mirror of the
 analysis fields DS still reads (retirement plan S5 deletes it).
 """
 
@@ -17,7 +17,7 @@ from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_meta as _platform_is_meta,
 )
-from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.models import CompetitorProfile, OfferState, offer_state
 from app.agents.adzump import stores
 from app.agents.adzump.models.product import Product, check_product
 from app.agents.adzump._shared import (
@@ -81,9 +81,9 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     """Persist the user's campaign (everything assembled in session.context).
 
     nocode-ai MySQL is the store of record: the typed Product goes to
-    adzump_products, the campaign draft (plus the analysis competitors list,
-    for resume) to adzump_flows (flow=new_campaign) - a failure there RAISES, the save must
-    not silently lose the authoritative copy. The Modlix AISuggestedData
+    adzump_products, the campaign draft to adzump_flows (flow=new_campaign),
+    the competitor list to adzump_competitors - a failure there RAISES, the
+    save must not silently lose the authoritative copy. The Modlix AISuggestedData
     write survives only as a warn-only mirror of the ANALYSIS fields DS still
     reads (finalSummary, siteLinks, screenshot, location...); the campaign
     sub-object no longer rides in it - no DS code reads it.
@@ -114,9 +114,6 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
 
     # Authoritative half: product + campaign draft into nocode-ai MySQL.
     campaign_draft = record.pop("campaign")
-    # The analysis competitors ride in the draft so resume can restore
-    # competitor_analysis without the Modlix record.
-    campaign_draft["competitors"] = record.get("competitors") or []
     # The SummaryAgent's rich profile lives in product_profile, not
     # product_data - fold it into the persisted Product so resume can show it.
     product = Product.model_validate({
@@ -130,14 +127,35 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         ctx.get("client_code") or "", pid, chat_session_id, "new_campaign",
         campaign_draft.get("status") or "draft", campaign_draft,
         ctx.get("user_id") or 0)
-    # Curated competitors get their typed rows at save time (born 'pending'),
-    # not lazily at creatives-fetch time - the table mirrors the analyst's
-    # list even when the user never fetches ads.
-    await stores.competitors.sync_competitor_profiles(
-        ctx.get("client_code") or "", pid,
-        campaign_draft.get("competitors") or [], ctx.get("user_id") or 0)
+    await _sync_competitor_list(
+        session_ctx, ctx.get("client_code") or "", pid, ctx.get("user_id") or 0)
+    record["competitors"] = (session_ctx.get("competitor_analysis") or {}).get(
+        "competitors") or []
 
     return await _mirror_modlix_record(record, url, ctx)
+
+
+async def _sync_competitor_list(
+    session_ctx: dict, client_code: str, product_id: int, user_id: int,
+) -> None:
+    """Write this chat's competitor list back to its home, the product's rows
+    (born 'pending' at save time, so the table holds the list even when the
+    user never fetches ads). An entry saved before whose row has since gone
+    was deleted elsewhere (the library UI): drop it, never resurrect it."""
+    competitive = session_ctx.get("competitor_analysis")
+    if competitive is None:
+        return  # never loaded or researched in this chat: the rows stand
+    stored_ids = {row["id"] for row in
+                  await stores.competitors.list_product_competitors(client_code, product_id)}
+    entries = [c for c in competitive.get("competitors") or []
+               if isinstance(c, dict)
+               and (not c.get("row_id") or c["row_id"] in stored_ids)]
+    ids = await stores.competitors.sync_competitor_profiles(
+        client_code, product_id, entries, user_id)
+    for entry, row_id in zip(entries, ids):
+        if row_id:
+            entry["row_id"] = row_id
+    competitive["competitors"] = entries
 
 
 async def _mirror_modlix_record(record: dict, url: str, ctx: dict) -> str | None:
@@ -437,6 +455,8 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
         return False
     pid = await stores.products.product_id(client_code, key)
     draft = await stores.flows.latest_flow(client_code, pid, "new_campaign") or {}
+    rows = await stores.competitors.list_product_competitors(client_code, pid)
+    ads = await stores.competitors.list_product_creatives(client_code, pid) if rows else {}
     _apply_hydration(
         session_ctx,
         product_data=product.model_dump(),
@@ -445,6 +465,45 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
                  # fallback for records saved before profile_summary existed.
                  "summary": product.profile_summary or product.summary},
         location_address=(draft.get("location") or {}).get("address") or "",
-        competitors=draft.get("competitors") or [],
+        competitors=[_competitor_entry(row, ads.get(row["id"], [])) for row in rows],
     )
     return True
+
+
+async def drop_deleted_competitors(competitive: dict, ctx: dict) -> list[str]:
+    """Leave out of fresh research results every competitor the user deleted
+    from this product - their "no" holds. Returns the names left out."""
+    client_code = ctx.get("client_code") or ""
+    url = normalize_business_url(resolve_url(ctx.get("session_context") or {}))
+    pid = await stores.products.product_id(client_code, url) if url else None
+    if pid is None:
+        return []
+    deleted = await stores.competitors.deleted_competitors(client_code, pid)
+    names = {stores.competitors.name_key(row["name"]) for row in deleted}
+    urls = {row["url"] for row in deleted if row["url"]}
+
+    def is_deleted(entry: dict) -> bool:
+        return (stores.competitors.name_key(entry.get("name") or "") in names
+                or stores.competitors.competitor_key(entry.get("url") or "") in urls)
+
+    entries = competitive.get("competitors") or []
+    competitive["competitors"] = [c for c in entries if not is_deleted(c)]
+    return [c.get("name") or "?" for c in entries if is_deleted(c)]
+
+
+def _competitor_entry(row: dict, creatives: list) -> dict:
+    """A stored competitor row as the session's entry. A fetched row ('ok' or
+    'empty') carries its ads; a never-fetched or failed one carries none, so
+    the ads offer stays open for it."""
+    profile = CompetitorProfile(
+        row_id=row["id"], name=row["name"], url=row["url"],
+        url_source=row["url_source"] or "", business_type=row["business_type"] or "",
+        location=row["location"] or "", pricing=row["pricing"],
+        key_usps=row["key_usps"], weakness=row["weakness"],
+        why_competitor=row["why_competitor"] or "",
+    )
+    if row["creative_status"] in ("ok", "empty"):
+        profile.creatives = [c.model_dump(by_alias=True) for c in creatives]
+        profile.total_creatives = row["total_creatives"]
+        profile.active_creatives = row["active_creatives"]
+    return profile.to_stored()

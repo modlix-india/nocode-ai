@@ -68,7 +68,7 @@ app/agents/adzump/
 ├── workflow.py               journey engine - AdzumpContext, Step, NEW_CAMPAIGN, missing_list
 ├── observability.py          the per-turn `turn_decision` record
 ├── router.py                 POST /chat (SSE) + the folded-in location search route
-├── products_router.py        GET products / competitors / creatives, DELETE product (UI reads)
+├── products_router.py        GET products / competitors / creatives, DELETE product / competitor / ad (UI)
 │
 │   domain rules everyone reads
 ├── platform.py               single source of truth for the campaign ad-platform
@@ -218,8 +218,20 @@ The product library reads (`products_router.py`, folded in the same way) serve
 the UI without the LLM, scoped to the caller's client:
 `GET /products`, `GET /products/{id}`, `DELETE /products/{id}` (cascades flows,
 competitors, creatives), `GET /products/{id}/competitors` (pending rows included),
+`DELETE /products/{id}/competitors/{cid}`,
+`DELETE /products/{id}/competitors/{cid}/creatives/{creative_id}` (hide one ad),
 `GET /products/{id}/creatives?competitor_id=` (grouped by competitor). No create
 routes: products and competitors come from the chat's analysis.
+
+The `adzump_competitors` rows are the competitor list's only home: a resume
+loads the list from them, and every save writes the chat's list back. Only a
+product delete is real; competitors and ads carry `status` (active | deleted,
+`updated_by` = who changed it). A deleted competitor (from the UI, or dropped
+from the chat's list) leaves every listing and resume, research never
+suggests it again, and an explicit re-add revives the same row with its ads.
+An open chat's entry carries its `row_id`, so a UI delete holds: the entry is
+dropped on the chat's next save, not re-added. A hidden ad stays hidden: the
+wholesale refetch replaces only active ads and skips hidden ones.
 
 ## Sub-agent routing table
 

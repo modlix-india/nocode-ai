@@ -601,6 +601,13 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
         # re-judges URLs after this point.
         _clean_urls(competitive)
         _filter_self_references(business, competitive, primary_url=url)
+        from app.agents.adzump.services.product_service import drop_deleted_competitors
+        try:
+            left_out = await drop_deleted_competitors(competitive, context)
+        except Exception as e:  # never lose minutes of research over one read
+            left_out = []
+            logger.warning("competitor_deleted_filter_skipped: %s: %s",
+                           type(e).__name__, str(e)[:200])
 
         # Merge into the existing list, never replace it: a re-discovery
         # ("find more competitors") refreshes known entries in place (pins and
@@ -683,11 +690,15 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
             )
         else:
             summary = f"Found {comp_count} competitors: {', '.join(names)}"
+        deleted_note = (
+            f" Left out {', '.join(left_out)}: the user deleted them before - "
+            "add one back only if they ask for it by name."
+        ) if left_out else ""
         return ToolResult(
             success=True,
             data={"competitive": competitive},
             summary=summary,
-            model_summary=summary + pending_creatives_fetch_steer(context),
+            model_summary=summary + deleted_note + pending_creatives_fetch_steer(context),
             audience="both",
         )
 

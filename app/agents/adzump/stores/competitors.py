@@ -1,5 +1,7 @@
 """adzump_competitors + adzump_creatives + adzump_creative_assets - one
 competitor aggregate: the row, its creatives, one asset row per rendition.
+The rows are the home of a product's competitor list: a chat resumes from
+them and sync_competitor_profiles writes its list back.
 
 Rows are scoped to a product: (client_code, product_url), the url normalized
 the way adzump_products stores it. Within a product a competitor is identified
@@ -62,7 +64,8 @@ async def get_competitor(
 ) -> Competitor | None:
     """The stored ``Competitor`` for a key within one product, or None on miss.
     A curated row never fetched ('pending') is a miss: it holds the analyst's
-    profile, not an ads record, and the fetch lands on it."""
+    profile, not an ads record, and the fetch lands on it. A deleted row still
+    serves: its ads are the cache that makes re-adding the competitor free."""
     if not key:
         return None
     pid = await products.product_id(client_code, product_url)
@@ -101,7 +104,8 @@ async def list_competitors(client_code: str) -> list[tuple[str, Competitor]]:
             await cur.execute(
                 "SELECT c.*, p.url AS product_url FROM adzump_competitors c "
                 "JOIN adzump_products p ON p.id = c.product_id "
-                "WHERE c.client_code=%s AND c.creative_status <> 'pending'",
+                "WHERE c.client_code=%s AND c.status='active' "
+                "AND c.creative_status <> 'pending'",
                 (client_code,),
             )
             rows = await cur.fetchall()
@@ -120,14 +124,17 @@ async def list_competitors(client_code: str) -> list[tuple[str, Competitor]]:
 
 
 async def list_product_competitors(client_code: str, product_id: int) -> list[dict]:
-    """One product's competitor rows, curated-but-unfetched ('pending') ones
-    included, without their creatives - the UI's list view."""
-    return await execute_query(
-        "SELECT id, name, url, logo_url, location, pricing, creative_status, "
+    """One product's competitor list in the analyst's order, never-fetched
+    ('pending') rows included, deleted ones and creatives not."""
+    rows = await execute_query(
+        "SELECT id, name, url, url_source, logo_url, business_type, location, "
+        "pricing, key_usps, weakness, why_competitor, creative_status, "
         "total_creatives, active_creatives, creatives_fetched_at "
-        "FROM adzump_competitors WHERE client_code=%s AND product_id=%s ORDER BY id",
+        "FROM adzump_competitors WHERE client_code=%s AND product_id=%s "
+        "AND status='active' ORDER BY id",
         (client_code, product_id),
     )
+    return [{**row, "key_usps": _json_list(row["key_usps"])} for row in rows]
 
 
 async def list_product_creatives(
@@ -135,7 +142,8 @@ async def list_product_creatives(
 ) -> dict[int, list[Creative]]:
     """One product's competitor creatives grouped by competitor row id,
     optionally narrowed to one competitor. Competitors without ads are absent."""
-    sql = "SELECT id FROM adzump_competitors WHERE client_code=%s AND product_id=%s"
+    sql = ("SELECT id FROM adzump_competitors "
+           "WHERE client_code=%s AND product_id=%s AND status='active'")
     params: tuple = (client_code, product_id)
     if competitor_id is not None:
         sql += " AND id=%s"
@@ -149,52 +157,140 @@ async def list_product_creatives(
 # ── Writes ───────────────────────────────────────────────────────────────────
 
 
+async def deleted_competitors(client_code: str, product_id: int) -> list[dict]:
+    """The (name, url) of every competitor the user deleted from a product -
+    what research must not suggest again."""
+    return await execute_query(
+        "SELECT name, url FROM adzump_competitors "
+        "WHERE client_code=%s AND product_id=%s AND status='deleted'",
+        (client_code, product_id),
+    )
+
+
+async def delete_competitor(
+    client_code: str, product_id: int, competitor_id: int, user_id: int = 0,
+) -> bool:
+    """Mark one active competitor of a product deleted; its row and ads stay.
+    False when the product has no such active row for the client."""
+    return bool(await execute_query(
+        "UPDATE adzump_competitors SET status='deleted', updated_by=%s "
+        "WHERE client_code=%s AND product_id=%s AND id=%s AND status='active'",
+        (user_id, client_code, product_id, competitor_id),
+    ))
+
+
+async def delete_creative(
+    client_code: str, product_id: int, competitor_id: int, creative_id: str,
+    user_id: int = 0,
+) -> bool:
+    """Hide one competitor ad (``creative_id`` is the ad library's id, stable
+    across refetches - row ids are not) and recount the competitor's ads.
+    False when that competitor has no such active ad for the client."""
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE adzump_creatives SET status='deleted', updated_by=%s "
+                "WHERE client_code=%s AND product_id=%s AND competitor_id=%s "
+                "AND status='active' AND content->>'$.creativeId'=%s",
+                (user_id, client_code, product_id, competitor_id, creative_id))
+            hidden = cur.rowcount
+            if hidden:
+                await _recount_creatives(cur, competitor_id)
+        await conn.commit()
+    return bool(hidden)
+
+
 async def sync_competitor_profiles(
     client_code: str, product_id: int, competitors: list[dict], user_id: int = 0,
-) -> None:
-    """Upsert one PROFILE row per curated competitor, at discovery/curation
-    time - so the table always mirrors the analyst's list, fetched or not.
+) -> list[int | None]:
+    """Make the product's rows mirror its competitor list: upsert one PROFILE
+    row per entry, then delete the rows no entry landed on (their creatives
+    cascade). Returns each entry's row id, None where it did not land.
+
     Touches only profile fields; creative stats and status stay whatever the
-    creatives fetch (sync_competitor) last wrote. Rows are born
-    creative_status='pending'. url is the competitor's identity (_website - the
-    same value sync_competitor writes); VARCHAR(255) fields are clamped so one
-    long value can't abort the batch."""
+    creatives fetch (sync_competitor) last wrote, and new rows are born
+    creative_status='pending'. Every listed entry is active, so an explicit
+    re-add revives a deleted row with its ads. url is the competitor's identity
+    (_website - the same value sync_competitor writes); VARCHAR(255) fields are
+    clamped so one long value can't abort the batch. Unlisted rows are marked
+    deleted, never dropped; if any entry failed to land, none are - its old row
+    may be the one it should have updated."""
     def clamp(value: str | None) -> str | None:
         return value[:255] if value else None
 
+    ids: list[int | None] = []
+    all_landed = True
     async with get_connection() as conn:
         async with conn.cursor() as cur:
             for comp in competitors:
                 name = (comp.get("name") or "").strip()[:255]
                 if not name:
+                    ids.append(None)
                     continue
                 url = _website(comp.get("url") or "")
                 # The curated name wins on a website match: it is what the
                 # user reviewed, the vendor's page name never is.
                 upsert = """
                     INSERT INTO adzump_competitors
-                        (client_code, product_id, name, url, logo_url,
-                         location, pricing, created_by, updated_by)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
+                        (client_code, product_id, name, url, url_source,
+                         business_type, location, pricing, key_usps, weakness,
+                         why_competitor, created_by, updated_by)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
                     ON DUPLICATE KEY UPDATE
                         name=new.name,
+                        status='active',
                         url=COALESCE(new.url, adzump_competitors.url),
-                        logo_url=COALESCE(new.logo_url, adzump_competitors.logo_url),
+                        url_source=new.url_source,
+                        business_type=new.business_type,
                         location=COALESCE(new.location, adzump_competitors.location),
                         pricing=COALESCE(new.pricing, adzump_competitors.pricing),
+                        key_usps=new.key_usps,
+                        weakness=new.weakness,
+                        why_competitor=new.why_competitor,
                         updated_by=new.updated_by
                     """
                 try:
                     await cur.execute(upsert, (
                         client_code, product_id, name, url,
-                        comp.get("logo_url") or None, clamp(comp.get("location")),
-                        clamp(comp.get("pricing")), user_id, user_id))
+                        comp.get("url_source") or None,
+                        clamp(comp.get("business_type")), clamp(comp.get("location")),
+                        clamp(comp.get("pricing")),
+                        json.dumps(comp.get("key_usps") or []),
+                        comp.get("weakness") or None, comp.get("why_competitor") or None,
+                        user_id, user_id))
                 except pymysql.err.IntegrityError as e:
                     # A rename onto another row's name: skip it, never fail the
                     # every-turn autosave over one entry.
                     logger.warning("sync_competitor_profiles: skipped %r (%s): %s",
                                    name, url, e)
+                    ids.append(None)
+                    all_landed = False
+                    continue
+                # The row the upsert landed on, by the same identity (the name
+                # is unique per product too, so it finds a url-less entry's row).
+                if url:
+                    await cur.execute(
+                        "SELECT id FROM adzump_competitors "
+                        "WHERE client_code=%s AND product_id=%s AND url=%s",
+                        (client_code, product_id, url))
+                else:
+                    await cur.execute(
+                        "SELECT id FROM adzump_competitors "
+                        "WHERE client_code=%s AND product_id=%s AND name=%s",
+                        (client_code, product_id, name))
+                ids.append((await cur.fetchone())[0])
+            if all_landed:
+                kept = [cid for cid in ids if cid]
+                sql = ("UPDATE adzump_competitors SET status='deleted', updated_by=%s "
+                       "WHERE client_code=%s AND product_id=%s AND status='active'")
+                if kept:
+                    sql += f" AND id NOT IN ({','.join(['%s'] * len(kept))})"
+                await cur.execute(sql, (user_id, client_code, product_id, *kept))
+                if cur.rowcount:
+                    logger.info("sync_competitor_profiles: product=%s deleted %d "
+                                "competitors no longer listed", product_id, cur.rowcount)
         await conn.commit()
+    return ids
 
 
 async def sync_competitor(
@@ -203,9 +299,10 @@ async def sync_competitor(
     """Upsert a competitor and refresh its creatives WHOLESALE for this product.
 
     One transaction: upsert the adzump_competitors row, delete this competitor's
-    creative slice (assets cascade), then re-insert the current creatives + their
-    asset rows - latest fetch wins. Returns the competitor row id, or None if the
-    product row is missing.
+    active creative slice (assets cascade), then re-insert the current creatives
+    + their asset rows - latest fetch wins. Ads the user hid stay as they are and
+    are never re-inserted. Returns the competitor row id, or None if the product
+    row is missing.
     """
     pid = await products.product_id(client_code, product_url)
     if pid is None:
@@ -214,7 +311,6 @@ async def sync_competitor(
         return None
 
     total = len(competitor.creatives)
-    active = sum(1 for c in competitor.creatives if c.is_active)
     # fetched = the vendor's raw hit count (library wires it through as
     # fetched_count); dropped = everything fetched that wasn't kept, attribution
     # drops included. Old records without the field fall back to the bounded
@@ -235,8 +331,8 @@ async def sync_competitor(
                         (client_code, product_id, name, url, logo_url, location,
                          pricing, searched_names, creatives_fetched_at,
                          creative_status, fetched_creatives, dropped_creatives,
-                         total_creatives, active_creatives, created_by, updated_by)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
+                         created_by, updated_by)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
                     ON DUPLICATE KEY UPDATE
                         url=COALESCE(new.url, adzump_competitors.url),
                         logo_url=COALESCE(new.logo_url, adzump_competitors.logo_url),
@@ -247,15 +343,13 @@ async def sync_competitor(
                         creative_status=new.creative_status,
                         fetched_creatives=new.fetched_creatives,
                         dropped_creatives=new.dropped_creatives,
-                        total_creatives=new.total_creatives,
-                        active_creatives=new.active_creatives,
                         updated_by=new.updated_by
                     """,
                     (client_code, pid, competitor.name, website,
                      competitor.logo_url or None, competitor.location or None,
                      competitor.pricing or None, json.dumps(competitor.searched_names),
                      fetched_at, competitor.fetch_status, fetched, dropped,
-                     total, active, user_id, user_id),
+                     user_id, user_id),
                 )
                 # The row the upsert landed on, found by the same identity.
                 if website:
@@ -272,13 +366,21 @@ async def sync_competitor(
                     )
                 cid = (await cur.fetchone())[0]
 
-                # Wholesale refresh: drop this competitor's slice, assets cascade.
+                # Wholesale refresh of the ACTIVE slice, assets cascade; the
+                # user's hidden ads are kept and skipped.
+                await cur.execute(
+                    "SELECT content->>'$.creativeId' FROM adzump_creatives "
+                    "WHERE competitor_id=%s AND status='deleted'", (cid,))
+                hidden = {row[0] for row in await cur.fetchall()}
                 await cur.execute(
                     "DELETE FROM adzump_creatives WHERE client_code=%s "
-                    "AND source_type='competitor' AND competitor_id=%s AND product_id=%s",
+                    "AND source_type='competitor' AND competitor_id=%s "
+                    "AND product_id=%s AND status='active'",
                     (client_code, cid, pid),
                 )
                 for creative in competitor.creatives:
+                    if creative.creative_id in hidden:
+                        continue
                     await cur.execute(
                         """
                         INSERT INTO adzump_creatives
@@ -329,11 +431,24 @@ async def sync_competitor(
                              rendition.content_hash or None,
                              rendition.perceptual_hash or None),
                         )
+                await _recount_creatives(cur, cid)
             await conn.commit()
         except Exception:
             await conn.rollback()
             raise
     return cid
+
+
+async def _recount_creatives(cur, competitor_id: int) -> None:
+    """The competitor's ad counts, recounted from its active (not hidden) ads."""
+    await cur.execute(
+        "UPDATE adzump_competitors SET "
+        "total_creatives=(SELECT COUNT(*) FROM adzump_creatives "
+        "WHERE competitor_id=%s AND status='active'), "
+        "active_creatives=(SELECT COUNT(*) FROM adzump_creatives "
+        "WHERE competitor_id=%s AND status='active' AND is_active=1) "
+        "WHERE id=%s",
+        (competitor_id, competitor_id, competitor_id))
 
 
 def aspect_ratio_bucket(ratio: float) -> str:
@@ -390,7 +505,7 @@ async def _load_creatives(cur, competitor_ids: list[int]) -> dict[int, list[Crea
     placeholders = ",".join(["%s"] * len(competitor_ids))
     await cur.execute(
         f"SELECT * FROM adzump_creatives WHERE competitor_id IN ({placeholders}) "
-        "ORDER BY id",
+        "AND status='active' ORDER BY id",
         tuple(competitor_ids),
     )
     creative_rows = await cur.fetchall()

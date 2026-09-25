@@ -33,6 +33,12 @@ class FromStoredTests(unittest.TestCase):
              {"key_usps": [], "business_type": ""}),
             ("malformed entry keeps the name", {"name": "X", "key_usps": 7},
              {"name": "X", "key_usps": []}),
+            # The analyst's evidence citation must never collide with the row
+            # id (live 2026-09-25: an int field of that name rejected "C6" and
+            # every research entry collapsed to its bare name).
+            ("analyst citation parses beside the row id",
+             {**SCHEMA_ENTRY, "competitor_id": "C6"},
+             {"why_competitor": "same buyer pool on the same road", "row_id": None}),
         ]:
             with self.subTest(name):
                 profile = CompetitorProfile.from_stored(raw)

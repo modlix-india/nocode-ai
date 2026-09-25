@@ -13,6 +13,7 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump import stores
+from app.agents.adzump.creative_intelligence.models import Creative
 from app.agents.adzump.models.product import Product
 from app.agents.adzump.services import product_service
 from app.agents.adzump.services.product_service import (
@@ -175,6 +176,23 @@ class MirrorRecordProjectionTests(unittest.TestCase):
             "geoTargetConstants/2356")
 
 
+def _session(session: dict) -> dict:
+    """A save mutates the competitor entries in place: copy them per test."""
+    copy = dict(session)
+    copy["competitor_analysis"] = {
+        "competitors": [dict(c) for c in session["competitor_analysis"]["competitors"]]}
+    return copy
+
+
+def _row(row_id: int, name: str, status: str, total: int = 0) -> dict:
+    return {"id": row_id, "name": name, "url": f"https://{name.lower()}.com",
+            "url_source": "user", "logo_url": None, "business_type": "villas",
+            "location": "Hebbal", "pricing": None, "key_usps": ["lake view"],
+            "weakness": None, "why_competitor": "same buyer", "creative_status": status,
+            "total_creatives": total, "active_creatives": total,
+            "creatives_fetched_at": None}
+
+
 class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
     """save_campaign: MySQL is the store of record, Modlix a warn-only mirror
     without the campaign sub-object. hydrate_from_storage: MySQL first, legacy
@@ -198,16 +216,18 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
             mock.patch("app.agents.adzump.stores.flows.upsert_flow",
                        new=mock.AsyncMock()),
             mock.patch("app.agents.adzump.stores.competitors.sync_competitor_profiles",
-                       new=mock.AsyncMock()),
+                       new=mock.AsyncMock(return_value=[5])),
             mock.patch("app.agents.adzump.services.product_service._mirror_modlix_record",
                        new=mock.AsyncMock(return_value="rec-1")),
+            mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
+                       new=mock.AsyncMock(return_value=[])),
         )
 
     async def test_mysql_written_then_mirror_without_campaign(self):
-        p_prod, p_camp, p_profiles, p_mirror = self._patches()
+        p_prod, p_camp, p_profiles, p_mirror, p_rows = self._patches()
         with p_prod as m_prod, p_camp as m_camp, \
-             p_profiles as m_profiles, p_mirror as m_mirror:
-            result = await product_service.save_campaign(dict(self.SESSION), dict(self.CTX))
+             p_profiles as m_profiles, p_mirror as m_mirror, p_rows:
+            result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
         self.assertEqual(result, "rec-1")
         m_prod.assert_awaited_once()
         # The display profile persists on the typed Product; the machine brief
@@ -218,30 +238,64 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved_product.summary, "villas")
         draft = _awaited_arg(m_camp, _UPSERT_FLOW, "data")
         self.assertEqual(draft["platform"], "Meta")
-        self.assertEqual(draft["competitors"], [{"name": "Sobha"}])
-        # Curated competitors get profile rows at save time, not fetch time.
+        # The competitor list's one home is its rows, never the draft.
+        self.assertNotIn("competitors", draft)
         self.assertEqual(_awaited_arg(m_profiles, _SYNC_PROFILES, "competitors"),
-                         [{"name": "Sobha"}])
+                         [{"name": "Sobha", "row_id": 5}])
         mirror_record = _awaited_arg(m_mirror, _MIRROR, "record")
         self.assertNotIn("campaign", mirror_record)
+        self.assertEqual(mirror_record["competitors"], [{"name": "Sobha", "row_id": 5}])
 
     async def test_mysql_failure_raises_mirror_failure_does_not(self):
-        p_prod, p_camp, p_profiles, p_mirror = self._patches()
-        with p_prod, p_camp as m_camp, p_profiles, p_mirror:
+        p_prod, p_camp, p_profiles, p_mirror, p_rows = self._patches()
+        with p_prod, p_camp as m_camp, p_profiles, p_mirror, p_rows:
             m_camp.side_effect = RuntimeError("db down")
             with self.assertRaises(RuntimeError):
-                await product_service.save_campaign(dict(self.SESSION), dict(self.CTX))
-        p_prod2, p_camp2, p_profiles2, p_mirror2 = self._patches()
-        with p_prod2, p_camp2, p_profiles2, p_mirror2 as m_mirror:
+                await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
+        p_prod2, p_camp2, p_profiles2, p_mirror2, p_rows2 = self._patches()
+        with p_prod2, p_camp2, p_profiles2, p_mirror2 as m_mirror, p_rows2:
             m_mirror.return_value = None  # mirror failed internally, warn-only
-            result = await product_service.save_campaign(dict(self.SESSION), dict(self.CTX))
+            result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
         self.assertIsNone(result)
+
+    async def test_competitor_list_writes_back_to_its_rows(self):
+        new, kept, deleted_elsewhere = (
+            {"name": "New"}, {"name": "Kept", "row_id": 2},
+            {"name": "Gone", "row_id": 3})
+        rows = [  # (label, competitor_analysis, stored row ids, synced, session after)
+            ("never loaded: rows untouched", None, [2, 3], None, None),
+            ("stored entry whose row vanished is dropped, new one gets its id",
+             [new, kept, deleted_elsewhere], [2], [new, kept],
+             [{"name": "New", "row_id": 9}, {"name": "Kept", "row_id": 2}]),
+            ("an emptied list clears the rows", [], [2], [], []),
+        ]
+        for label, competitors, stored, synced, after in rows:
+            with self.subTest(label):
+                session = _session(self.SESSION)
+                session.pop("competitor_analysis")
+                if competitors is not None:
+                    session["competitor_analysis"] = {
+                        "competitors": [dict(c) for c in competitors]}
+                p_prod, p_camp, p_profiles, p_mirror, p_rows = self._patches()
+                with p_prod, p_camp, p_profiles as m_profiles, p_mirror, \
+                     p_rows as m_rows:
+                    m_rows.return_value = [{"id": i} for i in stored]
+                    m_profiles.return_value = [9, 2][:len(synced or [])]
+                    await product_service.save_campaign(session, dict(self.CTX))
+                if synced is None:
+                    m_profiles.assert_not_awaited()
+                    continue
+                self.assertEqual(
+                    [c["name"] for c in _awaited_arg(m_profiles, _SYNC_PROFILES, "competitors")],
+                    [c["name"] for c in synced])
+                self.assertEqual(session["competitor_analysis"]["competitors"], after)
 
     async def test_hydrate_mysql_hit_skips_modlix(self):
         product = Product(product_name="Springs", summary="villas",
                           profile_summary="The rich SummaryAgent profile text.")
-        draft = {"location": {"address": "Hebbal, Bangalore"},
-                 "competitors": [{"name": "Sobha"}]}
+        draft = {"location": {"address": "Hebbal, Bangalore"}}
+        rows = [_row(1, "Sobha", "ok", total=1), _row(2, "Prestige", "pending"),
+                _row(3, "Brigade", "error")]
         session_ctx: dict = {}
         with mock.patch("app.agents.adzump.stores.products.get_product",
                         new=mock.AsyncMock(return_value=product)), \
@@ -249,6 +303,10 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
                         new=mock.AsyncMock(return_value=42)), \
              mock.patch("app.agents.adzump.stores.flows.latest_flow",
                         new=mock.AsyncMock(return_value=draft)), \
+             mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
+                        new=mock.AsyncMock(return_value=rows)), \
+             mock.patch("app.agents.adzump.stores.competitors.list_product_creatives",
+                        new=mock.AsyncMock(return_value={1: [Creative(creative_id="ad-1")]})), \
              mock.patch.object(product_service, "get_by_url",
                                new=mock.AsyncMock()) as m_modlix:
             hit = await product_service.hydrate_from_storage("https://springs.com", session_ctx, dict(self.CTX))
@@ -259,7 +317,16 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session_ctx["product_profile"]["summary"],
                          "The rich SummaryAgent profile text.")
         self.assertEqual(session_ctx["campaign_spec"]["location"], "Hebbal, Bangalore")
-        self.assertEqual(session_ctx["competitor_analysis"]["competitors"], [{"name": "Sobha"}])
+        # The list resumes from its rows: analyst notes and the website pin
+        # survive, only a fetched row carries ads (the offer stays open for the
+        # never-fetched and the failed one).
+        sobha, prestige, brigade = session_ctx["competitor_analysis"]["competitors"]
+        self.assertEqual((sobha["row_id"], sobha["why_competitor"], sobha["key_usps"],
+                          sobha["url_source"]), (1, "same buyer", ["lake view"], "user"))
+        self.assertEqual(([c["creativeId"] for c in sobha["creatives"]], sobha["totalCreatives"]),
+                         (["ad-1"], 1))
+        self.assertNotIn("creatives", prestige)
+        self.assertNotIn("creatives", brigade)
 
     async def test_hydrate_mysql_miss_is_fresh_start(self):
         # MySQL is the ONLY hydration source: a miss returns False without
@@ -270,6 +337,26 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
             hit = await product_service.hydrate_from_storage("https://springs.com", {}, dict(self.CTX))
         self.assertFalse(hit)
         m_modlix.assert_not_awaited()
+
+
+class DropDeletedCompetitorsTests(unittest.IsolatedAsyncioTestCase):
+    async def test_research_never_re_suggests_a_deleted_competitor(self):
+        deleted = [{"name": "Sobha Lake Gardens", "url": "https://sobha.com/lake-gardens"},
+                   {"name": "Nambiar Villas", "url": None}]
+        fresh = [{"name": "Sobha Lake Gardens (Phase 2)", "url": "https://www.sobha.com/lake-gardens/"},
+                 {"name": "nambiar villas", "url": None},
+                 {"name": "Prestige Lakeside", "url": "https://prestige.com/lakeside"}]
+        ctx = {"client_code": "GRMEL",
+               "session_context": {"product_profile": {"url": "https://springs.com"}}}
+        competitive = {"competitors": [dict(c) for c in fresh]}
+        with mock.patch("app.agents.adzump.stores.products.product_id",
+                        new=mock.AsyncMock(return_value=42)), \
+             mock.patch("app.agents.adzump.stores.competitors.deleted_competitors",
+                        new=mock.AsyncMock(return_value=deleted)):
+            left_out = await product_service.drop_deleted_competitors(competitive, ctx)
+        # Matched by website (any spelling) or by name (any case).
+        self.assertEqual(left_out, ["Sobha Lake Gardens (Phase 2)", "nambiar villas"])
+        self.assertEqual([c["name"] for c in competitive["competitors"]], ["Prestige Lakeside"])
 
 
 if __name__ == "__main__":

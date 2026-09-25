@@ -1,10 +1,11 @@
 """Typed competitor entry - the contract for
 ``session_context["competitor_analysis"]["competitors"]``.
 
-Entries are born as Product Analyst JSON (schema in agents/product/context.py),
-persisted verbatim in the durable business record, and mutated once at runtime
-when fetch_competitor_creatives attaches creatives. The session keeps plain
-dicts for JSON persistence; every reader and writer goes through this model.
+Entries are born as Product Analyst JSON (schema in agents/product/context.py)
+and mutated once at runtime when fetch_competitor_creatives attaches creatives.
+Their home is the adzump_competitors table: a resume loads them from it and
+every save writes the chat's list back (product_service). The session keeps
+plain dicts for JSON persistence; every reader and writer goes through this model.
 """
 from __future__ import annotations
 
@@ -24,8 +25,13 @@ class CompetitorProfile(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
 
+    # adzump_competitors row id once saved: an entry whose row is gone was
+    # deleted elsewhere (the library UI), so the next save drops it. Not
+    # `competitor_id` - that is the analyst's evidence citation ("C3").
+    row_id: int | None = None
     name: str = ""
     url: str | None = None
+    url_source: str = ""  # "user" = pinned by the user; research never overrides it
     business_type: str = ""
     location: str = ""
     pricing: str | None = None

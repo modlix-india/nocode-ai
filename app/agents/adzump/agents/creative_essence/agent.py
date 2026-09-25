@@ -438,7 +438,9 @@ class _SilentEventStream(AgentEventStream):
     is parked with the generic sub-agent call tool."""
 
     def __init__(self, parent: AgentEventStream) -> None:
-        # Deliberately no super().__init__() - nothing consumes a local queue.
+        # Base state first: un-overridden members (drain_steers, emit_complete,
+        # ...) read it; the local queue is never consumed - overrides delegate.
+        super().__init__()
         self._parent = parent
 
     @property

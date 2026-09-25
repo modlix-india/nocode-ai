@@ -369,7 +369,9 @@ class _SilentEventStream(AgentEventStream):
     """
 
     def __init__(self, parent: AgentEventStream) -> None:
-        # Deliberately do NOT call super().__init__().
+        # Base state first: un-overridden members (drain_steers, emit_complete,
+        # ...) read it; the local queue is never consumed - overrides delegate.
+        super().__init__()
         self._parent = parent
 
     @property
