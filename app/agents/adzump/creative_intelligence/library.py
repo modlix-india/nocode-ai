@@ -187,6 +187,7 @@ async def _fetch_stage(
             fetched = got
         else:
             fetched.creatives.extend(got.creatives)
+            fetched.search_hits += got.search_hits
             # Identity fields: first name that resolved them wins.
             fetched.logo_url = fetched.logo_url or got.logo_url
     if fetched is None:  # every name's fetch failed
@@ -235,9 +236,9 @@ async def _process_stage(
     API. The record is built fully validated before the ONE store write, so a
     partially-verified record can never be observed (Rule 8)."""
     discovered = len(fetched.creatives)
-    # The vendor's raw hit count; an injected source that reports none (test
-    # fakes) falls back to what it shipped.
-    searched = fetched.search_hits or discovered
+    # The vendor's raw hits this run, summed over the names searched. Not
+    # `discovered`: an augment also carries the stored creatives.
+    searched = fetched.search_hits
     # The curated name, never the vendor's page name: the row is found by the
     # identity both writers share (live 2026-09-23: "Brigade Group" replaced
     # "Brigade Avalon" and the ads landed on a second, duplicate row).

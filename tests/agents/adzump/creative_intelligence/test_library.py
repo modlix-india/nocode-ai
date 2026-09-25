@@ -31,7 +31,7 @@ class FakeSource:
         self.calls += 1
         if self._exc is not None:
             raise self._exc
-        return SourceFetch(creatives=self._creatives)
+        return SourceFetch(creatives=self._creatives, search_hits=len(self._creatives))
 
 
 class FakeEnrich:
@@ -97,7 +97,7 @@ class LibraryTests(unittest.TestCase):
         class RecordingSource(FakeSource):
             async def fetch(self, *, domain, name, country=""):
                 calls.append(name)
-                return SourceFetch(creatives=[_ad("ad-" + name)])
+                return SourceFetch(creatives=[_ad("ad-" + name)], search_hits=len(name))
 
         with mock.patch.object(library.stores.competitors, "get_competitor",
                                new=mock.AsyncMock(return_value=None)):
@@ -106,6 +106,8 @@ class LibraryTests(unittest.TestCase):
                 ctx={}, force=False, source=RecordingSource()))
         self.assertEqual(calls, ["Purva Symphony", "Valmark Cityville"])
         self.assertEqual(len(fetched.creatives), 2)
+        # fetched_count covers every name's hits, not just the first name's
+        self.assertEqual(fetched.search_hits, len("Purva Symphony") + len("Valmark Cityville"))
         self.assertIsNone(prior)
         self.assertEqual(searched, ["Purva Symphony", "Valmark Cityville"])
 
