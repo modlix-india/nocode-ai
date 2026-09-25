@@ -17,9 +17,11 @@ from datetime import datetime
 import aiomysql
 import pymysql
 
-from app.db.connection import get_connection
+from app.db.connection import execute_query, get_connection
 from app.agents.adzump._shared import normalize_business_url
-from app.agents.adzump.creative_intelligence.models import Competitor, Creative, Essence
+from app.agents.adzump.creative_intelligence.models import (
+    Competitor, Creative, Essence, Rendition,
+)
 from app.agents.adzump.stores import products
 
 logger = logging.getLogger(__name__)
@@ -115,6 +117,33 @@ async def list_competitors(client_code: str) -> list[tuple[str, Competitor]]:
             logger.warning("creative_library_reassemble_failed: id=%s err=%s",
                            row.get("id"), str(e)[:150])
     return records
+
+
+async def list_product_competitors(client_code: str, product_id: int) -> list[dict]:
+    """One product's competitor rows, curated-but-unfetched ('pending') ones
+    included, without their creatives - the UI's list view."""
+    return await execute_query(
+        "SELECT id, name, url, logo_url, location, pricing, creative_status, "
+        "total_creatives, active_creatives, creatives_fetched_at "
+        "FROM adzump_competitors WHERE client_code=%s AND product_id=%s ORDER BY id",
+        (client_code, product_id),
+    )
+
+
+async def list_product_creatives(
+    client_code: str, product_id: int, competitor_id: int | None = None,
+) -> dict[int, list[Creative]]:
+    """One product's competitor creatives grouped by competitor row id,
+    optionally narrowed to one competitor. Competitors without ads are absent."""
+    sql = "SELECT id FROM adzump_competitors WHERE client_code=%s AND product_id=%s"
+    params: tuple = (client_code, product_id)
+    if competitor_id is not None:
+        sql += " AND id=%s"
+        params += (competitor_id,)
+    async with get_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(sql, params)
+            return await _load_creatives(cur, [r["id"] for r in await cur.fetchall()])
 
 
 # ── Writes ───────────────────────────────────────────────────────────────────
@@ -354,8 +383,8 @@ def _creative_content(creative: Creative) -> dict:
 
 async def _load_creatives(cur, competitor_ids: list[int]) -> dict[int, list[Creative]]:
     """Load creatives + their assets for the given competitors, grouped by
-    competitor id and reassembled into ``Creative`` objects (one asset per
-    creative today: the slide-0 rendition)."""
+    competitor id and reassembled into ``Creative`` objects: the first asset is
+    the primary rendition, the placement renditions come back from content."""
     if not competitor_ids:
         return {}
     placeholders = ",".join(["%s"] * len(competitor_ids))
@@ -443,6 +472,7 @@ def _row_to_creative(cr: dict, asset: dict | None) -> Creative:
         aspectRatio=(width / height) if height else 0.0,
         durationSeconds=duration,
         essence=essence,
+        renditions=[Rendition.model_validate(r) for r in content.get("renditions", [])],
     )
 
 

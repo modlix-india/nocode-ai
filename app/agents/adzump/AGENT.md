@@ -68,6 +68,7 @@ app/agents/adzump/
 ├── workflow.py               journey engine - AdzumpContext, Step, NEW_CAMPAIGN, missing_list
 ├── observability.py          the per-turn `turn_decision` record
 ├── router.py                 POST /chat (SSE) + the folded-in location search route
+├── products_router.py        GET products / competitors / creatives, DELETE product (UI reads)
 │
 │   domain rules everyone reads
 ├── platform.py               single source of truth for the campaign ad-platform
@@ -212,6 +213,13 @@ web_search tool; vision + essence = DeepSeek vision; location = DeepSeek).
 Deliberately small: `POST /chat` (SSE stream) + the common session routes
 (`core/base_router.py`) + the folded-in location search route
 (`agents/location/search_router.py`) so `main.py` mounts ONE router.
+
+The product library reads (`products_router.py`, folded in the same way) serve
+the UI without the LLM, scoped to the caller's client:
+`GET /products`, `GET /products/{id}`, `DELETE /products/{id}` (cascades flows,
+competitors, creatives), `GET /products/{id}/competitors` (pending rows included),
+`GET /products/{id}/creatives?competitor_id=` (grouped by competitor). No create
+routes: products and competitors come from the chat's analysis.
 
 ## Sub-agent routing table
 

@@ -43,16 +43,44 @@ async def upsert_product(
     return await product_id(client_code, url)
 
 
+async def delete_product(client_code: str, product_id: int) -> bool:
+    """Delete one product of the client; its flows, competitors, creatives and
+    assets go with it (V17 cascades). False when the client has no such row."""
+    return bool(await execute_query(
+        "DELETE FROM adzump_products WHERE client_code=%s AND id=%s",
+        (client_code, product_id),
+    ))
+
+
 async def get_product(client_code: str, url: str) -> Product | None:
     """Hydrate the typed Product back from `data`, or None on miss."""
     rows = await execute_query(
         "SELECT data FROM adzump_products WHERE client_code=%s AND url=%s",
         (client_code, url),
     )
-    if not rows:
-        return None
-    raw = rows[0]["data"]
-    return Product.model_validate(raw if isinstance(raw, dict) else json.loads(raw))
+    return _product_from(rows[0]["data"]) if rows else None
+
+
+async def get_product_by_id(
+    client_code: str, product_id: int,
+) -> tuple[str, Product] | None:
+    """(storage url, typed Product) for one row id of the client, or None."""
+    rows = await execute_query(
+        "SELECT url, data FROM adzump_products WHERE client_code=%s AND id=%s",
+        (client_code, product_id),
+    )
+    return (rows[0]["url"], _product_from(rows[0]["data"])) if rows else None
+
+
+async def list_products(client_code: str) -> list[dict]:
+    """The client's products, most recently updated first - promoted columns
+    only, never the `data` blob."""
+    return await execute_query(
+        "SELECT id, url, name, category, country_code, summary, updated_at "
+        "FROM adzump_products WHERE client_code=%s "
+        "ORDER BY updated_at DESC, id DESC",
+        (client_code,),
+    )
 
 
 async def product_id(client_code: str, url: str) -> int | None:
@@ -63,6 +91,10 @@ async def product_id(client_code: str, url: str) -> int | None:
         (client_code, url),
     )
     return rows[0]["id"] if rows else None
+
+
+def _product_from(raw) -> Product:
+    return Product.model_validate(raw if isinstance(raw, dict) else json.loads(raw))
 
 
 def _project(product: Product) -> dict:
