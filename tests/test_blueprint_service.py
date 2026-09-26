@@ -2287,3 +2287,95 @@ def test_updating_the_plan_from_the_site_walks_every_page(monkeypatch):
     # One that genuinely failed is named, and the rest were still done.
     assert "contact" in result["failed"]
     assert [o["name"] for o in result["objects"]] == ["home"]
+
+
+# ── Every session the board creates has a name ──────────────────────────
+#
+# The chat list is one list: the person's own conversations and the runs the
+# board started on its own land in the same sidebar, filtered only by app. A
+# run that named nothing put a blank row in there — one per page of every
+# build — which reads as a chat whose title was lost, cannot be told apart from
+# the row above it, and cannot be found again.
+
+
+def test_a_message_names_the_chat_it_opens():
+    from app.core.session import session_title
+
+    assert session_title("  add a\n pricing   section ") == "add a pricing section"
+
+
+def test_a_send_with_no_words_still_names_its_chat():
+    """An image dropped in with nothing typed is a real send."""
+    from app.core.session import session_title
+
+    assert session_title("") == "New chat"
+    assert session_title(None) == "New chat"
+    assert session_title("   ", fallback="Build — crumbco") == "Build — crumbco"
+
+
+def test_a_name_cannot_outgrow_the_column():
+    from app.core.session import session_title
+
+    assert len(session_title("x" * 400)) == 100
+
+
+def test_a_headless_build_names_its_own_session(monkeypatch):
+    """The nameless rows in the sidebar: one per page, every build."""
+    from app.services.blueprint import build_job
+
+    made: list[str] = []
+
+    class _Session:
+        def __init__(self, agent_name, title=""):
+            made.append(title)
+            self.context: dict = {}
+            self.session_id = "s1"
+
+        async def get_or_create(self, session_id, auth):
+            return self.session_id
+
+    class _Agent:
+        async def run(self, prompt, session, stream):
+            await stream.emit_done("s1")
+
+    async def fake_agent():
+        return _Agent()
+
+    monkeypatch.setattr(build_job, "BaseSession", _Session)
+    monkeypatch.setattr(build_job, "_builder_agent", fake_agent)
+
+    errors = asyncio.run(
+        build_job._run_builder("fill home", "crumbco", {}, object(), title="Build — home (2 to add)")
+    )
+
+    assert errors == []
+    assert made == ["Build — home (2 to add)"]
+
+
+def test_a_build_that_was_given_no_title_is_named_for_its_app(monkeypatch):
+    from app.services.blueprint import build_job
+
+    made: list[str] = []
+
+    class _Session:
+        def __init__(self, agent_name, title=""):
+            made.append(title)
+            self.context: dict = {}
+            self.session_id = "s1"
+
+        async def get_or_create(self, session_id, auth):
+            return self.session_id
+
+    class _Agent:
+        async def run(self, prompt, session, stream):
+            await stream.emit_done("s1")
+
+    async def fake_agent():
+        return _Agent()
+
+    monkeypatch.setattr(build_job, "BaseSession", _Session)
+    monkeypatch.setattr(build_job, "_builder_agent", fake_agent)
+
+    asyncio.run(build_job._run_builder("fill home", "crumbco", {}, object()))
+
+    assert made == ["Build — crumbco"]

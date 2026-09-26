@@ -304,39 +304,70 @@ target_def['styleProperties'][modlix.uuid()] = {
 style_html += '\n.is-visible { opacity: 1 !important; transform: none !important; }'
 ```
 
-### E.2 — Page onLoad Kirun event wires IntersectionObserver
+### E.2 — Scroll-triggered motion: use the Animator component
+
+**Corrected 2026-09-25.** This section used to hand-roll an IntersectionObserver
+through `System.RunJS`. That primitive DOES NOT EXIST — the real JS escape hatch
+is `UIEngine.ExecuteJSFunction` — and hand-rolling it is the wrong shape anyway
+now that the platform has a component for this.
+
+Wrap the element in an `Animator` and set the animation's `timeline`:
 
 ```python
-onload_fn_text = """
-event clone_setup_scroll_animations() {
-  System.RunJS(code = '''
-    if (window.__sa_setup) return;
-    window.__sa_setup = true;
-    const selectors = [
-      // dump selectors here from manifest animations with trigger_guess='scroll'
-      "<selector_1>", "<selector_2>", ...
-    ];
-    const obs = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) e.target.classList.add('is-visible');
-      }
-    }, {threshold: 0.1});
-    for (const sel of selectors) {
-      document.querySelectorAll(sel).forEach((el) => obs.observe(el));
+# `animation` is multiValued. The stored shape is a keyed map, and each entry
+# nests its fields under property.value. Getting that nesting wrong fails
+# SILENTLY: every field falls back to its default, so the element animates
+# _bounce for 0ms and looks like the property being ignored.
+animation = {
+    "a1": {
+        "key": "a1",
+        "order": 1,
+        "property": {
+            "value": {
+                # UNDERSCORE-PREFIXED. `fadeInUp` matches no keyframes block and
+                # the element simply never animates.
+                "animationName": {"value": "_fadeInUp"},
+                "animationDuration": {"value": 900},
+                "animationTimingFunction": {"value": "linear"},
+                # `both`, so the animation holds at each end of its range
+                # instead of snapping back when parked at 0 or 1.
+                "animationFillMode": {"value": "both"},
+                "animationIterationCount": {"value": "1"},   # a STRING
+                "condition": {"value": True},
+                "observation": {"value": "none"},
+                # Scrub to scroll position instead of playing on a clock.
+                # 'view'   -> 0 as the element enters the viewport, 1 as it
+                #             leaves. What a reveal or a parallax wants.
+                # 'scroll' -> 0 at the top of the scroller, 1 at the bottom.
+                "timeline": {"value": "view"},
+                "axis": {"value": "block"},        # 'inline' for a sideways scroller
+                "rangeStart": {"value": 0},
+                "rangeEnd": {"value": 1},
+            }
+        },
     }
-  ''')
-}
-"""
-modlix.post('/api/ui/pageEventFunctions',
-            {'appCode': app_code, 'pageName': page_name,
-             'functionName': 'clone_setup_scroll_animations',
-             'definition': onload_fn_text})
-
-# Wire it on the page's onLoad event
-page_def['properties']['eventFunctions']['onLoad'] = {
-    'value': 'clone_setup_scroll_animations',
 }
 ```
+
+Three things worth knowing:
+
+- **It runs backwards.** A scroll timeline is scrubbed, not triggered, so
+  scrolling back up reverses the animation. An IntersectionObserver that adds a
+  class cannot do that.
+- **Every existing keyframes name works** with no new CSS. All 68 blocks in
+  `App.css` and every name in the catalog's `animationName` enum become
+  scroll-scrubbable.
+- **`axis: "inline"` is driven by a HORIZONTAL scroller** — a Carousel, a Tabs
+  strip, a Grid with `overflow-x`. There is no CSS-only way to do that here.
+
+The runtime picks the implementation: where the browser supports
+`animation-timeline` the animation is handed to it and runs off the main
+thread; elsewhere it is scrubbed from JS with a negative `animation-delay` on a
+paused animation. Both produce the same frames (measured: within 0.005 opacity
+at matching scroll positions), so there is nothing to choose between them here.
+
+**When you genuinely need JS** — something no component covers — the primitive
+is `UIEngine.ExecuteJSFunction`, NOT `System.RunJS`. Ask before reaching for it.
 
 ---
 

@@ -28,8 +28,7 @@ from pydantic import BaseModel, Field
 
 from app.core.base_auth import require_auth_context
 from app.core.base_router import stream_agent_response
-from app.core.session import AuthContext, BaseSession
-from app.services.session_manager import get_session_manager
+from app.core.session import AuthContext, BaseSession, session_title
 from app.services.billing import CallMeter
 from app.services.blueprint import build_job, job_store, objects, plan_job, publish, service
 from app.services.blueprint.objects import BlueprintObjectError
@@ -914,7 +913,9 @@ async def plan_chat(
         await _scope(auth, body.app_code, write=True)
         auth.app_code = body.app_code
 
-    session = BaseSession(agent_name="blueprint")
+    # Named at creation — see the appbuilder route. A new session goes in with
+    # its name; a resumed one keeps the one it has.
+    session = BaseSession(agent_name="blueprint", title=session_title(body.message))
     if body.app_code:
         session.context["app_code"] = body.app_code
     if body.editor_context:
@@ -923,13 +924,6 @@ async def plan_chat(
     # nothing to hold back behind a draft.
     session.context["auto_confirm"] = True
     await session.get_or_create(body.session_id, auth)
-
-    if not body.session_id:
-        title = body.message[:100].strip()
-        if title:
-            await get_session_manager().update_session_title(
-                session.session_id, title, auth.user_id
-            )
 
     return await stream_agent_response(await plan_agent(), body.message, session)
 

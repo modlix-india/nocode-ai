@@ -17,7 +17,9 @@ Gates:
   3. RENDER — drive_page anonymously on every page (and on /home if it
      requires auth, expect the login wrapper to substitute). For each
      rendered page: zero console pageerrors AND visible content above a
-     non-blank threshold (≥ 50 chars of body text OR ≥1 input/button).
+     non-blank threshold (≥ 50 chars of body text OR ≥1 input/button OR
+     ≥1 live WebGL canvas — a shader or particle hero is real content even
+     though it contributes no DOM text at all).
   4. VISUAL — for scenarios that specify a `clone_target.url`, screenshot
      the source URL and the built page, ask Claude to diff them; PASS when
      there are zero `severity=high` diffs. Skipped (n/a) when the scenario
@@ -256,11 +258,21 @@ async def gate_render(
             body_text_len = await page.evaluate("document.body.innerText.length")
             inputs = await page.locator("input").count()
             buttons = await page.locator("button").count()
+            # A page whose hero is a WebGL canvas can carry almost no body text
+            # and no form controls while being a perfectly good page. Counting
+            # only DOM text would fail it as "blank", which would teach the
+            # agent that the right move is to go back to CSS gradients.
+            live_canvases = await page.evaluate(
+                "[...document.querySelectorAll('canvas')]"
+                ".filter(c => c.width > 32 && c.height > 32"
+                "          && (c.getContext('webgl2') || c.getContext('webgl'))).length"
+            )
             screenshot_b64 = base64.b64encode(await page.screenshot(full_page=False, type="png")).decode("ascii")
             await ctx_browser.close()
 
             has_content = (body_text_len >= MIN_BODY_TEXT_CHARS
-                           or (inputs + buttons) >= MIN_INTERACTIVE_ELEMENTS)
+                           or (inputs + buttons) >= MIN_INTERACTIVE_ELEMENTS
+                           or live_canvases > 0)
             no_errors = len(page_errors) == 0
             page_ok = has_content and no_errors
             if not page_ok:
@@ -273,6 +285,7 @@ async def gate_render(
                 "body_text_chars": body_text_len,
                 "input_count": inputs,
                 "button_count": buttons,
+                "webgl_canvases": live_canvases,
                 "page_errors": page_errors[:5],
                 "ok": page_ok,
                 "screenshot_b64_len": len(screenshot_b64),

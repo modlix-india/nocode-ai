@@ -38,7 +38,7 @@ turns:
     Stop. No pages.
   - |-
     Capture: `screenshot_external_url(url="https://vercel.com", scroll_positions=["top","middle","bottom"], viewport_widths=[1440])`.
-    Vercel's hero uses WebGL particles — describe in the Gemini structured output what the visible result LOOKS like, then commit one decisions_log entry noting that we'll approximate WebGL particles with CSS animated radial gradients + transform keyframes.
+    Vercel's hero uses WebGL particles — describe in the Gemini structured output what the visible result LOOKS like, then build it with the real `ParticleField` component (preset, distribution and colours chosen to match what you saw). Commit one decisions_log entry recording which preset you picked and why. Do NOT approximate it with CSS gradients: the platform has the component.
   - |-
     Author the HOME hero:
     - create_page(name="home")
@@ -60,7 +60,7 @@ turns:
   - |-
     KB writes:
     1. propose+commit `overview` for the clonevercel app.
-    2. propose+commit `decisions_log` with ONE entry on the WebGL→CSS approximation, ONE on the hover-state approach.
+    2. propose+commit `decisions_log` with ONE entry on the ParticleField preset chosen for the hero, ONE on the hover-state approach.
   - |-
     Final summary, no more authoring.
     Confirm: hero + deploy-preview + hover grid + comparison + footer; global style doc with ≥4 @keyframes; theme bound; KB filled.

@@ -6,12 +6,23 @@
 |--------|-------|---------|-------------|
 | `Store.` | Global app data | `Store.auth`, `Store.user.name` | Direct store path |
 | `Page.` | Page-scoped data | `Page.formData`, `Page.counter` | `Store.pageData.{pageName}.x` |
-| `Url.` | URL parameters | `Url.pageName`, `Url.queryParameters.id` | `Store.urlData.{pageName}.x` |
+| `Url.` | The browser URL | `Url.pageName`, `Url.queryParameters.id` | `Store.urlDetails.x` |
 | `Theme.` | Theme variables | `Theme.primaryColor` | Theme value for current breakpoint |
 | `Filler.` | App global vars | `Filler.companyName` | `Store.application.properties.fillerValues.x` |
 | `Parent.` | Parent context | `Parent.name`, `Parent.id` | Current item in ArrayRepeater |
 | `LocalStore.` | localStorage | `LocalStore.AuthToken` | Browser localStorage |
 | `Store.shortcuts.` | Live keyboard shortcuts, READ ONLY | `Store.shortcuts.myPage.searchBox.display` | `{spec, display, aria, label}`; `display` is OS-formatted (`⌘K` / `Ctrl+K`) |
+
+
+`Url.` and `Store.urlDetails` are the same thing and either may be written; the
+corpus uses `Store.urlDetails` far more often. There is one URL, so both read the
+same place from anywhere on the page -- a page, the shell, a subpage.
+
+`Store.urlData.{pageName}` also exists, and older pages bind to it by absolute
+path. It holds one entry per page the URL has named, and an entry stays after
+navigating away, which is how leadzump's dashboard hands a drill-through filter
+to `deals` and how `tasks` reads it back. Read it only for that: to pick up what
+another page was opened with. For the URL showing now, use `Url.`.
 
 ## Filler Values
 
@@ -58,6 +69,12 @@ Custom API endpoints routing to KIRun functions:
 Handler types: `KIRUN_FUNCTION`, `PAGE`, `REDIRECT`
 
 ## Common Patterns
+
+A cookie consent box is NOT one of these patterns, and the obvious guesses are
+both wrong: it is never a page you navigate to, and never a page-routing target
+(that traps every visitor on it). Read `platform_doc_read("consent_page")`
+before building one.
+
 
 ### Pattern: Page with Button Click
 
