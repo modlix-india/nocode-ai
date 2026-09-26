@@ -123,7 +123,20 @@ keep them, and pass the combined list.
 - **`animationName` must be underscore-prefixed** (`_fadeInUp`, `_bounceIn`) —
   see [[add-scroll-animation]] skill.
 - **`animationIterationCount` is a string** (`"1"`, not `1`).
-- The catalog underrepresents Animator: `animation` doesn't appear in
-  Animator's catalog entry (only `visibility` does). The tools handle this
-  via the `KNOWN_MULTI_VALUED_PROPS` fallback, so you don't need to do anything
-  special for Animator.
+- **Corrected 2026-09-25.** This used to say the catalog omitted Animator's
+  `animation` property. It does not, and did not: the entry carries
+  `animation` with `multiValued: true`. What WAS missing is the shape of one
+  entry, so the catalog said "multiValued" and stopped. The generator now emits
+  `subProperties` on `animation` with all 18 fields, parsed out of
+  `ANIMATION_PROPERTIES` rather than mirrored, so it cannot drift. Read them
+  from the catalog instead of guessing.
+- Animator is tier `common` as of the same date. At `specialized` it rendered
+  as exactly one line and none of its schema reached the prompt.
+- `animationName` now carries the real enum, every value underscore-prefixed
+  (`_fadeInUp`). It is declared in the source as `enumValues: ANIMATIONS_LIST`,
+  an identifier the catalog's AST parser cannot evaluate, so it is resolved
+  specially; if it ever comes back as a free-text field, that resolution broke.
+- The scroll-timeline fields (`timeline`, `axis`, `scroller`, `rangeStart`,
+  `rangeEnd`) are part of the same entry. `timeline` defaults to `none`, which
+  is the clock behaviour; `view` and `scroll` scrub the animation to scroll
+  position instead.

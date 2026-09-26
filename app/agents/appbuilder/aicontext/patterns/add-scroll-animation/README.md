@@ -90,6 +90,75 @@ Field reference:
 | `exitingThreshold` | 0.0–1.0 — only if `observation: exiting` | typically 0.1 |
 | `numOfObservations` | 0 = unlimited, N = fire only N times | 1 for entrance-once |
 
+## Two ways to be driven by scroll, and they are not the same
+
+**Added 2026-09-25.** Until now the Animator could only do one of these.
+
+**`observation` TRIGGERS.** The element crosses a viewport threshold and the
+animation starts. It plays on a clock from there and does not care what the
+visitor does next. Scrolling back up does not undo it. This is what the rest of
+this document describes, and it is right for a one-shot entrance.
+
+**`timeline` SCRUBS.** The animation's position IS the scroll position. Scroll
+half way and the animation is half done; scroll back and it runs backwards.
+This is what a parallax, a progress bar or any "as you scroll" effect actually
+wants, and no amount of threshold tuning gets you there.
+
+Set one or the other, not both. `observation` withholds the animation until a
+threshold is crossed, which is exactly the wrong thing to do to an animation
+that is supposed to be scrubbed from 0.
+
+### The timeline keys
+
+| key | values | what it means |
+|---|---|---|
+| `timeline` | `none` (default) / `view` / `scroll` | `none` is the clock behaviour every stored page has today. `view` is 0 as THIS element enters the viewport and 1 as it leaves. `scroll` is 0 at the top of the scroller and 1 at the bottom. |
+| `axis` | `block` / `inline` | `inline` is driven by a HORIZONTAL scroller — a Carousel, a Tabs strip, a Grid with `overflow-x`. There is no CSS-only way to do that here. |
+| `scroller` | `nearest` / `root` / `self` | Which element is scrolling. **A Modlix page scrolls inside `.comp.compPage`, not the document**, so `nearest` is right and `root` almost never is. |
+| `rangeStart`, `rangeEnd` | 0..1 | Trim the travel. `rangeEnd: 0.6` finishes the animation before the element leaves. |
+
+### Use the tool
+
+`set_scroll_animation` builds the whole thing, checks the keyframes name against
+the catalog, and gets the multiValued nesting right:
+
+```
+set_scroll_animation(
+    page_name="home",
+    component_key="featuresAnimator",
+    animation_name="_fadeInUp",     # UNDERSCORE-PREFIXED
+    timeline="view",
+    range_start=0, range_end=0.6,
+)
+```
+
+### What you get for free
+
+Every keyframes name already in the platform becomes scroll-scrubbable. No new
+CSS, no new keyframes, nothing to author — the same `_fadeInUp` you would
+trigger is the one that scrubs.
+
+### Two implementations, one result
+
+Where the browser supports `animation-timeline` the animation is handed to it
+and runs off the main thread. Where it does not, it is scrubbed from JS with a
+negative `animation-delay` on a paused animation. Measured at matching scroll
+positions the two agree within 0.005 opacity, so there is nothing to choose
+between them and nothing to configure.
+
+### Verifying
+
+A single screenshot cannot tell a scroll-driven animation from a broken one —
+both look like one frame. `drive_page` with scroll actions and a shot at each
+stop is the only honest check. Remember the scroller: scrolling the WINDOW does
+nothing on a Modlix page.
+
+### Reduced motion
+
+A visitor who asked for reduced motion gets the END frame, held. Not the start:
+a reveal's first frame is usually "invisible", so pinning to 0 would hide the
+content from exactly the people who asked for less motion.
+
 ## Available keyframes (animations.css)
 
 **Entrance (use these for scroll-in):**

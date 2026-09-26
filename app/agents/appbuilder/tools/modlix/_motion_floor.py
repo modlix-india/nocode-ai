@@ -17,6 +17,17 @@ sloshes sideways whenever a scrollbar appears. The lessons taken from it here:
 The reveal animation is opt-in by class (`_revealUp` and friends). It is offered
 rather than applied because attaching it is a per-section judgement -- a hero
 that animates in on every load gets tiring fast.
+
+One more lesson, this one measured on 2026-09-25 rather than inherited: a reveal
+has to be driven by position, not by a clock. The first version of `_revealUp`
+here was a plain `animation:`, which starts when the element renders. A probe put
+one 3016px below an 800px viewport and watched it run to completion -- opacity 1,
+transform none -- while it was still off-screen, so there was nothing left to see
+by the time anyone scrolled to it. Only the part above the fold ever looked
+right, which is why a screenshot check never caught it. `animation-timeline:
+view()` fixes that; the catch is that `animation-delay` is inert on a progress
+timeline, so the stagger has to move to `animation-range` in the same breath or
+it disappears with nothing erroring.
 """
 
 from __future__ import annotations
@@ -59,12 +70,35 @@ a, button, ._button, ._link,
     to   {{ opacity: 1; }}
 }}
 
-/* Opt-in per section. Attach `_revealUp` to a Grid to have it rise in once. */
+/* Opt-in per section. Attach `_revealUp` to a Grid to have it rise in.
+
+   This clock-based form is the FALLBACK, for browsers with no scroll-driven
+   timeline. It starts when the element renders, not when it is seen, so a
+   section far down the page finishes its reveal while still off-screen. That
+   is wrong, but it is also the old behaviour, so it stays as the floor rather
+   than becoming a regression. The @supports block below replaces it wherever
+   a view() timeline is available. */
 ._revealUp {{ animation: _revealUp 520ms ease both; }}
 ._revealFade {{ animation: _revealFade 520ms ease both; }}
 ._revealDelay1 {{ animation-delay: 80ms; }}
 ._revealDelay2 {{ animation-delay: 160ms; }}
 ._revealDelay3 {{ animation-delay: 240ms; }}
+
+@supports (animation-timeline: view()) {{
+    /* Scrub the reveal to the element's own progress across the viewport, so
+       it reveals on scroll instead of playing to nobody. */
+    ._revealUp, ._revealFade {{
+        animation-timeline: view();
+        animation-range: entry 0% cover 30%;
+    }}
+    /* animation-delay is a clock offset and a progress timeline ignores it, so
+       the stagger has to be expressed as a range. Stacked sections stagger for
+       free, each meeting the viewport at a different moment; these offsets are
+       for a row of cards that share a Y and would otherwise reveal as one. */
+    ._revealDelay1 {{ animation-range: entry 8% cover 38%; }}
+    ._revealDelay2 {{ animation-range: entry 16% cover 46%; }}
+    ._revealDelay3 {{ animation-range: entry 24% cover 54%; }}
+}}
 
 /* Anything the page scrolls to should ease, not jump. */
 html {{ scroll-behavior: smooth; }}

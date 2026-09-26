@@ -119,6 +119,20 @@ def session_app_code(session: "BaseSession") -> str:
     return app_code_from_context(getattr(session, "context", None) or {})
 
 
+def session_title(message: str, fallback: str = "New chat") -> str:
+    """What to call a chat, from the message that opened it.
+
+    One place, because every route that creates a session names it the same
+    way and a route that skipped the empty case left the row nameless: the
+    sidebar then draws a line with nothing on it, which cannot be told apart
+    from the chat above it and cannot be found again. A message can genuinely
+    be empty — an image dropped in with no words is one send — so an empty
+    first message has to produce a name too, not no name.
+    """
+    title = " ".join((message or "").split())[:100].strip()
+    return title or fallback
+
+
 @dataclass
 class AuthContext:
     """Authentication context passed from the HTTP request.
@@ -180,8 +194,14 @@ class BaseSession:
         total_usage: Accumulated token usage across all turns.
     """
 
-    def __init__(self, agent_name: str) -> None:
+    def __init__(self, agent_name: str, title: str = "") -> None:
         self.agent_name = agent_name
+        # What the chat list calls this session. Set BEFORE get_or_create and it
+        # goes in with the INSERT; left empty, a chat route names the row from
+        # the first message instead. A headless run has no first message anybody
+        # typed, so it has to name itself here or the row lands nameless and the
+        # sidebar shows an empty line — see `session_title`.
+        self.title: str = title
         self.session_id: str = ""
         self.auth: Optional[AuthContext] = None
         self.messages: list[dict[str, Any]] = []
@@ -913,6 +933,7 @@ class BaseSession:
                 # its app back from, so it must not record the product the chat
                 # happened to be opened from.
                 app_code=session_app_code(self),
+                title=(self.title or None),
                 context_json=context_json,
             )
             if session:
