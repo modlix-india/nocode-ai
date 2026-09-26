@@ -857,6 +857,7 @@ async def _execute_validate_page(params: dict[str, Any], context: dict[str, Any]
 
     wiring_violations, wiring_warnings = _check_wiring_reachability(page, name_to_key)
     violations.extend(wiring_violations)
+    wiring_warnings.extend(_check_analytics_labels(comp_def))
     violations.extend(await _check_login_page_navigation(client, headers, ac, page))
     violations.extend(_check_data_access_urls(page))
 
@@ -1023,6 +1024,52 @@ def _check_data_access_urls(page: dict[str, Any]) -> list[str]:
                         f"Use the relative form '{u.lstrip('/')}'."
                     )
     return violations
+
+
+# The interactive types that accept `analyticsLabel`. Deliberately a subset of
+# the 33 the catalog allows: these are the ones a person clicks or fills, which
+# is what autocapture and heatmaps group by. Grid, Text, Table and every
+# Table* component reject the property outright, so a clickable Grid card
+# cannot carry one -- see aicontext/reference/analytics_labels.md.
+_ANALYTICS_LABEL_TYPES = frozenset({
+    "Button", "Link", "ToggleButton", "CheckBox", "RadioButton", "Dropdown",
+    "TextBox", "TextArea", "Otp", "PhoneNumber", "ColorPicker", "RangeSlider",
+    "FileSelector", "FileUpload", "Tabs", "Menu", "Tree", "Stepper", "Calendar",
+    "Icon", "Image", "Svg",
+})
+
+# Only components that actually DO something are worth a label: an Icon used as
+# decoration is not a control. These are the properties that make one.
+_INTERACTIVE_PROPS = ("onClick", "linkPath", "onChange", "onSelect", "onSubmit")
+
+
+def _check_analytics_labels(comp_def: dict) -> list[str]:
+    """Warn about interactive components with no `analyticsLabel`.
+
+    Non-fatal on purpose. Every page built before this rule existed would fail
+    an error-level check, and the property changes nothing about whether the
+    page works -- it only decides whether the resulting analytics can be read.
+    """
+    missing: list[str] = []
+    for key, comp in comp_def.items():
+        if not isinstance(comp, dict):
+            continue
+        ctype = comp.get("type")
+        if ctype not in _ANALYTICS_LABEL_TYPES:
+            continue
+        props = comp.get("properties") or {}
+        if not isinstance(props, dict):
+            continue
+        if props.get("analyticsLabel"):
+            continue
+        if not any(props.get(p) for p in _INTERACTIVE_PROPS):
+            continue
+        missing.append(
+            f"{ctype} '{comp.get('name') or key}' (key '{key}') is interactive but has no "
+            f"analyticsLabel, so autocapture and heatmaps will key it on a DOM guess that "
+            f"breaks when the layout moves. Add a stable snake_case name for what it does."
+        )
+    return missing
 
 
 def _check_wiring_reachability(
@@ -1664,8 +1711,12 @@ add_components(page_name="route", components=[
   {"parent_key": "card", "component_type": "ArrayRepeater", "component_key": "list",
    "binding_paths": {"bindingPath": "Page.routeList"}},
   {"parent_key": "list", "component_type": "Text", "component_key": "memberName", "properties": {"text": "Parent.name"}},
+  {"parent_key": "card", "component_type": "Button", "component_key": "startBtn",
+   "properties": {"label": "Start route", "onClick": "startRoute", "analyticsLabel": "route_start"}},
 ])
 ```
+
+Every INTERACTIVE component gets an `analyticsLabel` — a stable snake_case name for what it does, which is what autocapture and heatmaps group by. Grid, Text and Table do not accept one.
 
 Every entry is validated against the component catalog and auto-coerced exactly like add_component (expression strings, bare binding paths, flat styles) BEFORE anything is written; if any entry is invalid, nothing is added and ALL errors are returned together. Max 60 components per call — split a large page by section.""",
     parameters=[
@@ -1691,7 +1742,7 @@ add_component(
     parent_key="root",
     component_type="Button",
     component_key="submitBtn",
-    properties={"label": "Submit", "onClick": "handleSubmit"},
+    properties={"label": "Submit", "onClick": "handleSubmit", "analyticsLabel": "contact_submit"},
 )
 ```
 
@@ -1702,7 +1753,8 @@ add_component(
     parent_key="card",
     component_type="TextBox",
     component_key="emailInput",
-    properties={"label": "Email", "placeholder": "you@example.com", "updateStoreImmediately": True},
+    properties={"label": "Email", "placeholder": "you@example.com", "updateStoreImmediately": True,
+                "analyticsLabel": "login_email"},
     binding_paths={"bindingPath": "Page.user.email"},
 )
 ```
@@ -1725,6 +1777,7 @@ Key rules:
 - `component_type` is the catalog name: `Button`, `TextBox`, `Grid`, `Dropdown`, `Table`, `Image`, etc. Use `list_component_types` / `get_component_schema` for unfamiliar types.
 - `component_key` is optional — provide a meaningful slug (`submitBtn`, `emailInput`) for readability; UUID auto-assigned if omitted.
 - `binding_paths` is for `bindingPath` / `bindingPath2`…`bindingPath6` ONLY (TextBox, Dropdown, ArrayRepeater, Table need them).
+- `analyticsLabel` on every INTERACTIVE component (button, link, toggle, checkbox, radio, dropdown, text input): a stable snake_case name for what the control does, not its visible text. It is what autocapture and heatmaps group by. Grid, Text and Table do NOT accept it — `get_component_schema` tells you which do.
 - For BREAKPOINT-specific styles or pseudo-states (`:hover`), use `patch_component_styles` after the add. `add_component`'s inline shape is for the common single-breakpoint case.
 
 For a fresh page or a new section use `add_components` (one call carries the container and all children, one save). `add_component` is for a single late insertion.""",

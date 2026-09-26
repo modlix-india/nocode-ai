@@ -157,6 +157,41 @@ class TestMotionFloor:
     def test_needs_motion_on_empty_input(self):
         assert needs_motion("") and needs_motion(None)
 
+    def test_reveal_is_driven_by_position_not_a_clock(self):
+        """A clock-driven reveal plays to nobody.
+
+        Measured 2026-09-25: `_revealUp` on an element 3016px below an 800px
+        viewport reached playState 'finished' at opacity 1 without ever being
+        on screen. Only the part above the fold ever looked right, so a
+        screenshot check passed it.
+        """
+        css, _ = with_motion_floor("")
+        assert "animation-timeline: view()" in css
+
+    def test_stagger_is_a_range_not_a_delay(self):
+        """animation-delay is a clock offset; a progress timeline ignores it.
+
+        Keeping the delays under view() held the cards off-screen correctly but
+        dropped the mid-reveal spread from 0.31 to 0.01: no stagger at all, and
+        nothing raised. A row of cards shares a Y, so without this it reveals as
+        one block.
+        """
+        css, _ = with_motion_floor("")
+        scrubbed = css.split("@supports (animation-timeline: view())")[1]
+        for n in (1, 2, 3):
+            assert f"._revealDelay{n} {{ animation-range:" in scrubbed
+
+    def test_clock_fallback_survives_for_older_browsers(self):
+        """Browsers without scroll-driven timelines must keep the old floor.
+
+        Dropping the plain rule would leave them with no reveal at all, turning
+        a wrong-but-visible animation into a missing one.
+        """
+        css, _ = with_motion_floor("")
+        fallback = css.split("@supports (animation-timeline: view())")[0]
+        assert "._revealUp { animation: _revealUp 520ms ease both; }" in fallback
+        assert "._revealDelay1 { animation-delay: 80ms; }" in fallback
+
 
 class TestFontFloor:
     """Every generated site rendered in the stock face: no pack, no tokens."""

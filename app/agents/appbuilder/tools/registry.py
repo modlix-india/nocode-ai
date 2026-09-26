@@ -52,8 +52,10 @@ from app.agents.appbuilder.tools.modlix.clone_ops import TOOLS as _MODLIX_CLONE_
 from app.agents.appbuilder.tools.modlix.build_page import TOOLS as _MODLIX_BUILD_PAGE_TOOLS
 from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURITY_TOOLS
 from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
+from app.agents.appbuilder.tools.modlix.page_routing import TOOLS as _MODLIX_PAGE_ROUTING_TOOLS
 from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
 from app.agents.appbuilder.tools.modlix.runtime import TOOLS as _MODLIX_RUNTIME_TOOLS
+from app.agents.appbuilder.tools.modlix.scenes import TOOLS as _MODLIX_SCENE_TOOLS
 from app.agents.appbuilder.tools.modlix.draft_tools import DRAFT_TOOLS as _MODLIX_DRAFT_TOOLS
 from app.agents.appbuilder.tools.template_author import TEMPLATE_AUTHOR_TOOLS
 from app.agents.appbuilder.tools.meta_tools import META_TOOLS
@@ -95,8 +97,14 @@ MODLIX_TOOLS: list[ToolDefinition] = (
     + list(_MODLIX_BUILD_PAGE_TOOLS)  # deterministic URL -> Modlix page (build_page_from_url)
     + list(_MODLIX_SECURITY_TOOLS)
     + list(_MODLIX_APP_ADMIN_TOOLS)
+    # Page routing — A/B tests and rule-based landing pages. Separate from
+    # app_admin because it is the only app property with a resolver behind it:
+    # a rule that is merely wrong does not error, it never fires, so these
+    # tools audit and simulate rather than just read and write.
+    + list(_MODLIX_PAGE_ROUTING_TOOLS)
     + list(_MODLIX_MESSAGING_TOOLS)
     + list(_MODLIX_RUNTIME_TOOLS)
+    + list(_MODLIX_SCENE_TOOLS)
     + list(TEMPLATE_AUTHOR_TOOLS)  # author_template — AI-generate template content (shared with editor AI tab)
 )  # Phase 1.4b modlix port complete
 
