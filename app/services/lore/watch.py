@@ -64,6 +64,16 @@ _ROUTER_ACTIONS: dict[str, str] = {
 # noise into an app's knowledge forever.
 _NOT_A_DEFINITION: frozenset[str] = frozenset({
     "apply_image_filter",
+    # Scene tools that produce no definition change. `set_scene`,
+    # `patch_scene` and `set_scroll_animation` DO edit a page definition and
+    # are correctly classified by their name prefixes; these three only read,
+    # compile or look at pixels.
+    "compile_shader",
+    "fetch_external_asset",
+    "render_scene_check",
+    "list_scene_presets",
+    "validate_scene",
+    "get_scene",
     "clear_cache",
     "close_browser_session",
     "composite_images",

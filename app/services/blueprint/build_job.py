@@ -48,7 +48,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.core.session import BaseSession
+from app.core.session import BaseSession, session_title
 from app.services.blueprint import objects
 from app.services.blueprint.compose import collection_for
 from app.services.blueprint import job_store
@@ -614,6 +614,7 @@ async def _fill(
             to_rework=_TO_REWORK.format(sections=_brief_list(rework)) if rework else "",
         ),
         job.app_code, headers, auth,
+        title=f"Build — {step.name} ({step.detail})",
     )
 
     # Matched, not written. Writing the plan here bumps the page's version and
@@ -668,17 +669,27 @@ def _section_brief(entry: dict[str, Any]) -> str:
 
 async def _run_builder(
     prompt: str, app_code: str, headers: dict[str, str], auth: Any,
+    title: str = "",
 ) -> list[str]:
     """One headless AppBuilder run.
 
     Headless, so there is no SSE stream and no session for a person to attach
     to: the build's own progress is the thing being watched, and a second stream
     per page would be two progress reports disagreeing with each other.
+
+    It still gets a NAME. The session is a real row in the same chat list the
+    person's own conversations are in, and every build used to put one nameless
+    line per page in there: blank, indistinguishable, and impossible to tell
+    from a chat that had simply lost its title. `title` says what the run was
+    for; without one it falls back to the app, never to nothing.
     """
     from app.core.streaming import AgentEventStream
 
     agent = await _builder_agent()
-    session = BaseSession(agent_name="appbuilder")
+    session = BaseSession(
+        agent_name="appbuilder",
+        title=session_title(title, fallback=f"Build — {app_code}"),
+    )
     session.context["app_code"] = app_code
     session.context["headers"] = headers
     # Nothing to confirm: a person pressed Build, which IS the confirmation, and

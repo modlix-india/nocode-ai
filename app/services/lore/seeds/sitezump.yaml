@@ -234,12 +234,12 @@ entries:
     kind: gotcha
     subject: app
     confidence: 80
-    title: PostHog analytics is configured but no screen shows it to a customer
+    title: Analytics is configured but no screen shows it to a customer
     tags: [analytics, gaps]
     body: |
-      The application definition configures PostHog with autocapture,
-      pageviews, page-leaves, consent and session replay with inputs masked,
-      and Microsoft Clarity is injected through a code part. None of it is
+      The application definition configures analytics with autocapture,
+      pageviews, page-leaves and consent, and Microsoft Clarity is injected
+      through a code part. None of it is
       surfaced to a customer on any page. So a customer asking "where are my
       analytics" is asking for a screen that does not exist, not for a setting
       that is switched off.

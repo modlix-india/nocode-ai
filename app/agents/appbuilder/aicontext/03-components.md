@@ -187,7 +187,39 @@ For form components (TextBox, Dropdown, etc.):
 
 ## Common Properties (most components)
 
-`visibility`, `readOnly`, `onClick`, `linkPath`, `designType`, `colorScheme`
+`visibility`, `readOnly`, `onClick`, `linkPath`, `designType`, `colorScheme`,
+`analyticsLabel`
+
+## Analytics Labels
+
+`analyticsLabel` is a stable snake_case name for what a control *does*. It is
+emitted as `data-analytics-label` on the rendered element, and it is the ONLY
+thing the analytics beacon captures clicks on. A control without one is not
+recorded at all — autocapture is deliberately limited to labelled elements,
+because a name guessed from the DOM changes the next time the layout moves.
+
+Give one to every interactive component: Button, Link, ToggleButton, CheckBox,
+RadioButton, Dropdown, TextBox, TextArea, Otp, PhoneNumber, ColorPicker,
+RangeSlider, FileSelector, Tabs, Menu, Tree, Icon and Image when clickable.
+
+```json
+{"label": "Submit", "onClick": "handleSubmit", "analyticsLabel": "contact_submit"}
+```
+
+Name it for the action and the place, not the visible text: `contact_submit`,
+`plan_upgrade`, `filter_by_status`, `consent_accept_all`. Two buttons reading
+"Save" on different screens need different labels; a button whose text is
+translated still needs a stable one. Match the naming to any
+`UIEngine.TrackAnalyticsEvent` event names on the same page.
+
+**33 of the 77 components accept it. Grid, Text, Table and the TableComponents,
+Form, ArrayRepeater, Popup and Chart do NOT** — passing it there is rejected by
+validation. A clickable Grid used as a card therefore cannot carry one today;
+put the label on a control inside it, or accept that the card is invisible to
+autocapture. `get_component_schema` lists the properties a type really accepts.
+
+See `platform_doc_read("reference/analytics_labels")` for the full list and the
+naming convention.
 
 ## Keyboard Shortcuts
 
