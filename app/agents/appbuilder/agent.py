@@ -151,6 +151,9 @@ _FOCUS_MOVING_TOOLS: frozenset[str] = frozenset(_RMW_TOOLS) | frozenset({
     "create_uri_path", "delete_uri_path",
     "create_role", "add_app_reg_entry", "upload_static_asset",
     "set_page_route_rule", "delete_page_route",
+    # Scene writes. All three edit a page's component definition, so they move
+    # the session's app focus exactly as any other component edit does.
+    "set_scene", "patch_scene", "set_scroll_animation",
 })
 
 

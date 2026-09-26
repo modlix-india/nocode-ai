@@ -271,6 +271,46 @@ async def version_diff(
     )
 
 
+class SceneAiRequest(BaseModel):
+    """Request for the Scene Editor's AI pane: a prompt plus the current (possibly unsaved) scene."""
+
+    prompt: str
+    scene: Optional[dict] = None
+    componentType: Optional[str] = "ShaderBackground"
+    # Same wire shape the chat endpoint takes -- {type, name, mime_type, data} with data as raw
+    # base64 -- so the editor's attachment code is the Prompt component's, unchanged.
+    attachments: Optional[List[dict]] = None
+
+
+@router.post("/scene")
+async def author_scene(
+    body: SceneAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Build or revise a 3D scene document from a description. Returns {scene, message, warnings}.
+
+    Backs the Scene Editor's AI pane. Stateless -- the whole current document is sent, so an
+    unsaved scene can be revised without anything being written first, matching how the template
+    editor's AI tab already works.
+
+    Nothing is saved here. The editor applies the returned document to its own undo stack, so a
+    result the user does not like is one Undo away and never reached the page.
+    """
+    from app.services.scene_ai import generate_scene
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    try:
+        return await generate_scene(
+            prompt=body.prompt,
+            scene=body.scene,
+            component_type=body.componentType or "ShaderBackground",
+            attachments=body.attachments,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 @router.post("/chat")
 async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_context)):
     """Stream an appbuilder agent response as SSE."""

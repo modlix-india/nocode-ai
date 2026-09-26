@@ -345,8 +345,22 @@ Animations live in a global style doc (CRITICAL — `@keyframes` cannot live per
   and components reference the animation by name through their `styleProperties.animation` value.
 - The same rule applies to `@media`, `@supports`, `:hover`, `:focus`, pseudo-elements (`::before`).
   All of those are global-style-doc territory.
-- For scroll-triggered or pointer-driven motion, the JS hook is a page-event Kirun function on
-  `onLoad` (set up IntersectionObserver-style logic with `UIEngine` primitives) — NOT inline
+- For scroll-triggered motion, reach for the `Animator` component FIRST. It wraps one child and
+  drives that child's animation, and its `animation` property carries a `timeline` key:
+  `none` (the default -- plays on a clock, as it always has), `view` (0 as the element enters the
+  viewport, 1 as it leaves -- what a reveal or a parallax wants) or `scroll` (0 at the top of the
+  scroller, 1 at the bottom -- for a page-length progress indicator). `axis` picks `block` or
+  `inline`, and `inline` is how a HORIZONTAL scroller (a Carousel, a Tabs strip, a Grid with
+  overflow-x) drives an animation -- there is no CSS-only way to do that here. `rangeStart` and
+  `rangeEnd` trim the 0..1 travel. Every existing `@keyframes` name becomes scroll-scrubbable this
+  way with no new CSS. Animation names are UNDERSCORE-PREFIXED (`_fadeInUp`, NOT `fadeInUp`); an
+  unprefixed name matches nothing and the element simply never animates.
+- `animation` is a multiValued property. Its stored shape is a keyed map where each entry is
+  `{key, order, property: {value: {<field>: {value: ...}}}}`. Getting the nesting wrong fails
+  SILENTLY: every field falls back to its default, so the element animates `_bounce` for 0ms and
+  looks like the property being ignored. Let `wrap_props_catalog_aware` build it.
+- For pointer-driven motion with no component equivalent, the JS hook is a page-event Kirun
+  function on `onLoad` (IntersectionObserver-style logic with `UIEngine` primitives) — NOT inline
   JavaScript in styleProperties.
 
 Routing properties + per-page permission (CRITICAL — without these no page renders for end users):
@@ -506,8 +520,14 @@ Cloning an external site (CRITICAL — never reach for HTML parsing):
     + the appropriate hover/open styling.
   * Animations: look at the source for movement cues, then author `@keyframes` in a global
     `create_style` doc and wire component-level `animation:` references. Per-component
-    styleProperties cannot host `@keyframes`. If something has no direct CSS equivalent (e.g. WebGL
-    particles), pick the closest CSS approximation and note the simplification in `decisions_log`.
+    styleProperties cannot host `@keyframes`.
+  * WebGL is a CAPABILITY, not something to degrade away from. The platform ships real WebGL
+    components -- `ShaderBackground` (animated gradients, aurora, flowing colour), `ParticleField`
+    (drifting motes, starfields, dust), `ModelViewer` (a .glb the visitor can turn, with clickable
+    parts) and `ScrollScene` (a 3D scene scrubbed by scroll position). When the source shows one of
+    those, USE the component. A CSS gradient standing in for a particle field is a worse clone, not
+    a safer one. Approximate with CSS only when no component fits, and then say so in
+    `decisions_log`.
 - `screenshot_page` is for MODLIX pages only — it cannot capture external URLs. Always use
   `screenshot_external_url` for source-site captures and `screenshot_page` only to verify your build.
 
@@ -586,7 +606,7 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         schemas as _schemas, visuals as _visuals,
         visuals_browser as _visuals_browser, image_ops as _image_ops,
         security as _security, app_admin as _app_admin,
-        messaging as _messaging, runtime as _runtime,
+        messaging as _messaging, runtime as _runtime, scenes as _scenes,
         page_routing as _page_routing,
         draft_tools as _draft_tools,
     )
@@ -628,6 +648,8 @@ def _collect_group_tool_names() -> tuple[list[tuple[str, list[str]]], set[str]]:
         ("Schemas + storages + storage data (READ-ONLY rows)", [t.name for t in _schemas.TOOLS]),
         ("Messaging — notifications + connections + templates + events", [t.name for t in _messaging.TOOLS]),
         ("Runtime — personalization (READ-only)", [t.name for t in _runtime.TOOLS]),
+        ("3D scenes + scroll-driven animation (WebGL components, GLSL, render checks)",
+         [t.name for t in _scenes.TOOLS]),
         ("Page routing — A/B tests + rule-based landing pages (simulate before you trust one)",
          [t.name for t in _page_routing.TOOLS]),
         ("Security — users + roles + clients + transports", [t.name for t in _security.TOOLS]),
@@ -772,6 +794,7 @@ _DEFERRED_FAMILY_MODULES: tuple[str, ...] = (
     "security",     # user/role/profile administration beyond the HOT few
     "image_ops",    # crop / pad / recolor / favicon — asset work, not page work
     "runtime",      # personalization inspection
+    "scenes",       # 3D scenes + scroll animation — reached for by keyword
 )
 
 
@@ -1607,12 +1630,63 @@ def _lore_detail_filled(text: str) -> str:
             .replace("__LORE_SUBJECT_TYPES__", ", ".join(SUBJECT_TYPES)))
 
 
+TOOL_GROUP_DETAILS["scenes"] = """
+## 3D scenes and scroll-driven animation
+
+The platform ships FOUR real WebGL components. Reach for them rather than
+approximating with CSS:
+
+  - `ShaderBackground` — animated gradients, aurora, flowing colour. Children
+    render ON TOP of it, so a headline or a whole Grid can sit over the shader.
+  - `ParticleField` — drifting motes, starfields, dust, orb clouds. Draws on a
+    TRANSPARENT canvas, so set `fallbackColor` or it sits on whatever is behind.
+  - `ModelViewer` — a .glb the visitor can drag to turn, with clickable parts.
+  - `ScrollScene` — a 3D scene scrubbed by scroll position, either axis.
+
+Order of work, cheapest first:
+
+1. `list_scene_presets` and set the component's `preset` property with
+   `patch_component_props`. This is almost always enough, and keeps the page
+   definition to a single string.
+2. Only if no preset fits: `set_scene` with a full document. That is several KB
+   of page JSON and, once written, the page OWNS the scene — later changes to
+   the built-in preset cannot reach it. `validate_scene` first.
+3. `patch_scene` to change one thing afterwards, rather than round-tripping a
+   document full of GLSL through a capped tool result.
+4. `render_scene_check` ALWAYS. Validation and compilation both pass happily on
+   a shader that renders black; only pixels tell you otherwise.
+
+Writing GLSL: `uTime`, `uResolution`, `uPointer`, `uPointerActive` and
+`uProgress` are bound for every shader, but their DECLARATIONS are not added for
+you — declare each one you use or it will not compile. Do not declare a document
+uniform with one of those names: yours shadows the live value with a frozen one.
+`compile_shader` reports errors against YOUR line numbers.
+
+Scroll-driven motion on an ORDINARY component is `set_scroll_animation` on an
+`Animator`, not a scene. It scrubs any existing keyframes animation to scroll
+position, so it runs backwards when the visitor scrolls back, and
+`axis="inline"` is driven by a HORIZONTAL scroller — a Carousel, a Grid with
+overflow-x — which there is no CSS-only way to do here. Animation names are
+underscore-prefixed (`_fadeInUp`); the tool checks that for you, because an
+unprefixed name leaves the element un-animated with no error anywhere.
+
+Costs worth knowing before you put four on one page: each scene takes ONE WebGL
+context out of roughly six, three.js loads as a separate chunk (so pages without
+a scene pay nothing), every scene renders a single frame under
+prefers-reduced-motion, and all of them stop rendering when scrolled out of view.
+""".strip()
+
 TOOL_GROUP_DETAILS["lore"] = _lore_detail_filled(TOOL_GROUP_DETAILS["lore"])
 
 
 # ── Relevance keywords per group ──────────────────────────────
 
 _GROUP_KEYWORDS: dict[str, list[str]] = {
+    "scenes": [
+        "3d", "webgl", "shader", "glsl", "gltf", "glb", "hdri", "scene",
+        "particle", "particles", "parallax", "scroll", "scrollytelling",
+        "three.js", "threejs", "model viewer", "aurora", "starfield",
+    ],
     "lore": [
         "why", "why was", "why did", "rationale", "reason", "the reason",
         "already decided", "previous decision", "who decided", "established",
@@ -1697,6 +1771,11 @@ _TOOL_NAME_TO_GROUP: dict[str, str] = {
     **dict.fromkeys((
         "blueprint_get", "blueprint_set", "blueprint_drift",
     ), "blueprint"),
+    **dict.fromkeys((
+        "list_scene_presets", "get_scene", "validate_scene", "set_scene",
+        "patch_scene", "compile_shader", "render_scene_check",
+        "set_scroll_animation", "fetch_external_asset",
+    ), "scenes"),
     # page authoring
     **dict.fromkeys((
         "list_pages", "get_page", "create_page", "create_pages", "update_page", "delete_page",
