@@ -271,6 +271,124 @@ async def version_diff(
     )
 
 
+class OgImageRequest(BaseModel):
+    """Request for the Social preview pane's Generate button.
+
+    `image_urls` is the leg the builders actually use: their `FileSelector` both
+    uploads into the files library and picks from it, and what it hands back is
+    a URL, so the page never has to base64 anything. `attachments` takes the
+    same {type, name, mime_type, data} shape the chat endpoint does, for callers
+    that have bytes rather than a URL.
+
+    EVERY string field here tolerates null, and that is not defensive habit.
+
+    The pane builds this body with `System.Make`, which interpolates EVERY slot
+    of its `resultShape` whether the path behind it resolves or not. An empty
+    box, an app with no description, a page scope nobody armed: each arrives as
+    an explicit `null`, not as an omitted key. A plain `str = ""` rejects null,
+    so the request 422s before the handler runs, and it 422s on the ordinary
+    case rather than an exotic one. This bit twice, on `image_urls` and then on
+    `site_description`, which is why it is now a rule with a validator behind it
+    rather than a type on each field.
+    """
+
+    #: Optional now. The pipeline harvests the site's own palette, logo and
+    #: typeface, so a set of cards can be proposed with nothing typed at all;
+    #: a prompt steers the choice rather than being the whole input.
+    prompt: Optional[str] = ""
+    app_code: Optional[str] = ""
+    client_code: Optional[str] = ""
+    page_name: Optional[str] = ""
+    style_notes: Optional[str] = ""
+    image_provider: Optional[str] = ""
+    # What the site IS, so a prompt that only names a URL still produces a card
+    # about the right product. The pane already holds both on the document it is
+    # editing, so sending them costs nothing and saves the service a fetch.
+    site_name: Optional[str] = ""
+    site_description: Optional[str] = ""
+    # Two fixed slots, one for the file picker and one for the pasted URL, so an
+    # unused slot is a null INSIDE the list. Blank entries are skipped in
+    # `collect_reference_images`.
+    image_urls: Optional[List[Optional[str]]] = None
+    attachments: Optional[List[dict]] = None
+    #: Where the card will live, used for `og:url` and the domain line drawn on
+    #: the card itself.
+    domain: Optional[str] = ""
+    #: How many options to draw. Rendering is deterministic and costs no model
+    #: call per card, so offering a set is barely dearer than offering one.
+    count: Optional[int] = 6
+
+    @field_validator("app_code", "client_code", "page_name", "style_notes",
+                     "image_provider", "site_name", "site_description", "domain",
+                     "prompt",
+                     mode="before")
+    @classmethod
+    def _null_is_blank(cls, v: Any) -> str:
+        """A slot the page could not fill means the caller said nothing."""
+        return "" if v is None else v
+
+    @field_validator("count", mode="before")
+    @classmethod
+    def _null_is_default(cls, v: Any) -> int:
+        """A Modlix binding that never resolved sends null, not a missing key."""
+        if v in (None, ""):
+            return 6
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return 6
+
+
+@router.post("/og-image")
+async def author_og_image(
+    body: OgImageRequest,
+    auth: AuthContext = Depends(require_ai_auth_context),
+):
+    """Draw a set of 1200x630 cards from the app's own brand material.
+
+    Returns `{cards: [...], warnings: [...]}` plus the first card's fields at the
+    top level. Each card carries `{url, rel, template, headline, accent,
+    background, width, height, bytes}`, so the pane can show a picker and put
+    the chosen URL into the draft it is already editing.
+
+    **No image-generation model is involved.** The app's logo, palette,
+    typeface and a screenshot of its own page are harvested; a language model
+    chooses layouts, palettes and headlines as JSON; and a deterministic
+    renderer draws them. A diffusion model cannot place a logo, set type or
+    hold a grid, and what it was really contributing was taste about colour
+    and composition, which is a judgement that can be returned as data.
+
+    The URLs are files-service static paths, which serve anonymously with no
+    Referer -- unlike the screenshot service, which enforces one on GET and so
+    would 403 for every crawler that tried to fetch the card.
+
+    Nothing is written to the application or page definition here, so a card
+    nobody picks is never saved.
+    """
+    from app.services.og_image_ai import OgImageError, generate_og_cards
+
+    app_code = body.app_code or auth.app_code or ""
+    client_code = body.client_code or auth.client_code or ""
+
+    try:
+        return await generate_og_cards(
+            prompt=body.prompt,
+            app_code=app_code,
+            client_code=client_code,
+            page_name=body.page_name,
+            count=body.count,
+            image_urls=body.image_urls,
+            attachments=body.attachments,
+            headers=auth.to_headers(),
+            site_name=body.site_name,
+            site_description=body.site_description,
+            domain=body.domain,
+            auth=auth,
+        )
+    except OgImageError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 class SceneAiRequest(BaseModel):
     """Request for the Scene Editor's AI pane: a prompt plus the current (possibly unsaved) scene."""
 

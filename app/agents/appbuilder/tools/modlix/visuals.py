@@ -699,8 +699,14 @@ async def _generate_via_minimax(
 async def _upload_generated_static(
     local_path: Path, page_name: str, folder: str, filename: str,
     app_code: str, client_code: str, headers: dict[str, str],
+    mime_type: str = _MIME_PNG,
 ) -> tuple[str | None, str | None, str]:
-    """Multipart-POST the generated image to the static asset space."""
+    """Multipart-POST the generated image to the static asset space.
+
+    `mime_type` defaults to PNG because every caller but one generates PNG. The
+    OG card is JPEG: WhatsApp drops to its small-icon layout above roughly
+    300KB, and a photographic 1200x630 plate does not fit that as a PNG.
+    """
     page_clean = (page_name or "global").strip("/") or "global"
     folder_clean = (folder or "").strip("/")
     path_parts = [app_code, page_clean] + ([folder_clean] if folder_clean else [])
@@ -714,7 +720,7 @@ async def _upload_generated_static(
     try:
         async with httpx.AsyncClient(timeout=getattr(settings, "HTTP_TIMEOUT", 30.0)) as client:
             with open(local_path, "rb") as fh:
-                files = {"file": (filename, fh, _MIME_PNG)}
+                files = {"file": (filename, fh, mime_type)}
                 resp = await client.post(url, headers=h, files=files, params={"clientCode": client_code, "override": "true"})
     except Exception as e:  # noqa: BLE001
         return None, None, f"{type(e).__name__}: {e}"

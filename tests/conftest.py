@@ -246,3 +246,30 @@ def mock_execute_query(monkeypatch) -> MockExecuteQuery:
     monkeypatch.setattr("app.db.connection.execute_query", mock)
     monkeypatch.setattr("app.services.app_kb.execute_query", mock, raising=False)
     return mock
+
+
+@pytest.fixture(scope="session")
+def font_set():
+    """A real scalable typeface for the Open Graph card tests, fetched offline.
+
+    The card modules will download Inter when they can, but a test must not
+    depend on the network, so this takes whatever is already cached and falls
+    back to a host font. Tests that need real glyph metrics - wrapping,
+    fitting, alignment - skip rather than silently assert against Pillow's
+    bitmap default, whose every size is the same size.
+    """
+    from pathlib import Path
+
+    from app.services.og_fonts import FontSet, _cache_path, DISPLAY_WEIGHT, \
+        BODY_WEIGHT, DEFAULT_FAMILY, system_font
+
+    display = _cache_path(DEFAULT_FAMILY, DISPLAY_WEIGHT)
+    body = _cache_path(DEFAULT_FAMILY, BODY_WEIGHT)
+    if display.exists():
+        return FontSet(str(display), str(body) if body.exists() else str(display),
+                       DEFAULT_FAMILY)
+
+    path, _ = system_font()
+    if not path or not Path(path).exists():
+        pytest.skip("no scalable font available for card rendering tests")
+    return FontSet(path, path, "system")
