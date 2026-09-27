@@ -22,6 +22,7 @@ LEADFORM_PROVIDER = "deepseek"
 LEADFORM_MODEL_TIER = "balanced"
 LEADFORM_MAX_TURNS = 15
 LEADFORM_MAX_TOKENS = 8192
+_MAX_HISTORICAL_FORMS_IN_PROMPT = 5
 
 
 class LeadFormAgent(BaseAgent):
@@ -60,6 +61,12 @@ class LeadFormAgent(BaseAgent):
         except ValueError:
             phase = Phase.STRATEGY
 
+        # Auto-transition ANALYZE → RECOMMEND after one analysis turn.
+        # The model sees the ANALYZE prompt this turn (history evaluation),
+        # then the RECOMMEND prompt next turn (build instruction + priority rules).
+        if phase == Phase.ANALYZE:
+            ctx["lf_phase"] = Phase.RECOMMEND.value
+
         reminder = phase_prompt(phase)
 
         # Explicitly instruct the LLM to call update_form_recommendation when an image is pending
@@ -82,20 +89,39 @@ class LeadFormAgent(BaseAgent):
         parts = [await super().build_dynamic_context(session)]
         
         ctx = session.context
-        if "business_context" in ctx:
-            parts.append(f"BusinessContext:\n{json.dumps(ctx['business_context'], indent=2)}")
+        if "business_context" in ctx and ctx["business_context"]:
+            parts.append(f"BusinessContext:\n{json.dumps(ctx['business_context'], separators=(',', ':'))}")
             
-        if "advertiser_knowledge" in ctx:
-            parts.append(f"Advertiser Knowledge (Historical Forms Analysis):\n{json.dumps(ctx['advertiser_knowledge'], indent=2)}")
+        if "advertiser_knowledge" in ctx and ctx["advertiser_knowledge"]:
+            parts.append(f"Advertiser Knowledge (Historical Forms Analysis):\n{json.dumps(ctx['advertiser_knowledge'], separators=(',', ':'))}")
 
-        if "historical_forms" in ctx:
-            parts.append(f"Historical Forms (Raw):\n{json.dumps(ctx['historical_forms'], indent=2)}")
+        raw_forms = ctx.get("historical_forms")
+        if isinstance(raw_forms, list) and raw_forms:
+            projected_forms = []
+            for form in raw_forms[:_MAX_HISTORICAL_FORMS_IN_PROMPT]:
+                if hasattr(form, "model_dump"):
+                    form = form.model_dump()
+                if isinstance(form, dict):
+                    projected = {
+                        "name": form.get("name", ""),
+                        "is_higher_intent": form.get("is_higher_intent", False),
+                        "questions": form.get("questions", []),
+                    }
+                    if "leads_count" in form:
+                        projected["leads_count"] = form["leads_count"]
+                    projected_forms.append(projected)
+                else:
+                    projected_forms.append(form)
 
-        if "lead_form_draft" in ctx:
+            parts.append(
+                f"Historical Forms (Raw):\n{json.dumps(projected_forms, separators=(',', ':'))}"
+            )
+
+        if "lead_form_draft" in ctx and ctx["lead_form_draft"]:
             parts.append(
                 f"Current Lead Form Draft (read this before editing — "
                 f"preserve every field the user did NOT ask to change):\n"
-                f"{json.dumps(ctx['lead_form_draft'], indent=2)}"
+                f"{json.dumps(ctx['lead_form_draft'], separators=(',', ':'))}"
             )
             
         return "\n\n".join(filter(bool, parts))
@@ -122,6 +148,24 @@ async def get_leadform_agent(mode: str) -> LeadFormAgent:
     return _agent_cache[mode]
 
 
+# Maximum number of recent conversation messages preserved in sub-agent history to bound prompt token growth.
+_MAX_SUBAGENT_MESSAGES: int = 6
+
+_LEADFORM_CONTEXT_KEYS: tuple[str, ...] = (
+    "product_data",
+    "campaign_spec",
+    "business_context",
+    "lead_form_draft",
+    "historical_forms",
+    "advertiser_knowledge",
+    "lead_form_published",
+    "meta_lead_form_id",
+    "_pending_uploads",
+    "lf_phase",
+    "awaiting_publish_confirmation",
+)
+
+
 async def run_leadform_session(
     user_message: str,
     parent_ctx: dict,
@@ -138,30 +182,52 @@ async def run_leadform_session(
         session_id = parent_ctx.get("lf_manage_session_id")
         actual_session_id = await session.get_or_create(session_id or None, auth_context)
         parent_ctx["lf_manage_session_id"] = actual_session_id
-        
-        session.context.update({k: v for k, v in parent_ctx.items() if k != "craft_id"})
+
+        # Bound transcript length to prevent unbounded token growth
+        if len(session.messages) > _MAX_SUBAGENT_MESSAGES:
+            session.messages = session.messages[-_MAX_SUBAGENT_MESSAGES:]
+
+        # Populate only relevant keys rather than duplicating the entire parent context
+        for k in _LEADFORM_CONTEXT_KEYS:
+            if k in parent_ctx:
+                session.context[k] = parent_ctx[k]
+
+        # Dedicated craft ID: do not inherit the parent orchestrator's adzump_<session_id> panel
+        parent_craft = parent_ctx.get("craft_id", "")
+        if parent_craft and not parent_craft.startswith("adzump_"):
+            session.context["craft_id"] = parent_craft
+        else:
+            session.context.setdefault("craft_id", "leadform_craft")
+
         if "business_context" not in session.context:
             session.context["business_context"] = build_business_context(parent_ctx.get("product_data", {})).model_dump()
         session.context["lf_phase"] = Phase.MANAGE.value
         session.context["lf_user_message"] = user_message
-        
+
         agent = await get_leadform_agent("manage")
-        
+
     else:  # GENERATE
         session_id = parent_ctx.get("lf_gen_session_id")
-        is_new_session = session_id is None
-        
+
         actual_session_id = await session.get_or_create(session_id or None, auth_context)
         parent_ctx["lf_gen_session_id"] = actual_session_id
-        
-        session.context = {}
+
+        # Bound transcript length to prevent unbounded token growth
+        if len(session.messages) > _MAX_SUBAGENT_MESSAGES:
+            session.messages = session.messages[-_MAX_SUBAGENT_MESSAGES:]
+
+        # Preserve restored context (historical forms, analysis, phase) while syncing latest parent inputs
         session.context["product_data"] = parent_ctx.get("product_data", {})
         session.context["campaign_spec"] = parent_ctx.get("campaign_spec", {})
-        session.context["business_context"] = build_business_context(session.context["product_data"]).model_dump()
-        
-        if is_new_session:
-            session.append_user_message("Begin lead form generation strategy.")
-            
+        # Dedicated craft ID: do not inherit the parent orchestrator's adzump_<session_id> panel
+        parent_craft = parent_ctx.get("craft_id", "")
+        if parent_craft and not parent_craft.startswith("adzump_"):
+            session.context["craft_id"] = parent_craft
+        else:
+            session.context["craft_id"] = "leadform_craft"
+        if "business_context" not in session.context:
+            session.context["business_context"] = build_business_context(session.context["product_data"]).model_dump()
+
         agent = await get_leadform_agent("generate")
 
     if stream is not None:
@@ -175,9 +241,9 @@ async def run_leadform_session(
     run_started = time.monotonic()
     try:
         await agent.run(user_message=user_message, session=session, event_stream=wrapped)
-    except Exception as exc:
+    except Exception:
         status = "failed"
-        logger.exception("Leadform agent run failed: %s", exc)
+        logger.exception("Leadform agent run failed")
     finally:
         if stream is not None:
             try:
@@ -185,15 +251,17 @@ async def run_leadform_session(
                     "leadform_agent", status=status,
                     duration_ms=int((time.monotonic() - run_started) * 1000),
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to emit leadform_agent finished event: %s", exc)
 
     keys_to_sync = [
         "lead_form_draft", 
         "advertiser_knowledge", 
         "historical_forms", 
         "lead_form_published",
+        "meta_lead_form_id",
         "_pending_uploads",
+        "awaiting_publish_confirmation",
     ]
     for key in keys_to_sync:
         if key in session.context:

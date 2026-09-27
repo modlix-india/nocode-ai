@@ -69,6 +69,15 @@ class ParseQuestionTests(unittest.TestCase):
         q = _parse_question({"type": ""})
         self.assertEqual(q.type, QuestionCategory.SHORT_ANSWER)
 
+    def test_high_value_types_date_time_and_store_lookup_preserved(self):
+        q_dt = _parse_question({"type": "DATE_TIME", "label": "Preferred test-drive time"})
+        self.assertEqual(q_dt.type, QuestionCategory.DATE_TIME)
+        self.assertEqual(q_dt.label, "Preferred test-drive time")
+
+        q_sl = _parse_question({"type": "STORE_LOOKUP", "label": "Nearest showroom"})
+        self.assertEqual(q_sl.type, QuestionCategory.STORE_LOOKUP)
+        self.assertEqual(q_sl.label, "Nearest showroom")
+
 
 class ParseLeadgenFormsTests(unittest.TestCase):
     def test_empty_list_returns_empty(self):
@@ -124,6 +133,40 @@ class ParseLeadgenFormsTests(unittest.TestCase):
         # Only the dict entry should be parsed; the string is silently skipped.
         self.assertEqual(len(profiles[0].questions), 1)
         self.assertEqual(profiles[0].questions[0].type, QuestionCategory.EMAIL)
+
+    def test_question_with_null_type_handled_gracefully(self):
+        q = _parse_question({"type": None, "label": "Preferred Time"})
+        self.assertIsNotNone(q)
+        self.assertEqual(q.type, QuestionCategory.SHORT_ANSWER)
+        self.assertEqual(q.label, "Preferred Time")
+
+    def test_question_with_non_string_type_handled_gracefully(self):
+        q_num = _parse_question({"type": 12345, "label": "Number Type"})
+        self.assertIsNotNone(q_num)
+        self.assertEqual(q_num.type, QuestionCategory.SHORT_ANSWER)
+
+        q_list = _parse_question({"type": ["invalid"], "label": "List Type"})
+        self.assertIsNotNone(q_list)
+        self.assertEqual(q_list.type, QuestionCategory.SHORT_ANSWER)
+
+    def test_empty_question_returns_none(self):
+        self.assertIsNone(_parse_question({}))
+        self.assertIsNone(_parse_question({"type": None, "label": None}))
+        self.assertIsNone(_parse_question(None))
+
+    def test_malformed_question_does_not_discard_valid_questions_or_form(self):
+        raw = _raw_form(
+            questions=[
+                {"type": "EMAIL"},
+                {"type": None, "label": None},  # completely empty/null -> returns None
+                {"type": "PHONE"},
+            ]
+        )
+        profiles = parse_leadgen_forms([raw])
+        self.assertEqual(len(profiles), 1)
+        self.assertEqual(len(profiles[0].questions), 2)
+        self.assertEqual(profiles[0].questions[0].type, QuestionCategory.EMAIL)
+        self.assertEqual(profiles[0].questions[1].type, QuestionCategory.PHONE)
 
 
 if __name__ == "__main__":

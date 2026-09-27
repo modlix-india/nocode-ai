@@ -15,6 +15,7 @@ from app.agents.adzump.agents.leadform.models import (
     MAX_CUSTOM_QUESTIONS_COUNT,
     MAX_QUESTION_KEY_LENGTH,
     MAX_QUESTION_PAGE_HEADLINE_LENGTH,
+    QUESTION_SCHEMA_PARAM,
     ContextCard,
     ContextCardStyle,
     LeadFormQuestion,
@@ -25,7 +26,16 @@ from app.agents.adzump.agents.leadform.models import (
 
 
 def _minimal_form(**overrides) -> LeadFormRecommendation:
-    """Returns the simplest valid LeadFormRecommendation with optional field overrides."""
+    """Returns the simplest valid LeadFormRecommendation with optional field overrides.
+
+    Supplies a single EMAIL prefill question by default so every call site that
+    does not override 'questions' still satisfies the H2 minimum-one-question guard.
+    Callers that pass their own 'questions' list override this default.
+    """
+    overrides.setdefault(
+        "questions",
+        [LeadFormQuestion(type=QuestionCategory.EMAIL)],
+    )
     return LeadFormRecommendation(**overrides)
 
 
@@ -51,6 +61,26 @@ class LeadFormQuestionAutoKeyTests(unittest.TestCase):
     def test_prefill_type_does_not_auto_generate_key(self):
         q = LeadFormQuestion(type=QuestionCategory.EMAIL)
         self.assertEqual(q.key, "")
+
+    def test_marital_status_wire_value_is_maritial_status(self):
+        q1 = LeadFormQuestion(type=QuestionCategory.MARITAL_STATUS)
+        self.assertEqual(q1.type.value, "MARITIAL_STATUS")
+        q2 = LeadFormQuestion(type="MARITAL_STATUS")
+        self.assertEqual(q2.type.value, "MARITIAL_STATUS")
+
+    def test_high_value_types_date_time_and_store_lookup(self):
+        q_dt = LeadFormQuestion(type=QuestionCategory.DATE_TIME)
+        self.assertEqual(q_dt.type.value, "DATE_TIME")
+        q_sl = LeadFormQuestion(type=QuestionCategory.STORE_LOOKUP)
+        self.assertEqual(q_sl.type.value, "STORE_LOOKUP")
+
+    def test_question_schema_param_declares_all_enums(self):
+        enum_list = QUESTION_SCHEMA_PARAM["items"]["properties"]["type"]["enum"]
+        self.assertIn("MARITIAL_STATUS", enum_list)
+        self.assertIn("DATE_TIME", enum_list)
+        self.assertIn("STORE_LOOKUP", enum_list)
+        self.assertNotIn("NATIONAL_ID_NUMBER", enum_list)
+        self.assertEqual(len(enum_list), len(QuestionCategory))
 
 
 class ContextCardValidationTests(unittest.TestCase):
@@ -117,6 +147,22 @@ class LeadFormRecommendationValidationTests(unittest.TestCase):
     def test_valid_minimal_form_passes(self):
         form = _minimal_form()
         self.assertIsInstance(form, LeadFormRecommendation)
+
+    # ── H2: minimum-one-question guard ───────────────────────────────────────
+
+    def test_zero_questions_raises(self):
+        """H2: A form with no questions must be rejected at draft-validation time,
+        before it can reach the irreversible publish_to_meta call."""
+        with self.assertRaises(pydantic.ValidationError) as ctx:
+            LeadFormRecommendation(questions=[])
+        self.assertIn("at least one question", str(ctx.exception))
+
+    def test_single_prefill_question_passes(self):
+        """H2: A form with exactly one prefill question must be accepted."""
+        form = LeadFormRecommendation(
+            questions=[LeadFormQuestion(type=QuestionCategory.EMAIL)]
+        )
+        self.assertEqual(len(form.questions), 1)
 
     def test_question_page_headline_over_limit_raises(self):
         with self.assertRaises(pydantic.ValidationError):
@@ -229,6 +275,30 @@ class LeadFormRecommendationValidationTests(unittest.TestCase):
             business_phone_number="",
         )
 
+    # ── is_phone_sms_verify_enabled validation ───────────────────────────────
+
+    def test_phone_sms_verify_with_phone_passes(self):
+        form = _minimal_form(
+            is_phone_sms_verify_enabled=True,
+            questions=[LeadFormQuestion(type=QuestionCategory.PHONE, label="Phone")],
+        )
+        self.assertTrue(form.is_phone_sms_verify_enabled)
+
+    def test_phone_sms_verify_with_phone_otp_passes(self):
+        form = _minimal_form(
+            is_phone_sms_verify_enabled=True,
+            questions=[LeadFormQuestion(type=QuestionCategory.PHONE_OTP, label="Phone OTP")],
+        )
+        self.assertTrue(form.is_phone_sms_verify_enabled)
+
+    def test_phone_sms_verify_without_phone_raises(self):
+        with self.assertRaises(pydantic.ValidationError):
+            _minimal_form(
+                is_phone_sms_verify_enabled=True,
+                questions=[LeadFormQuestion(type=QuestionCategory.EMAIL, label="Email")],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
+

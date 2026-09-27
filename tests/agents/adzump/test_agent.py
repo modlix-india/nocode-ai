@@ -96,7 +96,10 @@ class InstagramOptionalTests(unittest.TestCase):
 
     def test_declined_drops_ig_and_reaches_review(self):
         # regression: F3 (Instagram optional)
-        spec = {**self.META_FULL, "ig_page_declined": "true"}
+        # lead_form_offer_declined must also be set so the guided lead form step
+        # is skipped and the test reaches the review & publish prescription.
+        spec = {**self.META_FULL, "ig_page_declined": "true",
+                "lead_form_offer_declined": "true"}
         m = _next_action(make_cctx(spec, product=SAAS))
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
@@ -107,10 +110,91 @@ class InstagramOptionalTests(unittest.TestCase):
         # fb_page set but IG neither picked nor declined → not complete yet
         self.assertEqual(
             _review_hint_if_complete(dict(self.META_FULL), {"product_data": SAAS}), "")
-        hint = _review_hint_if_complete({**self.META_FULL, "ig_page_declined": "true"},
-                                        {"product_data": SAAS})
+        # IG declined but lead form offer not yet resolved → still not complete
+        self.assertEqual(
+            _review_hint_if_complete({**self.META_FULL, "ig_page_declined": "true"},
+                                     {"product_data": SAAS}), "",
+            "review hint must be suppressed until lead form offer is also resolved")
+        # Both IG declined AND lead form offer declined → now complete
+        hint = _review_hint_if_complete(
+            {**self.META_FULL, "ig_page_declined": "true", "lead_form_offer_declined": "true"},
+            {"product_data": SAAS},
+        )
         self.assertNotEqual(hint, "")
         self.assertIn("not linked (Facebook only)", hint)
+
+
+# ── Guided Lead Form Step ────────────────────────────────────────────────────
+# The lead form offer is an explicit campaign assembly step inserted after all
+# account/page fields are collected for Meta campaigns, before review & publish.
+class GuidedLeadFormStepTests(unittest.TestCase):
+    # A fully-filled Meta spec with IG declined but NO lead_form_offer_declined.
+    META_COMPLETE = {
+        "platform": "Meta", "duration": "30 days", "budget": "$50/day",
+        "parent_account": "P", "account": "A", "fb_page": "123456",
+        "ig_page_declined": "true",
+    }
+
+    def test_lead_form_offer_shown_before_review(self):
+        """When all fields are set but offer not yet made, prescribe the offer."""
+        m = _next_action(make_cctx(self.META_COMPLETE, product=SAAS))
+        self.assertTrue(any("lead_form_offer" in x for x in m),
+                        f"Expected lead_form_offer prescription; got: {m}")
+        self.assertFalse(any("review & publish" in x.lower() for x in m),
+                        "review & publish must NOT appear before the lead form offer")
+
+    def test_lead_form_offer_declined_reaches_review(self):
+        """When offer is declined, orchestrator proceeds to campaign review."""
+        spec = {**self.META_COMPLETE, "lead_form_offer_declined": "true"}
+        m = _next_action(make_cctx(spec, product=SAAS))
+        self.assertTrue(any("review" in x.lower() for x in m),
+                        f"Expected review & publish after decline; got: {m}")
+        self.assertFalse(any("lead_form_offer" in x for x in m),
+                        "lead_form_offer must NOT re-appear after decline")
+
+    def test_active_draft_routes_to_subagent(self):
+        """While a draft is active, orchestrator must hand off to lead form sub-agent."""
+        m = _next_action(make_cctx(
+            self.META_COMPLETE, product=SAAS,
+            lead_form_draft={"name": "Test Form"}, lead_form_published=False,
+        ))
+        self.assertTrue(any("lead_form_active" in x for x in m),
+                        f"Expected lead_form_active handoff; got: {m}")
+        self.assertTrue(any("suggest_lead_form" in x for x in m),
+                        "lead_form_active must instruct calling suggest_lead_form")
+        self.assertFalse(any("review & publish" in x.lower() for x in m),
+                        "review & publish must NOT appear while draft is active")
+
+    def test_published_form_reaches_review(self):
+        """After form is published, orchestrator proceeds to campaign review."""
+        m = _next_action(make_cctx(
+            self.META_COMPLETE, product=SAAS,
+            lead_form_published=True,
+        ))
+        self.assertTrue(any("review" in x.lower() for x in m),
+                        f"Expected review & publish after publish; got: {m}")
+        self.assertFalse(any("lead_form_offer" in x for x in m),
+                        "lead_form_offer must NOT re-appear after form is published")
+
+    def test_google_ads_unaffected(self):
+        """Guided step is Meta-only — Google Ads campaigns reach review directly."""
+        google_spec = {
+            "platform": "Google Ads", "location": "Bengaluru",
+            "duration": "30 days", "budget": "\u20b910,000/day",
+            "competitive_analysis_declined": "true",
+            "parent_account": "1234567890", "account": "4461972633",
+        }
+        product = {
+            "business_type": "real estate", "product_name": "Sumadhura",
+            "target_areas": [{"name": "Bengaluru",
+                              "google": {"resourceName": "geoTargetConstants/1026181"}}],
+        }
+        m = _next_action(make_cctx(google_spec, product=product, attempted=True,
+                                   account_names={"1234567890": "MCC", "4461972633": "Acct"}))
+        self.assertTrue(any("review" in x.lower() for x in m),
+                        f"Expected review for Google Ads; got: {m}")
+        self.assertFalse(any("lead_form" in x for x in m),
+                        "lead_form prescription must not appear for Google Ads")
 
 
 # ── PR2 / F17b · tagged-answer capture ──────────────────────────────────────

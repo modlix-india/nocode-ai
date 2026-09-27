@@ -5,7 +5,7 @@ tool dispatch), it gets its own event stream. We don't want a fresh
 queue — we want the sub-agent's events to *forward* to the parent stream
 for some event types and *drop* for others.
 
-Forward/drop matrix (mirrors LocationPassthroughEventStream):
+Forward/drop matrix:
   ┌──────────────────────────┬────────────┬────────────────────────────────┐
   │ Event                    │ Behaviour  │ Why                            │
   ├──────────────────────────┼────────────┼────────────────────────────────┤
@@ -16,16 +16,14 @@ Forward/drop matrix (mirrors LocationPassthroughEventStream):
   │ agent_usage              │ forward    │ Token usage                    │
   │ thinking                 │ forward    │ CoT reasoning                  │
   │ text                     │ forward    │ User sees MANAGE-phase chat    │
+  │ craft / craft_text       │ forward    │ Form preview card rendering    │
+  │ error                    │ forward    │ UI receives error telemetry    │
   ├──────────────────────────┼────────────┼────────────────────────────────┤
   │ done                     │ drop       │ Parent owns turn-completion    │
   │ keepalive                │ drop       │ Connection-level, parent owns  │
   │ suggestions              │ drop       │ Sub-agent can't ask chips      │
   │ feedback_request         │ drop       │ Sub-agent can't request        │
   │                          │            │ feedback mid-turn              │
-  ├──────────────────────────┼────────────┼────────────────────────────────┤
-  │ error                    │ log+drop   │ Parent tool wrapper converts   │
-  │                          │            │ failures into ToolResult;      │
-  │                          │            │ no double-emit.                │
   └──────────────────────────┴────────────┴────────────────────────────────┘
 
 Cancellation is special: ``is_cancelled`` and ``cancel()`` delegate to the
@@ -36,6 +34,7 @@ without us having to mirror the cancel flag.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from app.core.streaming import AgentEventStream
 
@@ -55,7 +54,7 @@ class LeadFormEventStream(AgentEventStream):
         super().__init__()
         self._parent = parent
 
-    # ── Cancellation: delegate ─────────────────────────────────────────────
+    #Cancellation: delegate
     @property
     def is_cancelled(self) -> bool:
         return getattr(self._parent, "is_cancelled", False)
@@ -63,10 +62,10 @@ class LeadFormEventStream(AgentEventStream):
     def cancel(self) -> None:
         try:
             self._parent.cancel()
-        except Exception:
-            pass  # suppress: cancel is best-effort
+        except Exception as e:
+            logger.debug("Subagent parent cancel failed: %s", e)
 
-    # ── Forwarded events (UI needs these) ─────────────────────────────────
+    #Forwarded events (UI needs these)
     async def emit_text(self, text: str) -> None:
         """Forward chat text — the user sees MANAGE-phase responses."""
         await self._parent.emit_text(text)
@@ -74,16 +73,20 @@ class LeadFormEventStream(AgentEventStream):
     async def emit_thinking(self, reasoning: str) -> None:
         await self._parent.emit_thinking(reasoning)
 
-    async def emit_tool_start(self, tool_name, tool_input, tool_use_id="", display_name="") -> None:
+    async def emit_tool_start(
+        self, tool_name: str, tool_input: dict[str, Any], tool_use_id: str = "", display_name: str = ""
+    ) -> None:
         await self._parent.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
     async def emit_tool_update(self, tool_use_id: str, message: str) -> None:
         await self._parent.emit_tool_update(tool_use_id, message)
 
-    async def emit_tool_result(self, tool_name, success, summary, tool_use_id="") -> None:
+    async def emit_tool_result(
+        self, tool_name: str, success: bool, summary: str, tool_use_id: str = ""
+    ) -> None:
         await self._parent.emit_tool_result(tool_name, success, summary, tool_use_id)
 
-    async def emit_data(self, data_type: str, payload: dict) -> None:
+    async def emit_data(self, data_type: str, payload: dict[str, Any]) -> None:
         await self._parent.emit_data(data_type, payload)
 
     async def emit_agent_started(self, agent_id: str, label: str, parent_id: str = "root",
@@ -104,26 +107,35 @@ class LeadFormEventStream(AgentEventStream):
     async def emit_agent_usage(self, agent_id: str, tokens_in: int, tokens_out: int) -> None:
         await self._parent.emit_agent_usage(agent_id, tokens_in, tokens_out)
 
-    async def emit_craft(self, craft_id, title, blocks, message_id="", append=False) -> None:
+    async def emit_craft(
+        self,
+        craft_id: str,
+        title: str,
+        blocks: list[dict[str, Any]],
+        message_id: str = "",
+        append: bool = False,
+    ) -> None:
         await self._parent.emit_craft(craft_id, title, blocks, message_id=message_id, append=append)
 
     async def emit_craft_text(self, craft_id: str, text_delta: str) -> None:
         await self._parent.emit_craft_text(craft_id, text_delta)
 
-    # ── Dropped events (parent owns these) ────────────────────────────────
-    async def emit_done(self, session_id: str = "", usage: dict | None = None) -> None:
+    #Dropped events (parent owns these
+    async def emit_done(self, session_id: str = "", usage: dict[str, Any] | None = None) -> None:
         return
 
     async def emit_keepalive(self) -> None:
         return
 
-    async def emit_suggestions(self, options, mode="single") -> None:
+    async def emit_suggestions(
+        self, options: list[dict[str, str]], mode: str = "single"
+    ) -> None:
         return
 
     async def emit_feedback_request(self, session_id: str, turn_number: int) -> None:
         return
 
-    # ── Forwarded to parent to ensure UI receives error telemetry ──
+    #Forwarded to parent to ensure UI receives error telemetry
     async def emit_error(self, message: str) -> None:
         logger.warning("leadform_substream_error: %s", message[:200])
         await self._parent.emit_error(message)
