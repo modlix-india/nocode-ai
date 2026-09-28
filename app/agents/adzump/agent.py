@@ -86,10 +86,10 @@ class AdzumpAgent(BaseAgent):
         finally:
             self._current_stream = None
 
-    # Before the model runs: re-read the competitor list from its saved rows (a
-    # UI delete or ad hide may have changed it since the last reply) and repaint
-    # the panel only if it changed. On a database error the chat's own copy
-    # serves this reply.
+    # Before the model runs: re-read the competitor list from its saved rows -
+    # another chat on this product (a second tab, a teammate) may have added or
+    # removed competitors since the last reply - and repaint the panel only if
+    # it changed. On a database error the chat's own copy serves this reply.
     async def _refresh_competitor_list(
         self, session: BaseSession, event_stream: AgentEventStream,
     ) -> None:

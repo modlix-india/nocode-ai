@@ -7,9 +7,12 @@ website-less competitor keys by name.
 from __future__ import annotations
 
 import json
+import os
 import unittest
 
-from app.agents.adzump.creative_intelligence.models import Creative, Essence, Rendition
+from app.agents.adzump.creative_intelligence.models import (
+    Competitor, Creative, Essence, Rendition,
+)
 from app.agents.adzump.stores import competitors
 
 
@@ -92,3 +95,96 @@ class CreativeRoundTripTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(os.environ.get("ADZUMP_MYSQL_TESTS"),
+                     "set ADZUMP_MYSQL_TESTS=1 to run against local MySQL")
+class CompetitorWritesMySQLTests(unittest.IsolatedAsyncioTestCase):
+    """The single-row writes against a real MySQL (local 15001 by default):
+    landing on a saved row, update order and unique keys are MySQL behaviour
+    mocks can't check. Scratch rows live under client ZZSQLTEST, removed after."""
+
+    CC = "ZZSQLTEST"
+
+    async def asyncSetUp(self):
+        from app.config import settings
+        from app.db import connection
+        from app.agents.adzump.models.product import Product
+        from app.agents.adzump.stores import products
+        settings.MYSQL_URL = os.environ.get("ADZUMP_MYSQL_URL", "jdbc:mysql://127.0.0.1:15001/ai")
+        settings.MYSQL_USERNAME = os.environ.get("ADZUMP_MYSQL_USER", "root")
+        settings.MYSQL_PASSWORD = os.environ.get("ADZUMP_MYSQL_PASSWORD", "root")
+        await connection.init_db_pool()
+        self.url = f"https://{self._testMethodName.replace('_', '-')}.example"
+        self.pid = await products.upsert_product(self.CC, Product(product_name="Scratch"), self.url)
+
+    async def asyncTearDown(self):
+        from app.db import connection
+        await connection.execute_query(  # competitors and their ads cascade
+            "DELETE FROM adzump_products WHERE client_code=%s", (self.CC,))
+        await connection.close_db_pool()
+
+    async def _row(self, row_id):
+        from app.db import connection
+        rows = await connection.execute_query(
+            "SELECT name, url, url_source, status, creative_status, location, pricing "
+            "FROM adzump_competitors WHERE id=%s", (row_id,))
+        return rows[0]
+
+    async def _add(self, profile, revive=False):
+        return await competitors.add_competitor(self.CC, self.pid, profile, revive=revive)
+
+    async def test_add_lands_on_the_saved_row(self):
+        sobha = await self._add({"name": "Sobha Magnus", "url": "https://sobha.com/magnus"})
+        rows = [  # (case, profile, same row)
+            ("same name", {"name": "Sobha Magnus"}, True),
+            ("same website, another name", {"name": "Sobha Magnus Phase 2",
+                                            "url": "https://www.sobha.com/magnus/"}, True),
+            ("new competitor", {"name": "Prestige Lakeside"}, False),
+        ]
+        for case, profile, same in rows:
+            with self.subTest(case):
+                self.assertEqual(await self._add(profile) == sobha, same)
+        self.assertEqual((await self._row(sobha))["name"], "Sobha Magnus")  # never renamed
+
+    async def test_only_the_user_brings_back_a_deleted_row(self):
+        row_id = await self._add({"name": "Sobha Magnus"})
+        await competitors.delete_competitor(self.CC, self.pid, row_id)
+        self.assertIsNone(await self._add({"name": "Sobha Magnus"}))  # research
+        self.assertEqual((await self._row(row_id))["status"], "deleted")
+        self.assertEqual(await self._add({"name": "Sobha Magnus"}, revive=True), row_id)
+        self.assertEqual((await self._row(row_id))["status"], "active")
+
+    async def test_a_landing_fills_only_empty_fields(self):
+        row_id = await self._add({"name": "Sobha Magnus", "location": "Hebbal"})
+        await self._add({"name": "Sobha Magnus", "location": "Whitefield", "pricing": "2 Cr"})
+        await competitors.fill_competitor_profile(
+            self.CC, self.pid, row_id, {"location": "Sarjapur", "pricing": "3 Cr"})
+        row = await self._row(row_id)
+        self.assertEqual((row["location"], row["pricing"]), ("Hebbal", "2 Cr"))
+
+    async def test_set_competitor_website(self):
+        sobha = await self._add({"name": "Sobha Magnus"})
+        prestige = await self._add({"name": "Prestige Lakeside", "url": "https://prestige.com/lake"})
+        taken = await competitors.set_competitor_website(
+            self.CC, self.pid, sobha, "https://prestige.com/lake", "user",
+            reset_ads=True, keep_user_pin=False)
+        self.assertFalse(taken)
+        self.assertTrue(await competitors.set_competitor_website(
+            self.CC, self.pid, sobha, "https://sobha.com/magnus", "user",
+            reset_ads=True, keep_user_pin=False))
+        row = await self._row(sobha)
+        self.assertEqual((row["url"], row["url_source"], row["creative_status"]),
+                         ("https://sobha.com/magnus", "user", "pending"))
+        pin_held = await competitors.set_competitor_website(
+            self.CC, self.pid, sobha, "https://sobha.com/other", None,
+            reset_ads=False, keep_user_pin=True)
+        self.assertFalse(pin_held)
+        self.assertEqual((await self._row(prestige))["url"], "https://prestige.com/lake")
+
+    async def test_ads_write_never_moves_a_website(self):
+        row_id = await self._add({"name": "Sobha Magnus", "url": "https://sobha.com/magnus"})
+        record = Competitor(competitor_key=competitors.name_key("Sobha Magnus"),
+                            name="Sobha Magnus")
+        self.assertEqual(await competitors.sync_competitor(self.CC, self.url, record), row_id)
+        self.assertEqual((await self._row(row_id))["url"], "https://sobha.com/magnus")

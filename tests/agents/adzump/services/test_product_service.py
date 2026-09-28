@@ -9,6 +9,7 @@ contract fields and keeps the competitive block honest.
 from __future__ import annotations
 
 import inspect
+import types
 import unittest
 from unittest import mock
 
@@ -24,7 +25,7 @@ from tests.agents.adzump._fixtures import RE
 # Captured before any patch replaces them: _awaited_arg binds against these.
 _UPSERT_PRODUCT = stores.products.upsert_product
 _UPSERT_FLOW = stores.flows.upsert_flow
-_SYNC_PROFILES = stores.competitors.sync_competitor_profiles
+_SET_WEBSITE = stores.competitors.set_competitor_website
 _MIRROR = product_service._mirror_modlix_record
 
 
@@ -207,7 +208,8 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         "competitor_analysis": {"competitors": [{"name": "Sobha"}]},
         "_session_id": "sess-1",
     }
-    CTX = {"client_code": "GRMEL", "user_id": 7, "session_id": "sess-1"}
+    CTX = {"client_code": "GRMEL", "auth": types.SimpleNamespace(user_id=7),
+           "session_id": "sess-1"}
 
     def _patches(self):
         return (
@@ -215,21 +217,19 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
                        new=mock.AsyncMock(return_value=42)),
             mock.patch("app.agents.adzump.stores.flows.upsert_flow",
                        new=mock.AsyncMock()),
-            mock.patch("app.agents.adzump.stores.competitors.sync_competitor_profiles",
-                       new=mock.AsyncMock(return_value=[5])),
             mock.patch("app.agents.adzump.services.product_service._mirror_modlix_record",
                        new=mock.AsyncMock(return_value="rec-1")),
-            mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
-                       new=mock.AsyncMock(return_value=[])),
         )
 
     async def test_mysql_written_then_mirror_without_campaign(self):
-        p_prod, p_camp, p_profiles, p_mirror, p_rows = self._patches()
-        with p_prod as m_prod, p_camp as m_camp, \
-             p_profiles as m_profiles, p_mirror as m_mirror, p_rows:
+        p_prod, p_camp, p_mirror = self._patches()
+        with p_prod as m_prod, p_camp as m_camp, p_mirror as m_mirror, \
+             mock.patch("app.agents.adzump.stores.competitors.add_competitor") as m_add, \
+             mock.patch("app.agents.adzump.stores.competitors.delete_competitor") as m_delete:
             result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
         self.assertEqual(result, "rec-1")
         m_prod.assert_awaited_once()
+        self.assertEqual(_awaited_arg(m_prod, _UPSERT_PRODUCT, "user_id"), 7)
         # The display profile persists on the typed Product; the machine brief
         # (product_data.summary) stays its own field.
         saved_product = _awaited_arg(m_prod, _UPSERT_PRODUCT, "product")
@@ -238,57 +238,26 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(saved_product.summary, "villas")
         draft = _awaited_arg(m_camp, _UPSERT_FLOW, "data")
         self.assertEqual(draft["platform"], "Meta")
-        # The competitor list's one home is its rows, never the draft.
+        # The competitor list's one home is its rows, never the draft, and the
+        # end-of-reply save never writes them: each change writes its own row.
         self.assertNotIn("competitors", draft)
-        self.assertEqual(_awaited_arg(m_profiles, _SYNC_PROFILES, "competitors"),
-                         [{"name": "Sobha", "row_id": 5}])
+        m_add.assert_not_called()
+        m_delete.assert_not_called()
         mirror_record = _awaited_arg(m_mirror, _MIRROR, "record")
         self.assertNotIn("campaign", mirror_record)
-        self.assertEqual(mirror_record["competitors"], [{"name": "Sobha", "row_id": 5}])
+        self.assertEqual(mirror_record["competitors"], [{"name": "Sobha"}])
 
     async def test_mysql_failure_raises_mirror_failure_does_not(self):
-        p_prod, p_camp, p_profiles, p_mirror, p_rows = self._patches()
-        with p_prod, p_camp as m_camp, p_profiles, p_mirror, p_rows:
+        p_prod, p_camp, p_mirror = self._patches()
+        with p_prod, p_camp as m_camp, p_mirror:
             m_camp.side_effect = RuntimeError("db down")
             with self.assertRaises(RuntimeError):
                 await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
-        p_prod2, p_camp2, p_profiles2, p_mirror2, p_rows2 = self._patches()
-        with p_prod2, p_camp2, p_profiles2, p_mirror2 as m_mirror, p_rows2:
+        p_prod2, p_camp2, p_mirror2 = self._patches()
+        with p_prod2, p_camp2, p_mirror2 as m_mirror:
             m_mirror.return_value = None  # mirror failed internally, warn-only
             result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
         self.assertIsNone(result)
-
-    async def test_competitor_list_writes_back_to_its_rows(self):
-        new, kept, deleted_elsewhere = (
-            {"name": "New"}, {"name": "Kept", "row_id": 2},
-            {"name": "Gone", "row_id": 3})
-        rows = [  # (label, competitor_analysis, stored row ids, synced, session after)
-            ("never loaded: rows untouched", None, [2, 3], None, None),
-            ("stored entry whose row vanished is dropped, new one gets its id",
-             [new, kept, deleted_elsewhere], [2], [new, kept],
-             [{"name": "New", "row_id": 9}, {"name": "Kept", "row_id": 2}]),
-            ("an emptied list clears the rows", [], [2], [], []),
-        ]
-        for label, competitors, stored, synced, after in rows:
-            with self.subTest(label):
-                session = _session(self.SESSION)
-                session.pop("competitor_analysis")
-                if competitors is not None:
-                    session["competitor_analysis"] = {
-                        "competitors": [dict(c) for c in competitors]}
-                p_prod, p_camp, p_profiles, p_mirror, p_rows = self._patches()
-                with p_prod, p_camp, p_profiles as m_profiles, p_mirror, \
-                     p_rows as m_rows:
-                    m_rows.return_value = [{"id": i} for i in stored]
-                    m_profiles.return_value = [9, 2][:len(synced or [])]
-                    await product_service.save_campaign(session, dict(self.CTX))
-                if synced is None:
-                    m_profiles.assert_not_awaited()
-                    continue
-                self.assertEqual(
-                    [c["name"] for c in _awaited_arg(m_profiles, _SYNC_PROFILES, "competitors")],
-                    [c["name"] for c in synced])
-                self.assertEqual(session["competitor_analysis"]["competitors"], after)
 
     async def test_hydrate_mysql_hit_skips_modlix(self):
         product = Product(product_name="Springs", summary="villas",
@@ -339,9 +308,124 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         m_modlix.assert_not_awaited()
 
 
+class SaveCompetitorsTests(unittest.IsolatedAsyncioTestCase):
+    """Each competitor change writes only its own row - never the chat's whole
+    list, so a stale chat can't delete what another chat added."""
+
+    SESSION = {"product_profile": {"url": "https://springs.com"}}
+    ROW = {"id": 2, "url": "https://old.com/a", "url_source": ""}
+
+    async def _save(self, entries, *, named_by_user=False, rows=(), pid=42,
+                    added=9, moved=True):
+        with mock.patch("app.agents.adzump.stores.products.product_id",
+                        new=mock.AsyncMock(return_value=pid)), \
+             mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
+                        new=mock.AsyncMock(return_value=list(rows))) as m_rows, \
+             mock.patch("app.agents.adzump.stores.competitors.add_competitor",
+                        new=mock.AsyncMock(return_value=added)) as m_add, \
+             mock.patch("app.agents.adzump.stores.competitors.fill_competitor_profile",
+                        new=mock.AsyncMock()) as m_fill, \
+             mock.patch("app.agents.adzump.stores.competitors.set_competitor_website",
+                        new=mock.AsyncMock(return_value=moved)) as m_site:
+            not_landed = await product_service.save_competitors(
+                dict(self.SESSION), {"client_code": "GRMEL"}, entries,
+                named_by_user=named_by_user)
+        return not_landed, m_rows, m_add, m_fill, m_site
+
+    async def test_each_entry_is_its_own_change(self):
+        row = self.ROW
+        rows = [  # (case, entry, kwargs, landed, added with revive, filled, website call)
+            ("new research entry: added, never revived", {"name": "New"}, {},
+             True, False, False, None),
+            ("user named it: may revive a deleted row", {"name": "New"},
+             {"named_by_user": True}, True, True, False, None),
+            ("add didn't land", {"name": "New"}, {"added": None}, False, False, False, None),
+            ("saved entry: fills its own row", {"name": "Old", "row_id": 2, "url": row["url"]},
+             {"rows": [row]}, True, None, True, None),
+            ("its row was removed since: nothing written", {"name": "Old", "row_id": 3},
+             {"rows": [row]}, False, None, False, None),
+            ("new host: website moves, ads reset",
+             {"name": "Old", "row_id": 2, "url": "https://new.com/a"},
+             {"rows": [row]}, True, None, True, {"reset_ads": True, "keep_user_pin": True}),
+            ("same host, new path: ads kept",
+             {"name": "Old", "row_id": 2, "url": "https://old.com/b"},
+             {"rows": [row]}, True, None, True, {"reset_ads": False, "keep_user_pin": True}),
+            ("user pin holds", {"name": "Old", "row_id": 2, "url": "https://new.com/a"},
+             {"rows": [{**row, "url_source": "user"}]}, True, None, True, None),
+        ]
+        for case, entry, kwargs, landed, revive, filled, site in rows:
+            with self.subTest(case):
+                entry = dict(entry)
+                not_landed, _, m_add, m_fill, m_site = await self._save([entry], **kwargs)
+                self.assertEqual(not_landed == [], landed)
+                if revive is None:
+                    m_add.assert_not_awaited()
+                else:
+                    self.assertEqual(m_add.await_args.kwargs["revive"], revive)
+                self.assertEqual(m_fill.await_count, int(filled))
+                if site is None:
+                    m_site.assert_not_awaited()
+                else:
+                    self.assertEqual(
+                        {k: m_site.await_args.kwargs[k] for k in site}, site)
+
+    async def test_new_entry_takes_its_row_id(self):
+        entry = {"name": "New"}
+        await self._save([entry])
+        self.assertEqual(entry["row_id"], 9)
+
+    async def test_website_taken_keeps_the_rows_own(self):
+        entry = {"name": "Old", "row_id": 2, "url": "https://new.com/a"}
+        await self._save([entry], rows=[self.ROW], moved=False)
+        self.assertEqual(entry["url"], self.ROW["url"])
+
+    async def test_no_product_row_writes_nothing(self):
+        not_landed, m_rows, m_add, _, _ = await self._save([{"name": "New"}], pid=None)
+        self.assertEqual(not_landed, [])
+        m_rows.assert_not_awaited()
+        m_add.assert_not_awaited()
+
+
+class RemoveAndPinTests(unittest.IsolatedAsyncioTestCase):
+    SESSION = {"product_profile": {"url": "https://springs.com"}}
+    CTX = {"client_code": "GRMEL"}
+
+    def _patch_pid(self):
+        return mock.patch("app.agents.adzump.stores.products.product_id",
+                          new=mock.AsyncMock(return_value=42))
+
+    async def test_remove_marks_only_saved_rows(self):
+        with self._patch_pid(), mock.patch(
+                "app.agents.adzump.stores.competitors.delete_competitor",
+                new=mock.AsyncMock(return_value=True)) as m_delete:
+            await product_service.remove_competitors(
+                dict(self.SESSION), self.CTX, [{"name": "Saved", "row_id": 2}, {"name": "Unsaved"}])
+        m_delete.assert_awaited_once_with("GRMEL", 42, 2, 0)
+
+    async def test_pin(self):
+        rows = [  # (case, entry, website moved, refusal contains, website written)
+            ("pinned", {"name": "Sobha", "row_id": 2}, True, "", True),
+            ("website taken", {"name": "Sobha", "row_id": 2}, False, "already belongs", True),
+            ("not saved yet", {"name": "Sobha"}, True, "isn't saved yet", False),
+        ]
+        for case, entry, moved, refusal, written in rows:
+            with self.subTest(case), self._patch_pid(), mock.patch(
+                    "app.agents.adzump.stores.competitors.set_competitor_website",
+                    new=mock.AsyncMock(return_value=moved)) as m_site:
+                result = await product_service.pin_competitor_website(
+                    dict(self.SESSION), self.CTX, entry, "https://sobha.com/lake")
+                self.assertIn(refusal, result) if refusal else self.assertEqual(result, "")
+                self.assertEqual(m_site.await_count, int(written))
+                if written:
+                    call = inspect.signature(_SET_WEBSITE).bind(
+                        *m_site.await_args.args, **m_site.await_args.kwargs).arguments
+                    self.assertEqual((call["url_source"], call["reset_ads"], call["keep_user_pin"]),
+                                     ("user", True, False))
+
+
 class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
-    """Turn start re-reads the list from its rows (live 2026-09-25: after a UI
-    delete the reply still said "three competitors remain: Sobha Magnus, ...")."""
+    """Turn start re-reads the list from its rows: another chat on the same
+    product may have added or removed competitors since this chat's last reply."""
 
     CTX = {"client_code": "GRMEL"}
 
@@ -353,7 +437,9 @@ class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
              mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
                         new=mock.AsyncMock(return_value=rows)), \
              mock.patch("app.agents.adzump.stores.competitors.list_product_creatives",
-                        new=mock.AsyncMock(return_value=ads)):
+                        new=mock.AsyncMock(return_value=ads)), \
+             mock.patch("app.agents.adzump.stores.competitors.add_competitor",
+                        new=mock.AsyncMock(return_value=4)) as self.m_add:
             changed = await product_service.refresh_competitor_list(session, self.CTX)
         return changed, session["competitor_analysis"]["competitors"]
 
@@ -366,17 +452,18 @@ class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
             ("unchanged list: no repaint", [sobha, shriram],
              [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok", total=1)],
              {2: [Creative(creative_id="ad-1")]}, False, ["Sobha", "Shriram"]),
-            ("deleted in the UI: dropped", [sobha, shriram],
+            ("removed in another chat: dropped", [sobha, shriram],
              [_row(2, "Shriram", "ok", total=1)],
              {2: [Creative(creative_id="ad-1")]}, True, ["Shriram"]),
-            ("ad hidden in the UI: its ad goes", [sobha, shriram],
+            ("an ad hidden: its ad goes", [sobha, shriram],
              [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok")],
              {}, True, ["Sobha", "Shriram"]),
             ("added by another chat: adopted", [sobha],
              [_row(1, "Sobha", "pending"), _row(3, "Prestige", "pending")],
              {}, True, ["Sobha", "Prestige"]),
-            ("unsaved entry stays", [sobha, unsaved],
-             [_row(1, "Sobha", "pending")], {}, False, ["Sobha", "Brigade"]),
+            ("an unsaved entry is saved first, then read back", [sobha, unsaved],
+             [_row(1, "Sobha", "pending"), _row(4, "Brigade", "pending")],
+             {}, False, ["Sobha", "Brigade"]),
         ]
         for label, entries, stored, ads, changed, names in rows:
             with self.subTest(label):

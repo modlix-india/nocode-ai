@@ -255,13 +255,14 @@ def _find_competitor(competitive: dict, name: str) -> dict | None:
 
 
 async def _apply_url_updates(
-    set_url: str, competitive: dict,
+    set_url: str, competitive: dict, session_ctx: dict, context: dict,
 ) -> tuple[list[str], list[str]]:
     """Pin user-provided URLs onto entries: 'Name | URL' (';'-separated for
-    several). A verified URL becomes the entry's identity (url_source=user -
-    nothing runs after a pin) and the entry's creatives reset so the next
-    fetch runs under the corrected identity. Returns (acks, rejections), both
-    user-facing."""
+    several). A verified URL is saved as the competitor's website first
+    (url_source=user - nothing runs after a pin), then the entry follows; its
+    ads reset so the next fetch runs under the corrected identity. Returns
+    (acks, rejections), both user-facing."""
+    from app.agents.adzump.services.product_service import pin_competitor_website
     acks: list[str] = []
     rejections: list[str] = []
     for spec in (set_url or "").split(";"):
@@ -283,6 +284,10 @@ async def _apply_url_updates(
         verified_url, note = await _verify_competitor_url(entry_name, url)
         if not verified_url:
             rejections.append(note)
+            continue
+        refusal = await pin_competitor_website(session_ctx, context, entry, verified_url)
+        if refusal:
+            rejections.append(refusal)
             continue
         entry["url"] = verified_url
         entry["url_source"] = "user"
@@ -609,10 +614,13 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
         # creatives survive) and appends only the genuinely new ones - ONE
         # competitor group on the panel, however many times research runs.
         fresh_competitors = competitive.get("competitors") or []
-        existing_analysis = session_ctx.get("competitor_analysis") or {}
+        existing_analysis = session_ctx.get("competitor_analysis")
+        if existing_analysis is None:
+            # Never loaded in this chat: merge into the saved list, never replace it.
+            existing_analysis = {"competitors": await _saved_entries(session_ctx, context)}
         had_existing = bool(existing_analysis.get("competitors"))
         appended: list[dict] = fresh_competitors
-        refreshed_count = 0
+        refreshed: list[dict] = []
         if had_existing:
             _normalize_entries(existing_analysis)
             existing_list: list[dict] = existing_analysis["competitors"]
@@ -629,10 +637,13 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
                     appended.append(fresh)
                 else:
                     _refresh_entry(match, fresh)
-                    refreshed_count += 1
+                    refreshed.append(match)
             competitive = existing_analysis
 
         session_ctx["competitor_analysis"] = competitive
+        appended, save_note = await _save_changes(
+            session_ctx, context, competitive, appended + refreshed, appended,
+            named_by_user=False)
         # F26 - fresh analysis ran (even if 0 found): a prior decline is void.
         if clear_competitor_decline(session_ctx):
             logger.info("competitor_decline_cleared: analyze_competitors ran")
@@ -680,7 +691,7 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
         if had_existing:
             summary = (
                 f"Research complete: {len(appended)} new "
-                f"({', '.join(names) or 'none'}), {refreshed_count} already "
+                f"({', '.join(names) or 'none'}), {len(refreshed)} already "
                 f"known and refreshed - {comp_count} competitors total."
             )
         else:
@@ -693,7 +704,8 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
             success=True,
             data={"competitive": competitive},
             summary=summary,
-            model_summary=summary + deleted_note + pending_creatives_fetch_steer(context),
+            model_summary=(summary + deleted_note + save_note
+                           + pending_creatives_fetch_steer(context)),
         )
 
     except Exception as e:
@@ -740,7 +752,10 @@ async def _lookup_single_competitor(
 
     _run_start = _time.monotonic()
 
-    competitive = session_ctx.setdefault("competitor_analysis", {"competitors": []})
+    # A chat that never loaded the list edits the saved one, never an empty copy.
+    competitive = session_ctx.get("competitor_analysis")
+    if competitive is None:
+        competitive = {"competitors": await _saved_entries(session_ctx, context)}
     competitive.setdefault("competitors", [])
     _normalize_entries(competitive)  # heals legacy product_name entries in place
     competitors_list: list[dict] = competitive["competitors"]
@@ -781,19 +796,21 @@ async def _lookup_single_competitor(
                     f"Didn't remove '{requested}' - the user's message names "
                     "a different (or no single) entry; confirm which one."
                 )
-        kept: list[dict] = []
-        for c in competitors_list:
-            cname = _normalize_name(c.get("name") or "")
-            if cname in names_to_remove:
-                removed_names.append(c.get("name") or "?")
-            else:
-                kept.append(c)
+        removed = [c for c in competitors_list
+                   if _normalize_name(c.get("name") or "") in names_to_remove]
+        # The user's "no" is saved before the list changes.
+        if removed:
+            from app.agents.adzump.services.product_service import remove_competitors
+            await remove_competitors(session_ctx, context, removed)
+        removed_names = [c.get("name") or "?" for c in removed]
+        kept = [c for c in competitors_list if all(c is not r for r in removed)]
         competitive["competitors"] = kept
         competitors_list = kept
 
     # ── Additions via ProductAgent ──
     new_competitors: list[dict] = []
     refreshed_names: list[str] = []
+    save_note = ""
     if query:
         from app.agents.adzump.agents.product.agent import get_product_agent
 
@@ -896,6 +913,7 @@ async def _lookup_single_competitor(
         # appended a second Nambiar card). The existing entry updates in
         # place; sibling projects (disjoint project tokens) stay separate.
         truly_new: list[dict] = []
+        refreshed_entries: list[dict] = []
         for fresh in new_competitors:
             existing = next(
                 (c for c in competitors_list if isinstance(c, dict)
@@ -906,13 +924,16 @@ async def _lookup_single_competitor(
                 truly_new.append(fresh)
                 continue
             _refresh_entry(existing, fresh)
+            refreshed_entries.append(existing)
             refreshed_names.append(
                 f"{existing.get('name') or '?'}"
                 + (f" ({existing.get('url')})" if existing.get("url")
                    else " (no official website found)")
             )
-        new_competitors = truly_new
-        competitors_list.extend(new_competitors)
+        competitors_list.extend(truly_new)
+        new_competitors, save_note = await _save_changes(
+            session_ctx, context, competitive, truly_new + refreshed_entries, truly_new,
+            named_by_user=True, skipped=skipped)
         # F26 - competitors were ADDED by name → a prior decline is void. (Not on
         # a pure removal: zeroing the list isn't a reversal of the decline.)
         if new_competitors and clear_competitor_decline(session_ctx):
@@ -922,7 +943,8 @@ async def _lookup_single_competitor(
     url_acks: list[str] = []
     url_rejections: list[str] = []
     if set_url:
-        url_acks, url_rejections = await _apply_url_updates(set_url, competitive)
+        url_acks, url_rejections = await _apply_url_updates(
+            set_url, competitive, session_ctx, context)
 
     # ── Nothing happened ──
     if not removed_names and not new_competitors and not skipped \
@@ -938,6 +960,11 @@ async def _lookup_single_competitor(
             success=False,
             error=f"Could not find information about '{query}'. Ask the user for a URL.",
         )
+
+    session_ctx["competitor_analysis"] = competitive
+    if removed_names or url_acks:
+        # The saved rows are the list now; a failed reload keeps this copy.
+        await _reload_saved_list(session_ctx, context, competitive)
 
     # ── Craft panel update ──
     business = session_ctx.get("product_data") or {}
@@ -978,6 +1005,8 @@ async def _lookup_single_competitor(
     if url_rejections:
         sections.append("**Not updated:**\n"
                         + "\n".join(f"- {r}" for r in url_rejections))
+    if save_note:
+        sections.append(save_note.strip())
     if skipped:
         skip_lines = [
             f"- {s.get('name', '?')} - {s.get('reason', 'not a direct competitor')}"
@@ -991,6 +1020,54 @@ async def _lookup_single_competitor(
         data={"competitors": competitive["competitors"], "skipped": skipped},
         summary="\n\n".join(sections),
     )
+
+
+async def _saved_entries(session_ctx: dict, context: dict) -> list[dict]:
+    """The product's saved competitor list, [] when it can't be read."""
+    from app.agents.adzump.services.product_service import stored_competitor_entries
+    try:
+        return await stored_competitor_entries(session_ctx, context)
+    except Exception as e:
+        logger.warning("competitor_saved_list_skipped: %s: %s", type(e).__name__, str(e)[:200])
+        return []
+
+
+async def _save_changes(
+    session_ctx: dict, context: dict, competitive: dict,
+    changed: list[dict], added: list[dict], *,
+    named_by_user: bool, skipped: list[dict] | None = None,
+) -> tuple[list[dict], str]:
+    """Save the entries this call added or refreshed, then make ``competitive``'s
+    list the saved rows. Entries that didn't land leave the list (into ``skipped``
+    when given). Returns the added entries that landed, and a note for the
+    model when the save failed: the entries stay, unsaved, and save at the
+    start of the next message."""
+    from app.agents.adzump.services.product_service import save_competitors
+    if not changed:
+        return added, ""
+    try:
+        not_landed = await save_competitors(
+            session_ctx, context, changed, named_by_user=named_by_user)
+    except Exception as e:  # never lose a paid lookup over a failed write
+        logger.warning("competitor_save_failed: %s: %s", type(e).__name__, str(e)[:200])
+        return added, (" These competitors aren't saved yet - they save at the "
+                       "start of the next message.")
+    for entry in not_landed:
+        logger.info("competitor_not_landed: %r (%s)", entry.get("name"), entry.get("url"))
+        if skipped is not None:
+            skipped.append({"name": entry.get("name") or "?",
+                            "reason": "clashes with a saved competitor's name or website"})
+    await _reload_saved_list(session_ctx, context, competitive)
+    return [c for c in added if all(c is not n for n in not_landed)], ""
+
+
+async def _reload_saved_list(session_ctx: dict, context: dict, competitive: dict) -> None:
+    """Make ``competitive``'s list the product's saved rows."""
+    from app.agents.adzump.services.product_service import reload_competitor_list
+    try:
+        await reload_competitor_list(competitive, session_ctx, context)
+    except Exception as e:  # the chat's copy serves until the next message
+        logger.warning("competitor_reload_skipped: %s: %s", type(e).__name__, str(e)[:200])
 
 
 # ── Tool definition ───────────────────────────────────────────────────

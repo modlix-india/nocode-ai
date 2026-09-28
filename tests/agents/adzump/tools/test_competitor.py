@@ -148,14 +148,17 @@ class VerifyCompetitorUrlTests(unittest.TestCase):
 
 
 class ApplyUrlUpdatesTests(unittest.TestCase):
-    def _apply(self, set_url, competitors, verified=("https://ok.example/", "")):
+    def _apply(self, set_url, competitors, verified=("https://ok.example/", ""), refusal=""):
         competitive = {"competitors": competitors}
         with mock.patch.object(
             competitor, "_verify_competitor_url",
             new=mock.AsyncMock(return_value=verified),
+        ), mock.patch(
+            "app.agents.adzump.services.product_service.pin_competitor_website",
+            new=mock.AsyncMock(return_value=refusal),
         ):
             acks, rejections = asyncio.run(
-                _apply_url_updates(set_url, competitive))
+                _apply_url_updates(set_url, competitive, {}, {}))
         return acks, rejections
 
     def test_pin_updates_entry_and_resets_creatives(self):
@@ -178,10 +181,12 @@ class ApplyUrlUpdatesTests(unittest.TestCase):
              [{"name": "Nambiar Villas"}], ("https://x.example", "")),
             ("unparseable spec", "just some text",
              [{"name": "Nambiar Villas"}], ("https://x.example", "")),
+            ("website already another competitor's", "Nambiar | https://x.example",
+             [{"name": "Nambiar Villas"}], ("https://x.example", ""), "already belongs"),
         ]
-        for label, spec, competitors, verified in rows:
+        for label, spec, competitors, verified, *refusal in rows:
             with self.subTest(label):
-                acks, rejections = self._apply(spec, competitors, verified)
+                acks, rejections = self._apply(spec, competitors, verified, *refusal)
                 self.assertEqual(acks, [])
                 self.assertEqual(len(rejections), 1)
                 self.assertNotEqual(competitors[0].get("url_source"), "user")
@@ -310,10 +315,23 @@ class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
             competitor, "_filter_self_references",
         ), mock.patch(
             "app.core.streaming.pre_emit_agent_started", new=mock.AsyncMock(),
+        ), mock.patch(
+            "app.agents.adzump.services.product_service.drop_deleted_competitors",
+            new=mock.AsyncMock(return_value=[]),
+        ), mock.patch(
+            "app.agents.adzump.services.product_service.save_competitors",
+            new=mock.AsyncMock(return_value=[]),
+        ) as m_save, mock.patch(
+            "app.agents.adzump.services.product_service.reload_competitor_list",
+            new=mock.AsyncMock(),
         ):
             result = asyncio.run(
                 _analyze_competitors({"force": "true"}, context))
         self.assertTrue(result.success)
+        # What it found and what it refreshed are saved as research, never as the user's pick.
+        self.assertEqual([c["name"] for c in m_save.await_args.args[2]],
+                         ["Sobha Magnus", "Nambiar Villas"])
+        self.assertFalse(m_save.await_args.kwargs["named_by_user"])
         names = [c["name"] for c in
                  context["session_context"]["competitor_analysis"]["competitors"]]
         self.assertEqual(names, ["Nambiar Villas", "Sobha Magnus"])
@@ -321,6 +339,79 @@ class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
         self.assertEqual(pinned["creatives"], [{"creativeId": "a"}])
         self.assertIn("1 new", result.summary)
         self.assertIn("1 already known", result.summary)
+
+
+class CompetitorWritesTests(unittest.TestCase):
+    """Each change writes only its own rows; a chat that never loaded the list
+    edits the saved one, never an empty copy (which used to delete every row)."""
+
+    SAVED = [{"name": "Sobha Magnus", "row_id": 1}, {"name": "Nambiar Villas", "row_id": 2}]
+
+    def _run(self, params, *, saved=SAVED, found=None, not_landed=(), save_error=False):
+        session_ctx = {"product_data": {"product_name": "Valmark CityVille"},
+                       "product_profile": {"url": "https://cityville.in"}}
+        context = {"session_context": session_ctx, "auth": object(),
+                   "event_stream": None, "tool_use_id": "t1"}
+        analyst = mock.Mock()
+        analyst.analyze = mock.AsyncMock(return_value=SimpleNamespace(
+            competitive={"competitors": found or [], "skipped": []}, product=None, notes=[]))
+        save = mock.AsyncMock(side_effect=RuntimeError("db down") if save_error
+                              else None, return_value=list(not_landed))
+        service = "app.agents.adzump.services.product_service."
+        with mock.patch(service + "stored_competitor_entries",
+                        new=mock.AsyncMock(return_value=[dict(c) for c in saved])), \
+             mock.patch(service + "save_competitors", new=save), \
+             mock.patch(service + "remove_competitors", new=mock.AsyncMock()) as m_remove, \
+             mock.patch(service + "reload_competitor_list", new=mock.AsyncMock()), \
+             mock.patch(service + "drop_deleted_competitors", new=mock.AsyncMock(return_value=[])), \
+             mock.patch("app.agents.adzump.agents.product.agent.get_product_agent",
+                        return_value=analyst), \
+             mock.patch.object(competitor, "_filter_self_references"), \
+             mock.patch("app.core.streaming.pre_emit_agent_started", new=mock.AsyncMock()):
+            result = asyncio.run(competitor._analyze_competitors(params, context))
+        return result, session_ctx, save, m_remove
+
+    def test_remove_in_a_chat_that_never_loaded_the_list(self):
+        result, session_ctx, _, m_remove = self._run({"remove": "Sobha Magnus"})
+        self.assertTrue(result.success)
+        self.assertEqual([c["name"] for c in m_remove.await_args.args[2]], ["Sobha Magnus"])
+        self.assertEqual([c["name"] for c in session_ctx["competitor_analysis"]["competitors"]],
+                         ["Nambiar Villas"])
+
+    def test_nothing_matched_leaves_the_chat_without_a_list(self):
+        result, session_ctx, _, m_remove = self._run({"remove": "Ghost Towers"})
+        self.assertFalse(result.success)
+        self.assertNotIn("competitor_analysis", session_ctx)
+        m_remove.assert_not_awaited()
+
+    def test_add_by_name_is_the_users_pick(self):
+        prestige = {"name": "Prestige Lakeside", "url": "https://prestige.com/lakeside"}
+        rows = [  # (case, not landed, in skipped)
+            ("landed", (), False),
+            ("clashes with a saved competitor", (prestige,), True),
+        ]
+        for case, not_landed, skipped in rows:
+            with self.subTest(case):
+                result, _, save, _ = self._run(
+                    {"query": "Prestige Lakeside"}, found=[dict(prestige)], not_landed=not_landed)
+                self.assertTrue(save.await_args.kwargs["named_by_user"])
+                self.assertEqual("clashes with a saved competitor" in result.summary, skipped)
+
+    def test_forced_research_merges_into_the_saved_list(self):
+        found = [{"name": "Nambiar Bannerghatta Villas"}, {"name": "Prestige Lakeside"}]
+        result, session_ctx, save, _ = self._run({"force": "true"}, found=found)
+        self.assertTrue(result.success)
+        names = [c["name"] for c in session_ctx["competitor_analysis"]["competitors"]]
+        self.assertEqual(names, ["Sobha Magnus", "Nambiar Villas", "Prestige Lakeside"])
+        self.assertIn("1 new", result.summary)
+
+    def test_a_failed_save_keeps_the_research(self):
+        result, session_ctx, _, _ = self._run(
+            {"force": "true"}, found=[{"name": "Prestige Lakeside"}], save_error=True)
+        self.assertTrue(result.success)
+        self.assertIn("aren't saved yet", result.model_summary)
+        self.assertIn("Prestige Lakeside",
+                      [c["name"] for c in session_ctx["competitor_analysis"]["competitors"]])
 
 
 if __name__ == "__main__":

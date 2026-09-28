@@ -1,10 +1,11 @@
 """Product service - saves and restores the user's product and campaign draft.
 
 MySQL (``app.agents.adzump.stores``) is the store of record: ``save_campaign``
-writes the typed Product, the new_campaign flow draft and the competitor list
-(the adzump_competitors rows are its only home); ``hydrate_from_storage``
-restores a returning product from them. The Modlix ``AISuggestedData`` record is a warn-only mirror of the
-analysis fields DS still reads (retirement plan S5 deletes it).
+writes the typed Product and the new_campaign flow draft; the competitor list
+(its adzump_competitors rows are its only home) is written by each change the
+chat makes, never from the chat's copy. ``hydrate_from_storage`` restores a
+returning product from them. The Modlix ``AISuggestedData`` record is a
+warn-only mirror of the analysis fields DS still reads.
 """
 
 from __future__ import annotations
@@ -24,7 +25,9 @@ from app.agents.adzump._shared import (
     STORAGE_CREATE as CREATE,
     STORAGE_READ_PAGE as READ_PAGE,
     STORAGE_UPDATE as UPDATE,
+    acting_user_id,
     extract_storage_records as _extract_records,
+    host_of,
     normalize_business_url,
     primary_screenshot_url,
     resolve_url,
@@ -81,9 +84,10 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
     """Persist the user's campaign (everything assembled in session.context).
 
     nocode-ai MySQL is the store of record: the typed Product goes to
-    adzump_products, the campaign draft to adzump_flows (flow=new_campaign),
-    the competitor list to adzump_competitors - a failure there RAISES, the
-    save must not silently lose the authoritative copy. The Modlix AISuggestedData
+    adzump_products, the campaign draft to adzump_flows (flow=new_campaign) -
+    a failure there RAISES, the save must not silently lose the authoritative
+    copy. The competitor list is not written here: each change writes its own
+    rows. The Modlix AISuggestedData
     write survives only as a warn-only mirror of the ANALYSIS fields DS still
     reads (finalSummary, siteLinks, screenshot, location...); the campaign
     sub-object no longer rides in it - no DS code reads it.
@@ -122,40 +126,13 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
             (session_ctx.get("product_profile") or {}).get("summary") or "",
     })
     pid = await stores.products.upsert_product(
-        ctx.get("client_code") or "", product, url, ctx.get("user_id") or 0)
+        ctx.get("client_code") or "", product, url, acting_user_id(ctx))
     await stores.flows.upsert_flow(
         ctx.get("client_code") or "", pid, chat_session_id, "new_campaign",
         campaign_draft.get("status") or "draft", campaign_draft,
-        ctx.get("user_id") or 0)
-    await _sync_competitor_list(
-        session_ctx, ctx.get("client_code") or "", pid, ctx.get("user_id") or 0)
-    record["competitors"] = (session_ctx.get("competitor_analysis") or {}).get(
-        "competitors") or []
+        acting_user_id(ctx))
 
     return await _mirror_modlix_record(record, url, ctx)
-
-
-async def _sync_competitor_list(
-    session_ctx: dict, client_code: str, product_id: int, user_id: int,
-) -> None:
-    """Write this chat's competitor list back to its home, the product's rows
-    (born 'pending' at save time, so the table holds the list even when the
-    user never fetches ads). An entry saved before whose row has since gone
-    was deleted elsewhere (the library UI): drop it, never resurrect it."""
-    competitive = session_ctx.get("competitor_analysis")
-    if competitive is None:
-        return  # never loaded or researched in this chat: the rows stand
-    stored_ids = {row["id"] for row in
-                  await stores.competitors.list_product_competitors(client_code, product_id)}
-    entries = [c for c in competitive.get("competitors") or []
-               if isinstance(c, dict)
-               and (not c.get("row_id") or c["row_id"] in stored_ids)]
-    ids = await stores.competitors.sync_competitor_profiles(
-        client_code, product_id, entries, user_id)
-    for entry, row_id in zip(entries, ids):
-        if row_id:
-            entry["row_id"] = row_id
-    competitive["competitors"] = entries
 
 
 async def _mirror_modlix_record(record: dict, url: str, ctx: dict) -> str | None:
@@ -455,8 +432,6 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
         return False
     pid = await stores.products.product_id(client_code, key)
     draft = await stores.flows.latest_flow(client_code, pid, "new_campaign") or {}
-    rows = await stores.competitors.list_product_competitors(client_code, pid)
-    ads = await stores.competitors.list_product_creatives(client_code, pid) if rows else {}
     _apply_hydration(
         session_ctx,
         product_data=product.model_dump(),
@@ -465,33 +440,145 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
                  # fallback for records saved before profile_summary existed.
                  "summary": product.profile_summary or product.summary},
         location_address=(draft.get("location") or {}).get("address") or "",
-        competitors=[_competitor_entry(row, ads.get(row["id"], [])) for row in rows],
+        competitors=await _competitor_entries(client_code, pid),
     )
     return True
 
 
 async def refresh_competitor_list(session_ctx: dict, ctx: dict) -> bool:
-    """Start a turn from the competitor list's home: the chat's saved entries
-    are replaced by the product's active rows, so a delete, ad hide or another
-    chat's addition shows before the model replies. Unsaved entries (no
-    row_id yet) stay. Returns True when what the panel shows changed - the
-    stored shape alone differs from a fresh fetch's, which is no reason to
-    repaint."""
+    """Start a turn from the competitor list's home: the chat's list becomes
+    the product's active rows, so a remove or addition in another chat (a
+    second tab, a teammate) shows before the model replies. Entries a failed
+    write left unsaved are saved first. Returns True when what the panel shows
+    changed - the stored shape alone differs from a fresh fetch's, which is no
+    reason to repaint."""
     competitive = session_ctx.get("competitor_analysis")
-    if not competitive:
-        return False
-    client_code = ctx.get("client_code") or ""
-    url = normalize_business_url(resolve_url(session_ctx))
-    pid = await stores.products.product_id(client_code, url) if url else None
+    return bool(competitive) and await reload_competitor_list(competitive, session_ctx, ctx)
+
+
+async def reload_competitor_list(competitive: dict, session_ctx: dict, ctx: dict) -> bool:
+    """Make ``competitive``'s list the product's active rows, saving its unsaved
+    entries first. Before the product has a row the list stays as it is.
+    Returns True when what the panel shows changed."""
+    pid = await _product_id(session_ctx, ctx)
     if pid is None:
         return False
-    rows = await stores.competitors.list_product_competitors(client_code, pid)
-    ads = await stores.competitors.list_product_creatives(client_code, pid) if rows else {}
     entries = competitive.get("competitors") or []
-    fresh = ([_competitor_entry(row, ads.get(row["id"], [])) for row in rows]
-             + [c for c in entries if isinstance(c, dict) and not c.get("row_id")])
+    unsaved = [c for c in entries if isinstance(c, dict) and not c.get("row_id")]
+    if unsaved:
+        await save_competitors(session_ctx, ctx, unsaved, named_by_user=False)
+    fresh = await _competitor_entries(ctx.get("client_code") or "", pid)
     competitive["competitors"] = fresh
     return _panel_view(fresh) != _panel_view(entries)
+
+
+async def stored_competitor_entries(session_ctx: dict, ctx: dict) -> list[dict]:
+    """The product's saved competitor list as chat entries ([] before the
+    product has a row) - what a chat that never loaded the list merges into."""
+    pid = await _product_id(session_ctx, ctx)
+    return await _competitor_entries(ctx.get("client_code") or "", pid) if pid else []
+
+
+# ── Competitor changes: each writes only its own row ─────────────────────────
+
+
+async def save_competitors(
+    session_ctx: dict, ctx: dict, entries: list[dict], *, named_by_user: bool,
+) -> list[dict]:
+    """Write research or add-by-name results to the product's rows, each entry
+    as its own change, stamping its row_id:
+      new entry            -> added (lands on a saved row with its name or site)
+      saved entry          -> its empty fields filled, a new website adopted
+      entry's row deleted  -> not landed (a remove since this chat read the list)
+    Only the user naming a competitor (``named_by_user``) brings back one they
+    deleted. Returns the entries that did not land; the caller drops them.
+    Raises on a database error."""
+    client_code = ctx.get("client_code") or ""
+    pid = await _product_id(session_ctx, ctx)
+    if pid is None:
+        logger.warning("save_competitors_skipped: no product row for this chat")
+        return []
+    user_id = acting_user_id(ctx)
+    rows = {row["id"]: row for row in
+            await stores.competitors.list_product_competitors(client_code, pid)}
+    not_landed: list[dict] = []
+    for entry in entries:
+        row_id = entry.get("row_id")
+        if not row_id:
+            row_id = await stores.competitors.add_competitor(
+                client_code, pid, entry, user_id, revive=named_by_user)
+            if row_id is None:
+                not_landed.append(entry)
+            else:
+                entry["row_id"] = row_id
+            continue
+        row = rows.get(row_id)
+        if row is None:
+            not_landed.append(entry)
+            continue
+        await stores.competitors.fill_competitor_profile(client_code, pid, row_id, entry, user_id)
+        await _adopt_website(client_code, pid, row, entry, user_id)
+    return not_landed
+
+
+async def _adopt_website(
+    client_code: str, product_id: int, row: dict, entry: dict, user_id: int,
+) -> None:
+    """A fresh lookup found a saved competitor on a new website: move the row
+    there - never over the user's pin - and reset its ads when the site
+    changed host. When another competitor already owns that website, the
+    entry keeps its row's own."""
+    website = stores.competitors.competitor_key(entry.get("url") or "")
+    if not website or website == row["url"] or row["url_source"] == "user":
+        return
+    moved = await stores.competitors.set_competitor_website(
+        client_code, product_id, row["id"], website, entry.get("url_source") or None,
+        user_id, reset_ads=host_of(website) != host_of(row["url"] or ""),
+        keep_user_pin=True)
+    if not moved:
+        entry["url"] = row["url"]
+
+
+async def pin_competitor_website(
+    session_ctx: dict, ctx: dict, entry: dict, url: str,
+) -> str:
+    """Save the user's website for a competitor; its ads reset so the next
+    fetch searches the new site. Returns "" on success, else the reason for
+    the user."""
+    name = entry.get("name") or "That competitor"
+    pid = await _product_id(session_ctx, ctx)
+    if not entry.get("row_id") or pid is None:
+        return f"{name} isn't saved yet, so its website can't be pinned - try again."
+    moved = await stores.competitors.set_competitor_website(
+        ctx.get("client_code") or "", pid, entry["row_id"], url, "user",
+        acting_user_id(ctx), reset_ads=True, keep_user_pin=False)
+    return "" if moved else f"{url} already belongs to another competitor in the list."
+
+
+async def remove_competitors(session_ctx: dict, ctx: dict, entries: list[dict]) -> None:
+    """The user's "no": mark each saved entry's row deleted (its row and ads
+    stay, and research leaves it out from then on). Unsaved entries have no
+    row to mark."""
+    pid = await _product_id(session_ctx, ctx)
+    if pid is None:
+        return
+    for entry in entries:
+        if entry.get("row_id"):
+            await stores.competitors.delete_competitor(
+                ctx.get("client_code") or "", pid, entry["row_id"], acting_user_id(ctx))
+
+
+async def _competitor_entries(client_code: str, product_id: int) -> list[dict]:
+    """A product's active competitor rows, with their ads, as chat entries."""
+    rows = await stores.competitors.list_product_competitors(client_code, product_id)
+    ads = await stores.competitors.list_product_creatives(client_code, product_id) if rows else {}
+    return [_competitor_entry(row, ads.get(row["id"], [])) for row in rows]
+
+
+async def _product_id(session_ctx: dict, ctx: dict) -> int | None:
+    """The chat's product row id, None before the product is saved."""
+    url = normalize_business_url(resolve_url(session_ctx))
+    return await stores.products.product_id(ctx.get("client_code") or "", url) if url else None
 
 
 def _panel_view(entries: list) -> list:
@@ -507,8 +594,7 @@ async def drop_deleted_competitors(competitive: dict, ctx: dict) -> list[str]:
     """Leave out of fresh research results every competitor the user deleted
     from this product - their "no" holds. Returns the names left out."""
     client_code = ctx.get("client_code") or ""
-    url = normalize_business_url(resolve_url(ctx.get("session_context") or {}))
-    pid = await stores.products.product_id(client_code, url) if url else None
+    pid = await _product_id(ctx.get("session_context") or {}, ctx)
     if pid is None:
         return []
     deleted = await stores.competitors.deleted_competitors(client_code, pid)

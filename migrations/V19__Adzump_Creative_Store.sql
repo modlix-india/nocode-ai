@@ -12,7 +12,7 @@
 --   adzump_competitors      one row per (client, product, competitor): the home of
 --                             a product's competitor list (analyst profile, website
 --                             pin, fetch-ledger); a chat resumes from these rows and
---                             writes its list back. A competitor is its canonical website
+--                             each change writes its own row. A competitor is its canonical website
 --                             (https://host/path - project pages on one developer
 --                             site stay separate), else its name while no website
 --                             is known.

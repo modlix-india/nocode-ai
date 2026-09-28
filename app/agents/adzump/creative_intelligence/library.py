@@ -28,7 +28,7 @@ import httpx
 from typing import Awaitable, Callable
 
 from app.agents.adzump import _uploads, stores
-from app.agents.adzump._shared import host_of, normalize_business_url, resolve_url
+from app.agents.adzump._shared import acting_user_id, host_of, normalize_business_url, resolve_url
 from app.agents.adzump.creative_intelligence import freshness, taxonomy
 from app.agents.adzump.models import CompetitorProfile
 from app.agents.adzump.creative_intelligence.dedup import dedupe, dedupe_by_creative_id
@@ -361,7 +361,7 @@ async def _process_stage(
 
     client_code, product_url = _product_scope(ctx)
     await stores.competitors.sync_competitor(
-        client_code, product_url, competitor, ctx.get("user_id") or 0)
+        client_code, product_url, competitor, acting_user_id(ctx))
     return competitor
 
 

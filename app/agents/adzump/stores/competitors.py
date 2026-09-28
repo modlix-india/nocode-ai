@@ -1,7 +1,9 @@
 """adzump_competitors + adzump_creatives + adzump_creative_assets - one
 competitor aggregate: the row, its creatives, one asset row per rendition.
 The rows are the home of a product's competitor list: a chat resumes from
-them and sync_competitor_profiles writes its list back.
+them, and each change a chat makes writes only its own row (add_competitor,
+fill_competitor_profile, set_competitor_website, delete_competitor). Nothing
+deletes a row but the user's remove.
 
 Rows are scoped to a product: (client_code, product_url), the url normalized
 the way adzump_products stores it. Within a product a competitor is identified
@@ -200,97 +202,118 @@ async def delete_creative(
     return bool(hidden)
 
 
-async def sync_competitor_profiles(
-    client_code: str, product_id: int, competitors: list[dict], user_id: int = 0,
-) -> list[int | None]:
-    """Make the product's rows mirror its competitor list: upsert one PROFILE
-    row per entry, then delete the rows no entry landed on (their creatives
-    cascade). Returns each entry's row id, None where it did not land.
-
-    Touches only profile fields; creative stats and status stay whatever the
-    creatives fetch (sync_competitor) last wrote, and new rows are born
-    creative_status='pending'. Every listed entry is active, so an explicit
-    re-add revives a deleted row with its ads. url is the competitor's identity
-    (_website - the same value sync_competitor writes); VARCHAR(255) fields are
-    clamped so one long value can't abort the batch. Unlisted rows are marked
-    deleted, never dropped; if any entry failed to land, none are - its old row
-    may be the one it should have updated."""
-    def clamp(value: str | None) -> str | None:
-        return value[:255] if value else None
-
-    ids: list[int | None] = []
-    all_landed = True
+async def add_competitor(
+    client_code: str, product_id: int, profile: dict, user_id: int = 0, *, revive: bool,
+) -> int | None:
+    """Insert one competitor, or land on the saved row with its name or website.
+    A landing never renames the row, keeps its website, and only fills empty
+    fields. A deleted row comes back only with ``revive`` (the user named it
+    again); research never undoes the user's "no". Returns the active row's id,
+    None when it did not land (a deleted row, or a name and a website that
+    belong to two different saved competitors)."""
+    name = (profile.get("name") or "").strip()[:255]
+    if not name:
+        return None
+    url = _website(profile.get("url") or "")
     async with get_connection() as conn:
         async with conn.cursor() as cur:
-            for comp in competitors:
-                name = (comp.get("name") or "").strip()[:255]
-                if not name:
-                    ids.append(None)
-                    continue
-                url = _website(comp.get("url") or "")
-                # The curated name wins on a website match: it is what the
-                # user reviewed, the vendor's page name never is.
-                upsert = """
-                    INSERT INTO adzump_competitors
-                        (client_code, product_id, name, url, url_source,
-                         business_type, location, pricing, key_usps, weakness,
-                         why_competitor, created_by, updated_by)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
-                    ON DUPLICATE KEY UPDATE
-                        name=new.name,
-                        status='active',
-                        url=COALESCE(new.url, adzump_competitors.url),
-                        url_source=new.url_source,
-                        business_type=new.business_type,
-                        location=COALESCE(new.location, adzump_competitors.location),
-                        pricing=COALESCE(new.pricing, adzump_competitors.pricing),
-                        key_usps=new.key_usps,
-                        weakness=new.weakness,
-                        why_competitor=new.why_competitor,
-                        updated_by=new.updated_by
-                    """
-                try:
-                    await cur.execute(upsert, (
-                        client_code, product_id, name, url,
-                        comp.get("url_source") or None,
-                        clamp(comp.get("business_type")), clamp(comp.get("location")),
-                        clamp(comp.get("pricing")),
-                        json.dumps(comp.get("key_usps") or []),
-                        comp.get("weakness") or None, comp.get("why_competitor") or None,
-                        user_id, user_id))
-                except pymysql.err.IntegrityError as e:
-                    # A rename onto another row's name: skip it, never fail the
-                    # every-turn autosave over one entry.
-                    logger.warning("sync_competitor_profiles: skipped %r (%s): %s",
-                                   name, url, e)
-                    ids.append(None)
-                    all_landed = False
-                    continue
-                # The row the upsert landed on, by the same identity (the name
-                # is unique per product too, so it finds a url-less entry's row).
-                if url:
-                    await cur.execute(
-                        "SELECT id FROM adzump_competitors "
-                        "WHERE client_code=%s AND product_id=%s AND url=%s",
-                        (client_code, product_id, url))
-                else:
-                    await cur.execute(
-                        "SELECT id FROM adzump_competitors "
-                        "WHERE client_code=%s AND product_id=%s AND name=%s",
-                        (client_code, product_id, name))
-                ids.append((await cur.fetchone())[0])
-            if all_landed:
-                kept = [cid for cid in ids if cid]
-                sql = ("UPDATE adzump_competitors SET status='deleted', updated_by=%s "
-                       "WHERE client_code=%s AND product_id=%s AND status='active'")
-                if kept:
-                    sql += f" AND id NOT IN ({','.join(['%s'] * len(kept))})"
-                await cur.execute(sql, (user_id, client_code, product_id, *kept))
-                if cur.rowcount:
-                    logger.info("sync_competitor_profiles: product=%s deleted %d "
-                                "competitors no longer listed", product_id, cur.rowcount)
+            try:
+                await cur.execute(_ADD_COMPETITOR, (
+                    client_code, product_id, name, url, profile.get("url_source") or None,
+                    _clamp(profile.get("business_type")), _clamp(profile.get("location")),
+                    _clamp(profile.get("pricing")), json.dumps(profile.get("key_usps") or []),
+                    profile.get("weakness") or None, profile.get("why_competitor") or None,
+                    user_id, user_id, revive))
+            except pymysql.err.IntegrityError as e:
+                logger.warning("add_competitor: %r (%s) is one saved competitor's name "
+                               "and another's website: %s", name, url, e)
+                return None
+            # The row the insert landed on: its name, else its website.
+            await cur.execute(
+                "SELECT id, status FROM adzump_competitors "
+                "WHERE client_code=%s AND product_id=%s AND name=%s",
+                (client_code, product_id, name))
+            row = await cur.fetchone()
+            if row is None and url:
+                await cur.execute(
+                    "SELECT id, status FROM adzump_competitors "
+                    "WHERE client_code=%s AND product_id=%s AND url=%s",
+                    (client_code, product_id, url))
+                row = await cur.fetchone()
         await conn.commit()
-    return ids
+    return row[0] if row and row[1] == "active" else None
+
+
+# url_source is assigned before url: an ON DUPLICATE assignment sees the
+# columns updated before it.
+_ADD_COMPETITOR = """
+    INSERT INTO adzump_competitors
+        (client_code, product_id, name, url, url_source, business_type, location,
+         pricing, key_usps, weakness, why_competitor, created_by, updated_by)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
+    ON DUPLICATE KEY UPDATE
+        status=IF(%s, 'active', adzump_competitors.status),
+        url_source=IF(adzump_competitors.url IS NULL, new.url_source,
+                      adzump_competitors.url_source),
+        url=COALESCE(adzump_competitors.url, new.url),
+        business_type=COALESCE(NULLIF(adzump_competitors.business_type, ''), new.business_type),
+        location=COALESCE(NULLIF(adzump_competitors.location, ''), new.location),
+        pricing=COALESCE(NULLIF(adzump_competitors.pricing, ''), new.pricing),
+        key_usps=IF(COALESCE(JSON_LENGTH(adzump_competitors.key_usps), 0) = 0,
+                    new.key_usps, adzump_competitors.key_usps),
+        weakness=COALESCE(NULLIF(adzump_competitors.weakness, ''), new.weakness),
+        why_competitor=COALESCE(NULLIF(adzump_competitors.why_competitor, ''),
+                                new.why_competitor),
+        updated_by=new.updated_by
+"""
+
+
+async def fill_competitor_profile(
+    client_code: str, product_id: int, competitor_id: int, profile: dict, user_id: int = 0,
+) -> None:
+    """Fill a saved competitor's empty profile fields from a fresh lookup;
+    fields already set stay as they are."""
+    await execute_query(
+        """
+        UPDATE adzump_competitors SET
+            business_type=COALESCE(NULLIF(business_type, ''), %s),
+            location=COALESCE(NULLIF(location, ''), %s),
+            pricing=COALESCE(NULLIF(pricing, ''), %s),
+            key_usps=IF(COALESCE(JSON_LENGTH(key_usps), 0) = 0, CAST(%s AS JSON), key_usps),
+            weakness=COALESCE(NULLIF(weakness, ''), %s),
+            why_competitor=COALESCE(NULLIF(why_competitor, ''), %s),
+            updated_by=%s
+        WHERE client_code=%s AND product_id=%s AND id=%s
+        """,
+        (_clamp(profile.get("business_type")), _clamp(profile.get("location")),
+         _clamp(profile.get("pricing")), json.dumps(profile.get("key_usps") or []),
+         profile.get("weakness") or None, profile.get("why_competitor") or None,
+         user_id, client_code, product_id, competitor_id),
+    )
+
+
+async def set_competitor_website(
+    client_code: str, product_id: int, competitor_id: int, url: str, url_source: str | None,
+    user_id: int = 0, *, reset_ads: bool, keep_user_pin: bool,
+) -> bool:
+    """Move a saved competitor to a new website. ``reset_ads`` marks its ads
+    unfetched (the old rows stay until the next fetch replaces them), so that
+    fetch searches the new site. ``keep_user_pin`` leaves a website the user
+    pinned alone. False when nothing moved: another competitor of the product
+    owns that website, the user's pin held, or there is no such row."""
+    sql = ("UPDATE adzump_competitors SET creative_status=IF(%s, 'pending', creative_status), "
+           "url=%s, url_source=%s, updated_by=%s "
+           "WHERE client_code=%s AND product_id=%s AND id=%s")
+    if keep_user_pin:
+        sql += " AND (url_source IS NULL OR url_source <> 'user')"
+    try:
+        return bool(await execute_query(sql, (
+            reset_ads, _website(url), url_source or None, user_id,
+            client_code, product_id, competitor_id)))
+    except pymysql.err.IntegrityError as e:
+        logger.warning("set_competitor_website: %s already belongs to another "
+                       "competitor of product %s: %s", url, product_id, e)
+        return False
 
 
 async def sync_competitor(
@@ -335,7 +358,6 @@ async def sync_competitor(
                          created_by, updated_by)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) AS new
                     ON DUPLICATE KEY UPDATE
-                        url=COALESCE(new.url, adzump_competitors.url),
                         logo_url=COALESCE(new.logo_url, adzump_competitors.logo_url),
                         location=COALESCE(new.location, adzump_competitors.location),
                         pricing=COALESCE(new.pricing, adzump_competitors.pricing),
@@ -352,20 +374,24 @@ async def sync_competitor(
                      fetched_at, competitor.fetch_status, fetched, dropped,
                      user_id, user_id),
                 )
-                # The row the upsert landed on, found by the same identity.
-                if website:
+                # The row the upsert landed on: its name, else its website. The
+                # ads write never moves a website (a stale chat's fetch would
+                # undo another chat's pin), so a name-keyed fetch can meet a row
+                # that has one.
+                await cur.execute(
+                    "SELECT id FROM adzump_competitors "
+                    "WHERE client_code=%s AND product_id=%s AND name=%s",
+                    (client_code, pid, competitor.name),
+                )
+                row = await cur.fetchone()
+                if row is None and website:
                     await cur.execute(
                         "SELECT id FROM adzump_competitors "
                         "WHERE client_code=%s AND product_id=%s AND url=%s",
                         (client_code, pid, website),
                     )
-                else:
-                    await cur.execute(
-                        "SELECT id FROM adzump_competitors WHERE client_code=%s "
-                        "AND product_id=%s AND url IS NULL AND name=%s",
-                        (client_code, pid, competitor.name),
-                    )
-                cid = (await cur.fetchone())[0]
+                    row = await cur.fetchone()
+                cid = row[0]
 
                 # Wholesale refresh of the ACTIVE slice, assets cascade; the
                 # user's hidden ads are kept and skipped.
@@ -456,6 +482,11 @@ def aspect_ratio_bucket(ratio: float) -> str:
 def _website(url: str) -> str | None:
     """The url column value: the competitor key, NULL while none is known."""
     return competitor_key(url) or None
+
+
+def _clamp(value: str | None) -> str | None:
+    """A VARCHAR(255) profile field, cut to fit so one long value can't fail a write."""
+    return value[:255] if value else None
 
 
 def _creative_format(media_type: str) -> str:

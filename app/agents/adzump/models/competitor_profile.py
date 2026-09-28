@@ -4,8 +4,8 @@
 Entries are born as Product Analyst JSON (schema in agents/product/context.py)
 and mutated once at runtime when fetch_competitor_creatives attaches a preview
 of the latest ads (the full ads live in adzump_creatives).
-Their home is the adzump_competitors table: a resume loads them from it and
-every save writes the chat's list back (product_service). The session keeps
+Their home is the adzump_competitors table: a chat loads them from it, and
+each change writes only its own row (product_service). The session keeps
 plain dicts for JSON persistence; every reader and writer goes through this model.
 """
 from __future__ import annotations
@@ -54,8 +54,8 @@ class CompetitorProfile(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
 
-    # adzump_competitors row id once saved: an entry whose row is gone was
-    # deleted elsewhere (the library UI), so the next save drops it. Not
+    # adzump_competitors row id once saved; remove and pin act on it. An entry
+    # whose row is gone was removed elsewhere and drops at the next write. Not
     # `competitor_id` - that is the analyst's evidence citation ("C3").
     row_id: int | None = None
     name: str = ""

@@ -238,16 +238,18 @@ competitors, creatives), `GET /products/{id}/competitors` (pending rows included
 routes: products and competitors come from the chat's analysis.
 
 The `adzump_competitors` rows are the competitor list's only home: a resume
-loads the list from them, and every save writes the chat's list back. Only a
+loads the list from them, and each change the chat makes writes only its own
+row (`product_service.save_competitors`, `pin_competitor_website`,
+`remove_competitors`). Nothing writes a chat's whole list back, so an older
+chat on the same product can't delete another chat's additions. Only a
 product delete is real; competitors and ads carry `status` (active | deleted,
-`updated_by` = who changed it). A deleted competitor (from the UI, or dropped
-from the chat's list) leaves every listing and resume, research never
-suggests it again, and an explicit re-add revives the same row with its ads.
-An open chat re-reads the list from the rows at the start of every turn
-(`AdzumpAgent.run`), so a UI delete, an ad hide or another chat's addition
-shows before the model replies, and the panel repaints; each entry carries
-its `row_id`, so a save never re-adds a row deleted elsewhere. A hidden ad stays hidden: a
-refetch never re-inserts it.
+`updated_by` = who changed it). A competitor is deleted only by the user's
+remove (in the chat or the UI); it leaves every listing and resume, research
+never suggests it again, and only the user adding it back by name revives the
+same row with its ads. An open chat re-reads the list from the rows at the
+start of every turn (`AdzumpAgent.run`) and after each change, so another
+chat's addition or removal shows before the model replies, and the panel
+repaints. A hidden ad stays hidden: a refetch never re-inserts it.
 
 Each ads fetch adds at most 10 new ads per competitor (active first, then
 newest; `library.MAX_NEW_ADS_PER_FETCH`), skipping ads already stored by the ad

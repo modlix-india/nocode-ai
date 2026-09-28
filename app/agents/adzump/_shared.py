@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json as _json
 import logging
 import re as _re
 from typing import Any
@@ -22,6 +23,12 @@ def build_ds_headers(context: dict) -> dict[str, str]:
     if "client_code" in context:
         headers["clientCode"] = context["client_code"]
     return headers
+
+
+def acting_user_id(context: dict) -> int:
+    """The signed-in user's id for created_by / updated_by, 0 when unknown.
+    The tool context carries it only on its ``auth``."""
+    return int(getattr(context.get("auth"), "user_id", 0) or 0)
 
 
 # CoreServices.Storage endpoints - the gateway contract behind product_service's
@@ -130,8 +137,6 @@ def normalize_business_url(url: str) -> str:
     path = (p.path or "").rstrip("/")
     return f"https://{host}{path}"
 
-
-import json as _json
 
 _JSON_FENCE_RE = _re.compile(r"```json\s*\n(.*?)\n```", _re.DOTALL)
 

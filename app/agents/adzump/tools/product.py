@@ -169,7 +169,8 @@ def _merge_product_into_context(
     """Write analysis into session_memory:
     - product_data: merge not replace (keep runtime artifacts; JSON wins).
     - product_profile: url+title only (sub-agent owns .summary).
-    - competitor_analysis: set if any."""
+    The competitor list is never set here: analysis leaves it empty, and the
+    list lives in its saved rows."""
     product = dict(analysis.product or {})
     # The LLM emits `location` as a string (or {"location": str}); normalize it
     # into the nested `place` object here so session state has ONE shape.
@@ -189,8 +190,6 @@ def _merge_product_into_context(
     profile["title"] = product.get("product_name", "") or profile.get("title", "")
     if not profile.get("summary"):   # seed only if sub-agent didn't run (legacy bypass)
         profile["summary"] = product.get("summary", "")
-    if analysis.competitive and analysis.competitive.get("competitors"):
-        session_memory["competitor_analysis"] = analysis.competitive
 
 
 # ── Cross-session cache ──────────────────────────────────────────────────────
