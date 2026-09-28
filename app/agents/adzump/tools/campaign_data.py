@@ -257,9 +257,11 @@ def has_negation_cue(text: str) -> bool:
 # (Kailash 2026-09-09). Shared by the creatives step and the analysis result.
 CREATIVES_REVIEW_ASK = (
     "Do NOT fetch creatives yet - the user reviews the list first. Ask via the "
-    "present_options tool (no field - control-flow): \"Here are your "
-    "competitors - fetch their ads now, or adjust the list first?\" with options "
-    "[\"Fetch their ads\", \"I'll adjust the list first\"]. Fetch only on their "
+    "present_options tool (no field - control-flow) whether to fetch their ads "
+    "now or adjust the list first, with options "
+    "[\"Fetch their ads\", \"I'll adjust the list first\"]. Word the question "
+    "yourself so it follows your reply - don't re-list or re-introduce the "
+    "competitors. Fetch only on their "
     "go-ahead; handle add/update/delete requests via analyze_competitors, then "
     "re-ask. If they skip the ads or move on without them, call "
     "set_campaign_spec(competitor_creatives=\"declined\") and continue with the "
@@ -522,12 +524,6 @@ async def _set_campaign_spec(
             ),
         )
 
-    # Are we DONE after this write? If yes, inject the review prescription
-    # into the tool result so the LLM renders the summary on the same turn -
-    # the dynamic context computed at start-of-turn doesn't know the field
-    # we just stored is set.
-    review_hint = _review_hint_if_complete(spec, session_ctx)
-
     # v5 · kept no-ops get one steer line so the model stops re-sending them.
     kept_note = (
         (
@@ -564,13 +560,13 @@ async def _set_campaign_spec(
             "ask for the rejected field(s) - a partial accept must never read "
             "as fully saved or fully ignored"
         )
-        # User sees only what was actually stored; the rejection steer + kept/
-        # review hints are model-only - never leak validator internals to chat.
+        # User sees only what was actually stored; the rejection steer + kept
+        # hint are model-only - never leak validator internals to chat.
         user_summary = f"Campaign spec updated: {', '.join(parts)}." if stored_keys else "No changes stored."
         return ToolResult(
             success=True,
             summary=user_summary,
-            model_summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{review_hint}",
+            model_summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}",
             data=None if stored_keys else {"no_progress": True},
         )
 
@@ -584,7 +580,7 @@ async def _set_campaign_spec(
         return ToolResult(
             success=True,
             summary="No changes.",
-            model_summary=f"No changes.{kept_note}{review_hint}",
+            model_summary=f"No changes.{kept_note}",
             data={"no_progress": True},
         )
 
@@ -593,7 +589,7 @@ async def _set_campaign_spec(
     return ToolResult(
         success=True,
         summary=clean,
-        model_summary=f"{clean}{kept_note}{review_hint}",
+        model_summary=f"{clean}{kept_note}",
     )
 
 
@@ -717,9 +713,9 @@ def clear_competitor_decline(session_ctx: dict) -> bool:
 def creatives_offer_resolution(spec: dict, session_ctx: dict) -> OfferResolution:
     """WHY the Meta creative-inspiration offer is settled - or OPEN, meaning
     ask it / fulfil an accepted one. The ONE verdict shared by the creatives
-    journey step, `campaign_spec_complete`, the fetch steer, and the turn
-    record, so the prescription, the gate, and the log can never disagree (and
-    the log says WHICH signal settled it).
+    journey step (which is also the review gate), the fetch steer, and the
+    turn record, so the prescription, the gate, and the log can never
+    disagree (and the log says WHICH signal settled it).
       DECLINED  - the user said no to creatives, or to competitive analysis
                   itself (never re-open a consent already refused);
       FULFILLED - every CURRENT named competitor carries a fetch result
@@ -882,75 +878,6 @@ def _reuse_ad_accounts(session_ctx: dict, turn: int, batch_fields) -> str:
         spec["instagram"] = OfferState.DECLINED.value
         set_at["instagram"] = turn
     return ", ".join(reused)
-
-
-def campaign_spec_complete(spec: dict, session_ctx: dict) -> bool:
-    """Every required campaign-spec field is set - the ONE completeness gate,
-    shared by the post-write review hint and show_campaign_summary's refusal,
-    so the card and the prescription can never disagree."""
-    platform = Platform.from_value(spec.get("platform"))
-    if platform is None:
-        return False
-    is_google = platform is Platform.GOOGLE
-    is_meta = platform is Platform.META
-
-    # Real-estate? location is required. Otherwise location is optional.
-    business_type = (session_ctx.get("product_data") or {}).get("business_type") or ""
-    if is_real_estate(business_type) and not spec.get("location"):
-        return False
-
-    if not (
-        spec.get("duration")
-        and spec.get("budget")
-        and spec.get("parent_account")
-        and spec.get("account")
-    ):
-        return False
-
-    # Google: competitive analysis must have been attempted OR declined.
-    if is_google:
-        if (
-            session_ctx.get("competitor_analysis") is None
-            and offer_state(spec, "competitive_analysis") is not OfferState.DECLINED
-        ):
-            return False
-
-    # Meta: fb_page required; Instagram is OPTIONAL (v3 · F3) - but it must have
-    # been OFFERED, i.e. an ig_page was picked OR Instagram declined. This
-    # gates review until the IG choice has been made once, without making IG
-    # mandatory (Facebook-only is a valid campaign).
-    if is_meta and not (
-        spec.get("fb_page")
-        and (
-            spec.get("ig_page")
-            or offer_state(spec, "instagram") is OfferState.DECLINED
-        )
-    ):
-        return False
-
-    # Meta: the competitor-creatives offer must be resolved once - fetched,
-    # declined, or moot. The SAME predicate the creatives step's offer gate uses, so
-    # "complete" here never disagrees with an offer the prescription still asks.
-    if is_meta and creatives_offer_resolution(spec, session_ctx) is OfferResolution.OPEN:
-        return False
-    return True
-
-
-def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
-    """If every required campaign-spec field is now set, return the review
-    prescription for this same turn (the start-of-turn reminder doesn't know
-    about the field just stored). The card itself is CODE-rendered
-    (tools/summary.py)."""
-    if not campaign_spec_complete(spec, session_ctx):
-        return ""
-    return (
-        "\n\nALL CAMPAIGN FIELDS ARE NOW SET. Call `show_campaign_summary()` "
-        "NOW - it renders the summary card for the user from stored state; "
-        "NEVER write the summary yourself. Then use the present_options tool "
-        'to ask "Ready to launch the campaign?" with chips Yes, launch / '
-        "No, make changes. On 'Yes, launch', call `launch_campaign()` (no "
-        "params) - the one tool that persists the campaign."
-    )
 
 
 set_campaign_spec = ToolDefinition(

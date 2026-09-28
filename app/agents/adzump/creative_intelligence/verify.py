@@ -42,7 +42,8 @@ BAD_CONTENT_TYPE = "bad_content_type"
 TOO_SMALL = "too_small"
 UNDECODABLE = "undecodable"
 ATTRIBUTION_MISMATCH = "attribution_mismatch"
-EMPTY_FILE_URL = "empty_file_url"
+EMPTY_FILE_URL = "empty_file_url"  # had a source asset, but it never landed in our store
+NO_MEDIA = "no_media"  # the ad library sent no image or video (dynamic / catalog ads)
 
 # md5 of known CDN "image not available" placeholder bodies: a 200 serving one
 # of these is a broken asset, not a pass. Seed new hashes from sweep reports.

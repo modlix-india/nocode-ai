@@ -134,37 +134,16 @@ class PresentOptionsTagTests(unittest.TestCase):
         self.assertTrue(res.success)
 
 
-class CaptureAckBackstopTests(unittest.TestCase):
-    """S1-7/R7 - a landed capture is always visibly acknowledged, never twice."""
+class NoCodeWrittenAckTests(unittest.TestCase):
+    """The tool writes only its question - acknowledging the user's answer is
+    the model's, in its own words (live 2026-09-25: a code-written "Got it -
+    platform: Meta." stacked on the model's own "Got it - Meta.")."""
 
-    Q = "What's your daily budget?"
-
-    def _run_with_pending(self, turn_text):
+    def test_emits_only_the_question(self):
         stream = FakeStream()
-        ctx = _ctx(turn_text, stream)
-        ctx["session_context"]["_capture_ack_pending"] = {
-            "field": "duration", "value": "30 days"}
-        asyncio.run(_present_options(
-            {"question": self.Q, "options": ["₹5,000/day", "Custom"]}, ctx))
-        return stream, ctx["session_context"]
-
-    def test_ack_prepended_when_prose_missed_it(self):
-        stream, sc = self._run_with_pending("Sure!")
-        joined = "".join(stream.texts)
-        self.assertLess(joined.index("30 days"), joined.index(self.Q))  # ack first
-        self.assertNotIn("_capture_ack_pending", sc)       # consumed
-
-    def test_no_double_ack_when_prose_named_the_value(self):
-        stream, sc = self._run_with_pending("Great - 30 days it is!")
-        self.assertNotIn("30 days", "".join(stream.texts))
-        self.assertNotIn("_capture_ack_pending", sc)
-
-    def test_emit_skip_never_skips_the_ack(self):
-        # F9 skips the already-streamed question emit, never the ack.
-        stream, sc = self._run_with_pending("What's your daily budget?")
-        joined = "".join(stream.texts)
-        self.assertIn("30 days", joined)
-        self.assertEqual(joined.count("daily budget"), 0)
+        _run("What's your daily budget?", "Sure!", stream,
+             options=["₹5,000/day", "Custom"])
+        self.assertEqual("".join(stream.texts).strip(), "What's your daily budget?")
 
 
 if __name__ == "__main__":

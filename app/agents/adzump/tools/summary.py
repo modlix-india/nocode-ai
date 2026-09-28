@@ -13,20 +13,23 @@ from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.models import OfferState, offer_state
-from app.agents.adzump.workflow import AdzumpContext
-from app.agents.adzump.prompt_sections import account_display, website_display
-from app.agents.adzump.tools.campaign_data import campaign_spec_complete
+from app.agents.adzump.workflow import (
+    NEW_CAMPAIGN,
+    AdzumpContext,
+    account_display,
+    website_display,
+)
 
 
 async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Render the review card for the user. Refuses while the spec is
-    incomplete - the completeness gate is campaign_data's, shared with the
-    review hint, so the card and the prescription can never disagree."""
+    """Render the review card for the user. Refuses until the journey is
+    complete - the same walk that prescribes review, so the card and the
+    prescription can never disagree."""
     session = context.get("_session")
     if session is None:
         return ToolResult(success=False, error="No session available.")
     actx = AdzumpContext.from_session(session)
-    if not campaign_spec_complete(actx.spec, session.context):
+    if not NEW_CAMPAIGN.walk(actx).complete:
         return ToolResult(
             success=False,
             error=(

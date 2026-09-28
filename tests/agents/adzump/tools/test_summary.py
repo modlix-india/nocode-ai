@@ -1,6 +1,6 @@
 """show_campaign_summary (rework slice 2): the code-rendered review card -
 every bullet present across the three platform variants, IDs verbatim (never
-'Linked'), audience=user delivery, and the completeness-gate refusal."""
+'Linked'), audience=user delivery, and the refusal until the journey is complete."""
 from __future__ import annotations
 
 import asyncio
@@ -10,7 +10,7 @@ from app.agents.adzump.tools.summary import (
     _show_campaign_summary,
     render_summary_card,
 )
-from tests.agents.adzump._fixtures import SAAS, make_actx, make_session
+from tests.agents.adzump._fixtures import RE, SAAS, make_actx, make_session
 
 ACCOUNT_NAMES = {"1112223334": "Acme Manager", "5556667778": "Acme Ads",
                  "pg-9": "Acme FB", "ig-7": "Acme IG"}
@@ -65,22 +65,31 @@ class ShowCampaignSummaryTests(unittest.TestCase):
     """S2-2 · delivery: audience=user carries the card; incomplete spec is a
     refusal that never renders a partial card."""
 
-    def _run(self, spec, **session_extra):
-        session = make_session(spec=spec, product=SAAS, **session_extra)
+    def _run(self, spec, product=SAAS, **session_extra):
+        session = make_session(spec=spec, product=product, **session_extra)
         session.context["account_names"] = ACCOUNT_NAMES
         return asyncio.run(_show_campaign_summary({}, {"_session": session}))
 
     def test_complete_spec_renders_for_the_user(self):
-        result = self._run({**GOOGLE_DONE, "competitive_analysis": "declined"})
+        mapped = {**SAAS, "target_areas": [{"name": "Bengaluru", "google": {"id": 1}}]}
+        result = self._run({**GOOGLE_DONE, "competitive_analysis": "declined"}, product=mapped)
         self.assertTrue(result.success)
         self.assertEqual(result.audience, "user")
         self.assertIn("**Ad Account**", result.summary)  # the card, not a partial
         self.assertIn("launch", result.model_summary)  # next step steered
 
-    def test_incomplete_spec_refuses(self):
-        result = self._run({"platform": "Google Ads"})
-        self.assertFalse(result.success)
-        self.assertIn("not complete", result.error)
+    def test_incomplete_journey_refuses(self):
+        rows = [
+            ("fields missing", {"platform": "Google Ads"}, SAAS),
+            # every field answered, but the target areas are not mapped yet
+            ("target areas unmapped", {**GOOGLE_DONE, "competitive_analysis": "declined"},
+             {**RE, "target_areas": [{"name": "Whitefield"}]}),
+        ]
+        for case, spec, product in rows:
+            with self.subTest(case):
+                result = self._run(spec, product=product)
+                self.assertFalse(result.success)
+                self.assertIn("not complete", result.error)
 
     def test_no_session_refuses(self):
         result = asyncio.run(_show_campaign_summary({}, {}))

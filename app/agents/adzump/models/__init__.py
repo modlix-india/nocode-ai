@@ -13,7 +13,9 @@ from app.agents.adzump.models.campaign_spec import (
     offer_state,
 )
 from app.agents.adzump.models.competitor_profile import (
+    AdPreview,
     CompetitorProfile,
+    ad_previews,
     competitor_profiles,
 )
 from app.agents.adzump.models.offer_state import OfferResolution, OfferState
@@ -21,7 +23,9 @@ from app.agents.adzump.models.place import LocationProposal, Place
 
 __all__ = [
     "CampaignSpec",
+    "AdPreview",
     "CompetitorProfile",
+    "ad_previews",
     "LEGACY_DECLINED_KEYS",
     "LEGACY_MARKER_TO_FIELD",
     "LocationProposal",

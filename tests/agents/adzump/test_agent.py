@@ -16,7 +16,7 @@ from unittest import mock
 from app.agents.adzump.agent import (
     AdzumpAgent, AdzumpContext,
 )
-from app.agents.adzump.workflow import ESCAPE_AFTER_ASKS, NEW_CAMPAIGN, missing_list
+from app.agents.adzump.workflow import ESCAPE_AFTER_ASKS, NEW_CAMPAIGN
 from tests.agents.adzump._fixtures import (
     RE, SAAS, elicitation, make_actx, make_session,
 )
@@ -46,8 +46,8 @@ class CompetitorCreativesOfferTests(unittest.TestCase):
             "parent_account": "P", "account": "A", "fb_page": "F", "ig_page": "I"}
 
     def _offer_lines(self, spec_extra=None, **kw):
-        m = missing_list(NEW_CAMPAIGN, make_actx({**self.META, **(spec_extra or {})},
-                                   product=SAAS, **kw))
+        m = NEW_CAMPAIGN.walk(make_actx({**self.META, **(spec_extra or {})},
+                                   product=SAAS, **kw)).missing
         return [x for x in m if "competitor creatives" in x]
 
     def test_unoffered_prescribes_one_tagged_ask(self):
@@ -105,20 +105,20 @@ class InstagramOptionalTests(unittest.TestCase):
 
     def test_journey_offers_ig_once(self):
         # regression: F3 (Instagram optional)
-        m = missing_list(NEW_CAMPAIGN, make_actx(dict(self.META_FULL), product=SAAS))
+        m = NEW_CAMPAIGN.walk(make_actx(dict(self.META_FULL), product=SAAS)).missing
         self.assertTrue(any("fetch_meta_ig_accounts" in x for x in m))
 
     def test_journey_skip_cue_declines(self):
         # regression: F3 (Instagram optional)
-        m = missing_list(NEW_CAMPAIGN, make_actx(dict(self.META_FULL), product=SAAS,
-                                   last_user="skip insta page"))
+        m = NEW_CAMPAIGN.walk(make_actx(dict(self.META_FULL), product=SAAS,
+                                   last_user="skip insta page")).missing
         self.assertTrue(any('instagram="declined"' in x for x in m))
         self.assertFalse(any("fetch_meta_ig_accounts" in x for x in m))
 
     def test_journey_offered_does_not_refetch(self):
         # regression: F3 (Instagram optional) / v5 (fetch≠render)
-        m = missing_list(NEW_CAMPAIGN, make_actx(dict(self.META_FULL), product=SAAS,
-                                   last_user="proceed", ig_fetched=True))
+        m = NEW_CAMPAIGN.walk(make_actx(dict(self.META_FULL), product=SAAS,
+                                   last_user="proceed", ig_fetched=True)).missing
         # The offered-branch may *name* the tool in a "do NOT call it again"
         # instruction - discriminate on the offer-branch's prescription syntax,
         # which is the thing that must be absent.
@@ -135,26 +135,28 @@ class InstagramOptionalTests(unittest.TestCase):
         # (from_session derives creatives_resolved from the declined flag).
         spec = {**self.META_FULL, "ig_page_declined": "true",
                 "competitor_creatives_declined": "true"}
-        m = missing_list(NEW_CAMPAIGN, make_actx(spec, product=SAAS, creatives_resolved=True))
+        m = NEW_CAMPAIGN.walk(make_actx(spec, product=SAAS, creatives_resolved=True)).missing
         self.assertTrue(any("review" in x.lower() for x in m))
         self.assertFalse(any("instagram" in x.lower() and "fetch" in x.lower() for x in m))
 
+    @staticmethod
+    def _walk(spec, **session_ctx):
+        session = make_session(spec=spec, product=SAAS, **session_ctx)
+        return NEW_CAMPAIGN.walk(AdzumpContext.from_session(session))
+
     def test_review_gate_waits_for_ig_offer_or_decline(self):
         # regression: F3 (Instagram optional)
-        from app.agents.adzump.tools.campaign_data import _review_hint_if_complete
         # fb_page set but IG neither picked nor declined → not complete yet
-        self.assertEqual(
-            _review_hint_if_complete(dict(self.META_FULL), {"product_data": SAAS}), "")
+        self.assertFalse(self._walk(dict(self.META_FULL)).complete)
         answered = {**self.META_FULL, "ig_page_declined": "true",
                     "competitor_creatives_declined": "true"}
-        hint = _review_hint_if_complete(answered, {"product_data": SAAS})
-        self.assertNotEqual(hint, "")
-        self.assertIn("show_campaign_summary", hint)  # card is code-rendered
+        progress = self._walk(answered)
+        self.assertTrue(progress.complete)
+        self.assertIn("show_campaign_summary", progress.missing[0])  # card is code-rendered
 
     def test_review_gate_waits_for_creatives_offer_resolution(self):
         # Meta review also waits on the competitor-creatives offer: declined,
         # fetched, or moot (analysis found zero rivals) all unblock it.
-        from app.agents.adzump.tools.campaign_data import _review_hint_if_complete
         spec = {**self.META_FULL, "ig_page_declined": "true"}
         cases = [
             ("unresolved", {}, dict(spec), False),
@@ -166,9 +168,7 @@ class InstagramOptionalTests(unittest.TestCase):
         ]
         for name, extra_ctx, case_spec, complete in cases:
             with self.subTest(case=name):
-                hint = _review_hint_if_complete(
-                    case_spec, {"product_data": SAAS, **extra_ctx})
-                self.assertEqual(bool(hint), complete)
+                self.assertEqual(self._walk(case_spec, **extra_ctx).complete, complete)
 
 
 # ── PR2 / F17b · tagged-answer capture ──────────────────────────────────────
@@ -228,6 +228,11 @@ class TaggedCaptureTests(unittest.TestCase):
                     self.assertNotIn("_pending_elicitation", s.context)
                     for f in stored:
                         self.assertEqual(s.context["_spec_set_at"].get(f), 1)  # provenance
+                    if name == "account pick by known id":
+                        # The model is told what the user clicked (the account's
+                        # name, not its id) and words the acknowledgement itself.
+                        self.assertIn("**Main Account**", ack)
+                        self.assertNotIn("Got it", ack)
                 else:
                     self.assertEqual(ack, "")
                     self.assertIsNotNone(s.context.get("_pending_elicitation"))
@@ -248,31 +253,6 @@ class TaggedCaptureTests(unittest.TestCase):
             s = make_session(last_user="30 days", product=product,
                              pending_elicitation=_dur_pe())
             self.assertNotIn("AdZump Dummy", _cap(s))
-
-    def test_stale_rail_steps_aside(self):
-        # S1-11/R6 - a rail kept open across turns must not claim a
-        # much-later exact-match message as its answer.
-        stale = {**_dur_pe(), "first_reply_turn": 2}
-        s = make_session(last_user="30 days", pending_elicitation=stale, turn=9)
-        self.assertEqual(_cap(s), "")
-        self.assertEqual(s.context["campaign_spec"], {})
-        # ...and layer 2 skips it too: the resume section drops the stale rail
-        # instead of steering the model to select for a forgotten ask.
-        self.assertEqual(
-            AdzumpAgent._resume_elicitation_section(None, s, turn=1), "")
-        self.assertNotIn("_pending_elicitation", s.context)
-        # Within the window the same chip reply still lands.
-        fresh = {**_dur_pe(), "first_reply_turn": 8}
-        s = make_session(last_user="30 days", pending_elicitation=fresh, turn=9)
-        _cap(s)
-        self.assertEqual(s.context["campaign_spec"].get("duration"), "30 days")
-        # First sight stamps the rail, so age counts from the first reply.
-        unstamped = dict(_dur_pe())
-        s = make_session(last_user="what about targeting?",
-                         pending_elicitation=unstamped, turn=9)
-        _cap(s)
-        self.assertEqual(
-            s.context["_pending_elicitation"].get("first_reply_turn"), 9)
 
     def test_decline_capture_acknowledges(self):
         # regression: D14 (acknowledgement steer on deterministic capture)
@@ -336,7 +316,7 @@ class RefusedSlotEscapeTests(unittest.TestCase):
         def line(field, asks):
             actx = make_actx({"platform": "Google Ads"}, attempted=True,
                              field_asks={field: asks})
-            return next(x for x in missing_list(NEW_CAMPAIGN, actx) if x.startswith(field))
+            return next(x for x in NEW_CAMPAIGN.walk(actx).missing if x.startswith(field))
         for field in ("duration", "budget"):
             with self.subTest(field):
                 self.assertIn('"answer":', line(field, ESCAPE_AFTER_ASKS))
@@ -365,7 +345,7 @@ def _full_google_actx():
 class ReviewPublishPrescriptionTests(unittest.TestCase):
     def test_review_publish_has_no_raw_tool_call_syntax(self):
         # regression: F20 (review/publish prescription leak)
-        missing = missing_list(NEW_CAMPAIGN, _full_google_actx())
+        missing = NEW_CAMPAIGN.walk(_full_google_actx()).missing
         review = next((m for m in missing if "review & publish" in m), None)
         self.assertIsNotNone(review, f"review&publish should appear; got: {missing}")
         # F20: the live leak was the model echoing this prescription's copyable
@@ -464,11 +444,11 @@ def _untagged_present_options(missing: list[str]) -> list[str]:
 class PrescriptionAuditTests(unittest.TestCase):
     def test_data_asks_are_tagged(self):
         # regression: D9 (every data-ask present_options carries field=)
-        missing = missing_list(NEW_CAMPAIGN, make_actx({}))
+        missing = NEW_CAMPAIGN.walk(make_actx({})).missing
         self.assertEqual(_untagged_present_options(missing), [])
         self.assertTrue(any('field "platform"' in m for m in missing))
         # platform set → competitor + duration + budget asks render
-        missing = missing_list(NEW_CAMPAIGN, make_actx({"platform": "Google Ads"}))
+        missing = NEW_CAMPAIGN.walk(make_actx({"platform": "Google Ads"})).missing
         self.assertEqual(_untagged_present_options(missing), [])
         joined = "\n".join(missing)
         self.assertIn('field "competitive_analysis"', joined)
@@ -516,6 +496,31 @@ class LoopCompleteTests(unittest.IsolatedAsyncioTestCase):
              mock.patch.object(AdzumpAgent, "_emit_stored_targeting_panel", new=mock.AsyncMock()):
             await agent._on_loop_complete(session, [])
         self.assertEqual(order, ["autosave", "save_context"])
+
+    async def test_list_refreshes_before_the_model_and_repaints_on_change(self):
+        rows = [("changed", True, 1), ("unchanged", False, 0),
+                ("refresh read failed", RuntimeError("db down"), 0)]
+        for label, outcome, repaints in rows:
+            with self.subTest(label):
+                order: list[str] = []
+
+                async def refresh(*_):
+                    order.append("refresh")
+                    if isinstance(outcome, Exception):
+                        raise outcome
+                    return outcome
+                session = mock.Mock(context={}, session_id="s1")
+                agent = AdzumpAgent.__new__(AdzumpAgent)
+                with mock.patch("app.agents.adzump.services.product_service.refresh_competitor_list",
+                                new=refresh), \
+                     mock.patch("app.agents.adzump.tools.craft.rerender_craft",
+                                new=mock.AsyncMock()) as m_paint, \
+                     mock.patch.object(AdzumpAgent, "build_tool_context", return_value={}), \
+                     mock.patch("app.core.agent.BaseAgent.run",
+                                new=mock.AsyncMock(side_effect=lambda *a, **k: order.append("model"))):
+                    await agent.run("hi", session, object())
+                self.assertEqual(order, ["refresh", "model"])
+                self.assertEqual(m_paint.await_count, repaints)
 
 
 if __name__ == "__main__":

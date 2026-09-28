@@ -3,7 +3,7 @@
 Carries the DURABLE, turn-invariant content: persona, non-negotiable rules, the
 tool/capability map, platform specifics, and output discipline. The per-turn
 workflow - current state + the exact next tool to call - lives in ``agent.py``
-(``missing_list`` → the ``<system-reminder>``), NOT here. Keep turn-specific
+(``NEW_CAMPAIGN.walk`` → the ``<system-reminder>``), NOT here. Keep turn-specific
 steps out of this prefix; it is cached by Anthropic and must stay turn-invariant.
 """
 
@@ -36,10 +36,10 @@ The `<system-reminder>` says which tool to use this turn; this map is why each e
 - **Launch** - `launch_campaign()`: persist the finished campaign (once, on explicit confirm).
 
 # Widget tools own their text - never duplicate it
-`present_options` and `confirm_location` emit their OWN question/prompt and UI. After calling them, do not write the question - not verbatim, not paraphrased, not "please pick one below". At most one short lead-in like "Got it."
-- ✓  "Got it." → emit `present_options` with the budget question + options. Nothing else.
-- ✗  "Got it - what's your daily budget? Pick one below." → emit `present_options`.  (question now duplicated in chat AND the chip)
-Tools that post their own result panel - `manage_assets`, `analyze_competitors`, `manage_targeting_locations` - are the same: add at most a one-line lead-in, never restate their output.
+`present_options` and `confirm_location` emit their OWN question/prompt and UI. After calling them, do not write the question - not verbatim, not paraphrased, not "please pick one below". Acknowledge the user's answer briefly, in your own words, once per reply - a later step of the same reply does not acknowledge it again.
+- ✗  acknowledging, running a tool, then acknowledging the same answer again before the next question.
+- ✗  "what's your daily budget? Pick one below." → emit `present_options`.  (question now duplicated in chat AND the chip)
+Every other tool result reaches only you - `analyze_competitors`, `fetch_competitor_creatives`, `manage_targeting_locations`, `manage_assets` post nothing to chat. Report what changed yourself, once and briefly; the side panel shows the full details.
 
 # Platform specifics
 - **Meta** requires a Facebook page; Instagram is OPTIONAL - a Facebook-only campaign is valid. If the user skips Instagram it's recorded as declined; don't treat "no Instagram" as an error, and never set `ig_page` to "true".
@@ -59,7 +59,7 @@ def build_adzump_context() -> BaseContext:
     """Build the BaseContext for the Adzump chat agent.
 
     Static prefix is persona + durable rules + tool map (cached). The workflow
-    journey lives in ``workflow.missing_list`` and is rendered per-turn.
+    journey lives in ``workflow.NEW_CAMPAIGN`` and is rendered per-turn.
     """
     ctx = BaseContext(
         doc_paths=[],

@@ -16,12 +16,12 @@ judgments are delegated to sub-agents; the orchestrator's own LLM decides only
 
 One `BaseAgent` tool loop, unmodified. Every ounce of steering rides the
 per-turn dynamic context (`agent.py::build_dynamic_context` /
-`build_turn_reminder`), rendered by `prompt_sections.py`:
+`build_turn_reminder`), rendered by `core/dynamic_context.py`:
 
 1. `## State` - what's collected, with provenance ("just set" / "set N turns ago")
 2. `## User just said` - the last user message verbatim
-3. `## What's still missing` - the ordered list from the journey engine
-4. `## How to respond` - the priority rule for the LLM
+3. `## How to respond` - the priority rule for the LLM
+4. `## What's still missing` - the ordered list from the journey engine
 
 The static system prompt (`context.py`) carries persona + non-negotiable rules
 only. The model is re-grounded EVERY agentic turn, so a long session can't
@@ -37,11 +37,11 @@ drift off the funnel.
 │                                                                      │
 │  turn start (code, before the LLM):                                  │
 │    capture rails - tagged chip answers, prose declines,              │
-│    elicitation resume, stale-rail expiry (STALE_RAIL_TURNS=4)        │
+│    elicitation resume                                                │
 │                                                                      │
 │  per-turn reminder (code):                                           │
-│    AdzumpContext.from_session → missing_list(NEW_CAMPAIGN, actx)   │
-│    → the ONE prescribed next action                                  │
+│    AdzumpContext.from_session → NEW_CAMPAIGN.walk(actx)              │
+│    → State + the ONE prescribed next action                          │
 │                                                                      │
 │  the LLM picks tools (registry.ALL_TOOLS):                           │
 │    analyze_product ──────────► ProductAgent (agents/product/)        │
@@ -64,8 +64,10 @@ app/agents/adzump/
 │   the loop
 ├── agent.py                  AdzumpAgent - the loop, capture rails, per-turn context
 ├── context.py                static system prompt (persona + non-negotiables, cached)
-├── prompt_sections.py        per-turn section renderers (State / User said / Missing / How to respond)
-├── workflow.py               journey engine - AdzumpContext, Step, NEW_CAMPAIGN, missing_list
+├── core/                     common to every adzump agent
+│   ├── dynamic_context.py    DynamicContext - renders ANY adzump agent's per-turn reminder from its journey + fixed text
+│   └── journey.py            step engine - Journey, Step, walk -> State rows + Missing lines
+├── workflow.py               AdzumpContext + NEW_CAMPAIGN steps + ORCHESTRATOR_CONTEXT (its reply rules)
 ├── observability.py          the per-turn `turn_decision` record
 ├── router.py                 POST /chat (SSE) + the folded-in location search route
 ├── products_router.py        GET products / competitors / creatives, DELETE product / competitor / ad (UI)
@@ -139,22 +141,35 @@ app/agents/adzump/
     └── product_service.py    saves + restores the product and campaign draft (via db.py)
 ```
 
-## The journey engine (`workflow.py`)
+## The journey engine (`core/journey.py` + `workflow.py`)
 
-The funnel is a typed registry, all in `workflow.py` unless noted:
+The funnel is a typed registry. The engine (`core/journey.py`) knows nothing about
+ads, so a campaign or optimization sub-agent can declare its own journey over
+its own read-model and get its State and Missing the same way.
 
-- **`AdzumpContext`** (`workflow.py:45`) - one frozen read of the session per
+- **`AdzumpContext`** (`workflow.py:58`) - one frozen read of the session per
   turn: product, spec, competitor names, offer resolutions, the open
   elicitation's field, ask counts. Built ONCE (`from_session`,
-  `workflow.py:82`) so every gate reads the same facts.
-- **`Step`** (`workflow.py:140`) - `name`, `requires` (dependencies), `done`
-  (predicate over the context), `prescribe` (the exact instruction the model
-  gets when this step is next). The step registry is `NEW_CAMPAIGN`
-  (`workflow.py:441`): product, location, platform, target_areas,
-  competitive_analysis, competitor_creatives, duration, budget,
-  parent_account, account, fb_page, instagram.
-- **`missing_list(journey, actx)`** (`workflow.py:162`) - the ordered
-  still-missing lines; its first entry is the turn's Next action.
+  `workflow.py:94`) so every gate reads the same facts.
+- **`Step`** (`core/journey.py:66`) - `name`, `label`, `requires` (dependencies),
+  `done` (predicate over the context), `prescribe` (the exact instruction the
+  model gets when this step is next), `value` (what its State row shows) and
+  `fields` (the spec keys it writes; the newest write is its "set N turns
+  ago"). The step registry is `NEW_CAMPAIGN` (`workflow.py:474`): product,
+  location, platform, target_areas, competitive_analysis,
+  competitor_creatives, duration, budget, parent_account, account, fb_page,
+  instagram.
+- **`Journey.walk(ctx, set_at, turn)`** (`core/journey.py:47`) - gives every step
+  one status (off / done / blocked / waiting / open) and returns `Progress`:
+  the ordered still-missing lines (the first is the turn's Next action; the
+  review prescription once complete) plus one State row per step.
+  `state_section()` and `missing_section()` render both from that one walk,
+  so State and Missing can never disagree about a step.
+- **`DynamicContext`** (`core/dynamic_context.py`) - an agent's journey plus its
+  own reply rules and missing-list note. `render(ctx, ...)` returns the whole
+  per-turn reminder (steers, State, User just said, rules, Missing) and the
+  walk it came from. The orchestrator's is `ORCHESTRATOR_CONTEXT`
+  (`workflow.py`); a campaign or optimization sub-agent declares its own.
 - **Offers** are typed resolutions (`OfferResolution` in
   `models/offer_state.py`: OPEN / DECLINED / FULFILLED / EXHAUSTED / MOOT)
   computed by the `*_offer_resolution` functions in `tools/campaign_data.py`
@@ -177,8 +192,7 @@ All rails live in `agent.py`; the widgets they capture from are emitted by
   candidates steers the model to store it via `set_campaign_spec` (validated
   against `field_candidates` - anti-invention).
 - **Prose declines** (`_record_prose_decline`) and **elicitation resume**
-  (`_resume_elicitation_section`) handle "no thanks" and stale widgets; a rail
-  older than `STALE_RAIL_TURNS` user turns steps aside.
+  (`_resume_elicitation_section`) handle "no thanks" and stale widgets.
 - Every turn emits a structured **`turn_decision`** log line
   (`observability.py`): prescription, missing list, captures, offer states -
   the first thing to read when the flow misbehaves.
@@ -229,9 +243,17 @@ product delete is real; competitors and ads carry `status` (active | deleted,
 `updated_by` = who changed it). A deleted competitor (from the UI, or dropped
 from the chat's list) leaves every listing and resume, research never
 suggests it again, and an explicit re-add revives the same row with its ads.
-An open chat's entry carries its `row_id`, so a UI delete holds: the entry is
-dropped on the chat's next save, not re-added. A hidden ad stays hidden: the
-wholesale refetch replaces only active ads and skips hidden ones.
+An open chat re-reads the list from the rows at the start of every turn
+(`AdzumpAgent.run`), so a UI delete, an ad hide or another chat's addition
+shows before the model replies, and the panel repaints; each entry carries
+its `row_id`, so a save never re-adds a row deleted elsewhere. A hidden ad stays hidden: a
+refetch never re-inserts it.
+
+Each ads fetch adds at most 10 new ads per competitor (active first, then
+newest; `library.MAX_NEW_ADS_PER_FETCH`), skipping ads already stored by the ad
+library's id and by image; fetching again (`force=true`) takes the next 10. The
+chat keeps only `ad_previews` (the panel fields) of the latest 10 per
+competitor - the full ads live in `adzump_creatives`.
 
 ## Sub-agent routing table
 
@@ -247,12 +269,13 @@ wholesale refetch replaces only active ads and skips hidden ones.
 
 | File | Covers |
 |---|---|
-| `tests/agents/adzump/test_workflow.py` | journey steps, missing_list ordering, prescriptions, offer gating |
+| `tests/agents/adzump/core/test_journey.py` | the step engine on a toy journey: statuses, completion, render rules, registry checks |
+| `tests/agents/adzump/test_workflow.py` | NEW_CAMPAIGN steps, missing ordering, prescriptions, offer gating, State rows |
 | `tests/agents/adzump/tools/test_campaign_data.py` | field apply/validation, dependents clearing, offer resolutions, fetch steer |
 | `tests/agents/adzump/test_agent.py` | capture rails, resume, turn reminder |
 | `tests/agents/adzump/tools/` | one file per tool module |
 
-Run: `python -m unittest discover -s tests/agents/adzump`.
+Run: `./venv/bin/python -m pytest tests/agents/adzump -q` (`unittest discover` skips the pytest-style tests).
 
 ## Design decisions
 

@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.models import CompetitorProfile, competitor_profiles
+from app.agents.adzump.models import CompetitorProfile, ad_previews, competitor_profiles
+from app.agents.adzump.models.competitor_profile import CHAT_ADS_PER_COMPETITOR
 
 SCHEMA_ENTRY = {
     "name": "Purva Sparkling Springs",
@@ -86,6 +87,26 @@ class CreativesTriStateTests(unittest.TestCase):
         self.assertEqual(stored["activeCreatives"], 12)
         again = CompetitorProfile.from_stored(stored)
         self.assertEqual(again.total_creatives, 33)
+
+
+class AdPreviewTests(unittest.TestCase):
+    def test_chat_keeps_panel_fields_of_the_latest_ten(self):
+        # Full ads (essence, copy, renditions) sank the chat's context past its
+        # 64KB column (live 2026-09-25); the chat carries panel fields only.
+        full = {"creativeId": "a", "mediaType": "image", "fileUrl": "https://f/a.jpg",
+                "headline": "Villas", "isActive": True, "firstSeen": "2026-09-01",
+                "essence": {"angle": "lakeside"}, "primaryText": "x" * 500,
+                "renditions": [{"fileUrl": "https://f/a-wide.jpg"}]}
+        (preview,) = ad_previews([full])
+        self.assertNotIn("essence", preview)
+        self.assertNotIn("primaryText", preview)
+        self.assertEqual((preview["creativeId"], preview["fileUrl"], preview["isActive"]),
+                         ("a", "https://f/a.jpg", True))
+        ads = [{"creativeId": f"c{i}", "isActive": i >= 8,
+                "firstSeen": f"2026-09-{i + 1:02d}"} for i in range(15)]
+        ids = [p["creativeId"] for p in ad_previews(ads)]
+        self.assertEqual(len(ids), CHAT_ADS_PER_COMPETITOR)
+        self.assertEqual(ids[:3], ["c14", "c13", "c12"])  # active first, then newest
 
 
 class AccessorTests(unittest.TestCase):

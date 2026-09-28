@@ -11,7 +11,7 @@ and never imports the agent. In call order:
        (the agent then runs its LLM loop on that sub-session)
     5. build_run_prompt       → business profile + current targeting list +
                                 the user's verbatim request
-    6. build_run_result       → ToolResult(audience="both", summary, ...)
+    6. build_run_result       → ToolResult(summary, model_summary, ...)
 
 The success signal is the magic key ``GEO_FINALIZED_KEY`` stamped by
 ``tools._shared.finalize_targets`` - the funnel EVERY mutation ends in
@@ -135,7 +135,6 @@ async def build_sub_session(parent_ctx: dict, auth, chat_session_id: str = "") -
         "campaign_spec": parent_ctx.setdefault("campaign_spec", {}),
         "account_names": parent_ctx.setdefault("account_names", {}),
         "craft_id": parent_ctx.get("craft_id", ""),
-        "_craft_id": parent_ctx.get("_craft_id", ""),
         # Parent chat session id - save_campaign stamps it on the record so
         # storage provenance points at the conversation, not this sub-session.
         "_session_id": chat_session_id,
@@ -192,7 +191,7 @@ def build_run_result(
         success=False if ``GEO_FINALIZED_KEY`` was never set (no mutation
         reached finalize - a chatty no-op run, or a failed edit like an
         out-of-range delete; the agent's own final text carries the reason).
-        success=True with audience="both" otherwise.
+        success=True otherwise - the orchestrator reports it to the user.
     """
     final_text = _extract_final_summary(sub_session)
 
@@ -221,16 +220,12 @@ def build_run_result(
         f"Targeting updated: {len(mapped)} areas for {platform}. "
         f"Summary: {user_summary}"
     )
-    # audience="both" - orchestrator reasons over the summary later (State
-    # block, missing_list), AND the framework emits it as chat text so the
-    # user sees it without depending on the orchestrator LLM's lead-in (the
-    # historic dead-end path documented at AGENT.md). Matches
-    # `analyze_competitors`'s audience="both" pattern.
+    # Model-only: the orchestrator writes the reply from model_summary. Posting
+    # the sub-agent's sentence beside it said the change twice (2026-09-25).
     return ToolResult(
         success=True,
         data={"target_areas": mapped, "summary": final_text},
         summary=user_summary,
-        audience="both",
         model_summary=model_summary,
     )
 

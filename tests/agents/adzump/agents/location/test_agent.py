@@ -129,7 +129,7 @@ class HandleTests(unittest.TestCase):
         self.assertFalse(res.success)
         self.assertIn("only 2 areas", res.error)
 
-    def test_success_result_is_audience_both_with_the_agents_summary(self):
+    def test_success_result_goes_to_the_orchestrator_only(self):
         sub = FakeSubSession()
 
         async def good_run(user_message, session, event_stream):
@@ -141,9 +141,9 @@ class HandleTests(unittest.TestCase):
         with self._patched(sub, mock.AsyncMock(side_effect=good_run)):
             res = _run(get_location_agent().handle("set targeting", ctx))
         self.assertTrue(res.success)
-        self.assertEqual(res.audience, "both")
+        self.assertEqual(res.audience, "assistant")  # the orchestrator writes the reply
         self.assertIn("Bengaluru", res.summary)
-        self.assertTrue(res.model_summary)
+        self.assertIn("Bengaluru", res.to_tool_result_content())
 
     def test_run_exception_becomes_structured_error_not_a_raise(self):
         sub = FakeSubSession()

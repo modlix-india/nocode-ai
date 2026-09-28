@@ -296,13 +296,14 @@ async def sync_competitor_profiles(
 async def sync_competitor(
     client_code: str, product_url: str, competitor: Competitor, user_id: int = 0
 ) -> int | None:
-    """Upsert a competitor and refresh its creatives WHOLESALE for this product.
+    """Upsert a competitor and write its record's creatives for this product.
 
     One transaction: upsert the adzump_competitors row, delete this competitor's
-    active creative slice (assets cascade), then re-insert the current creatives
-    + their asset rows - latest fetch wins. Ads the user hid stay as they are and
-    are never re-inserted. Returns the competitor row id, or None if the product
-    row is missing.
+    active creative slice (assets cascade), then re-insert the record's
+    creatives + their asset rows. The record carries the stored ads plus the
+    fetch's new ones (library._process_stage), so nothing already stored is
+    lost. Ads the user hid stay as they are and are never re-inserted. Returns
+    the competitor row id, or None if the product row is missing.
     """
     pid = await products.product_id(client_code, product_url)
     if pid is None:
@@ -394,23 +395,12 @@ async def sync_competitor(
                          json.dumps(_creative_content(creative)), user_id, user_id),
                     )
                     creative_row_id = cur.lastrowid
-                    essence = (creative.essence.model_dump(by_alias=True)
-                               if creative.essence else None)
+                    asset = _primary_asset(creative)
                     await cur.execute(
-                        """
-                        INSERT INTO adzump_creative_assets
-                            (creative_id, slide_index, aspect_ratio, media_type,
-                             file_url, thumbnail_url, width, height,
-                             duration_seconds, content_hash, perceptual_hash, essence)
-                        VALUES (%s,0,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                        """,
-                        (creative_row_id, aspect_ratio_bucket(creative.aspect_ratio),
-                         "video" if creative.media_type == "video" else "image",
-                         creative.file_url or creative.source_asset_url,
-                         creative.poster_url or None, creative.width or None,
-                         creative.height or None, creative.duration_seconds or None,
-                         creative.content_hash or None, creative.perceptual_hash or None,
-                         json.dumps(essence) if essence is not None else None),
+                        f"INSERT INTO adzump_creative_assets "
+                        f"(creative_id, slide_index, {', '.join(asset)}) "
+                        f"VALUES (%s,0,{','.join(['%s'] * len(asset))})",
+                        (creative_row_id, *asset.values()),
                     )
                     # Placement versions: one asset row per rendition ratio
                     # (grouping guarantees the buckets are distinct - the
@@ -472,6 +462,24 @@ def _creative_format(media_type: str) -> str:
     """adzump_creatives.format enum from the Creative media_type. An image ad is a
     'single'; video/carousel/collection map through unchanged."""
     return media_type if media_type in ("video", "carousel", "collection") else "single"
+
+
+def _primary_asset(creative: Creative) -> dict:
+    """The slide-0 adzump_creative_assets columns for a creative - the one place
+    the writer maps them, so _row_to_creative is tested against the same shape."""
+    essence = creative.essence.model_dump(by_alias=True) if creative.essence else None
+    return {
+        "aspect_ratio": aspect_ratio_bucket(creative.aspect_ratio),
+        "media_type": "video" if creative.media_type == "video" else "image",
+        "file_url": creative.file_url or creative.source_asset_url,
+        "thumbnail_url": creative.poster_url or None,
+        "width": creative.width or None,
+        "height": creative.height or None,
+        "duration_seconds": creative.duration_seconds or None,
+        "content_hash": creative.content_hash or None,
+        "perceptual_hash": creative.perceptual_hash or None,
+        "essence": json.dumps(essence) if essence is not None else None,
+    }
 
 
 def _creative_content(creative: Creative) -> dict:

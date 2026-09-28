@@ -164,7 +164,7 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
             except Exception:
                 logger.exception("manage_assets: receipts emit failed")
 
-    # User-facing summary (tool-text contract - the orchestrator only adds a lead-in).
+    # What happened, for the model to report (or the ask itself, posted below).
     parts: list[str] = []
     parts += _saved_summary(stored)
     if rejected:
@@ -184,16 +184,17 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
         # handled conversationally (no elicit_field - the re-review round-trip
         # for consumed bytes is a separate follow-up).
         result_data["elicited"] = True
+    if not ambiguous:
+        return ToolResult(success=True, data=result_data, summary=summary)
+    # An ask ends the turn at this tool, so the model never gets to say it -
+    # the tool posts it and the model sees only the counts.
     return ToolResult(
         success=True,
         data=result_data,
-        summary=summary,  # the saved/skipped/ask text IS the user-facing message
-        audience="user",  # model gets model_summary, not the user prose → no double
-        model_summary=(
-            f"Stored {len(stored)}, skipped {len(rejected)}"
-            + (f", {len(ambiguous)} need a user decision (already asked in chat)" if ambiguous else "")
-            + "."
-        ),
+        summary=summary,
+        audience="user",
+        model_summary=(f"Stored {len(stored)}, skipped {len(rejected)}, "
+                       f"{len(ambiguous)} need a user decision (already asked in chat)."),
     )
 
 

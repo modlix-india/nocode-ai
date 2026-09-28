@@ -22,6 +22,10 @@ from app.agents.adzump._shared import (
     is_aggregator_host,
     primary_screenshot_url,
 )
+from app.agents.adzump.tools.craft import (
+    append_competitor_blocks as _append_competitor_craft,
+    emit_craft_panel as _emit_final_craft,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -392,13 +396,6 @@ def _filter_self_references(
     return dropped
 
 
-# ── Craft panel rendering - delegated to tools/craft.py ──────────────
-from app.agents.adzump.tools.craft import (
-    emit_craft_panel as _emit_final_craft,
-    append_competitor_blocks as _append_competitor_craft,
-)
-
-
 # ── Tool implementation ───────────────────────────────────────────────
 
 
@@ -505,7 +502,6 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
                 data={"competitive": existing},
                 summary=summary,
                 model_summary=summary + pending_creatives_fetch_steer(context),
-                audience="both",
             )
         # Cross-session: try the storage record before spawning the sub-agent.
         try:
@@ -523,7 +519,6 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
                             data={"competitive": existing, "from_storage": True},
                             summary=summary,
                             model_summary=summary + pending_creatives_fetch_steer(context),
-                            audience="both",
                         )
         except Exception as e:
             logger.warning(
@@ -699,7 +694,6 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
             data={"competitive": competitive},
             summary=summary,
             model_summary=summary + deleted_note + pending_creatives_fetch_steer(context),
-            audience="both",
         )
 
     except Exception as e:
@@ -965,8 +959,8 @@ async def _lookup_single_competitor(
         elif new_competitors:
             await _append_competitor_craft(stream, craft_id, business, new_competitors)
 
-    # The summary is USER-FACING chat markdown (audience=both): structured
-    # bullets, never a period-joined paragraph (live 2026-09-09 complaint).
+    # Structured bullets, never a period-joined paragraph - the model reports
+    # from this and copied the run-on shape into chat (live 2026-09-09).
     sections: list[str] = []
     if removed_names:
         sections.append("**Removed:** " + ", ".join(removed_names))
@@ -996,7 +990,6 @@ async def _lookup_single_competitor(
         success=True,
         data={"competitors": competitive["competitors"], "skipped": skipped},
         summary="\n\n".join(sections),
-        audience="both",
     )
 
 

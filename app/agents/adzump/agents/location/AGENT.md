@@ -146,19 +146,19 @@ data: {"id": "tc_2", "tool": "geocode_recommendations",
 event: agent_finished
 data: {"agent_id": "location_agent", "status": "success"}
 
-event: tool_result                      # outer tool's ToolResult (audience="both")
+event: tool_result                      # outer tool's ToolResult (to the orchestrator)
 data: {"id": "tc_1", "tool": "manage_targeting_locations",
        "success": true,
        "summary": "Targeted 4 cities across India: Bengaluru, Mumbai, ..."}
 
-event: text                             # auto-emitted from audience="both"
-data: {"text": "Targeted 4 cities across India: Bengaluru, Mumbai, ..."}
+event: text                             # the orchestrator's own reply
+data: {"text": "Done - you're now targeting 4 cities: Bengaluru, Mumbai, ..."}
 
 event: done
 data: {"session_id": "abc-123", "usage": {...}}
 ```
 
-For an `add`, `tc_2` is `add_location` with `{"name": "Juhu"}` and the closing text reads like "Added Juhu to targeting - 5 areas total." (`delete` likewise with `delete_location`/`{"index": 2}`). The sub-loop's own `text` events are dropped by the passthrough stream - the model's final summary reaches chat once, via the outer ToolResult's `audience="both"`.
+For an `add`, `tc_2` is `add_location` with `{"name": "Juhu"}` and the closing text reads like "Added Juhu to targeting - 5 areas total." (`delete` likewise with `delete_location`/`{"index": 2}`). The sub-loop's own `text` events are dropped by the passthrough stream - its final summary goes back to the orchestrator in the ToolResult, and the orchestrator writes the one chat reply.
 
 ---
 
@@ -209,7 +209,7 @@ LocationAgent.handle(user_message, context)
    │  └─────────────────────────────────────────────────────────┘
    │
    ▼
-build_run_result → ToolResult(success=True, data={...}, audience="both", ...)
+build_run_result → ToolResult(success=True, data={...}, model_summary, ...)
 ```
 
 ### Local / real-estate campaign
@@ -237,7 +237,7 @@ LocationAgent.handle(user_message, context)
    │
    │  LLM summary turn: "Added Juhu - 5 areas total."
    ▼
-build_run_result → ToolResult(summary="Added Juhu - 5 areas total.", audience="both", ...)
+build_run_result → ToolResult(summary="Added Juhu - 5 areas total.", model_summary, ...)
 ```
 
 Same shape for `delete` (the model maps "the second one" / "remove Bangalore" to a 1-based `index` using the list in its prompt; the tool pops and re-finalizes).
@@ -295,11 +295,9 @@ The pre-refactor code called `provider.create_completion(...)` directly from a s
 
 ## The user-facing acknowledgement contract
 
-Every action's user-visible text comes from ONE place: the model writes a 1-2 sentence summary on its final turn. It is captured post-hoc via `BaseAgent._stream_turn` into the sub-session's messages; `build_run_result` re-reads it via `sub_session.get_messages()` and sets `ToolResult.summary = final_text` with `audience="both"`. The orchestrator's framework sees the audience and emits it as chat text.
+The sub-agent never writes to the chat. It writes a 1-2 sentence summary on its final turn, captured post-hoc via `BaseAgent._stream_turn` into the sub-session's messages; `build_run_result` re-reads it via `sub_session.get_messages()` and returns it (`summary` for the tool card, `model_summary` for the orchestrator). The orchestrator writes the one chat reply from it.
 
-**Why explicit:** without the `audience` field, the `summary` string lands only in the tool card and in the `tool_result` block sent to the orchestrator's LLM - **never as an SSE text event** - leaving the chat holding only a tool card with no closing sentence (the historic dead-end bug). The sub-loop's own `text` events are dropped by the passthrough stream, so the summary reaches chat exactly once.
-
-**Sibling consumers:** `manage_assets` uses `audience="user"` (`tools/asset_manage.py`); `analyze_competitors` uses `audience="both"` (`tools/competitor.py`).
+**Why not post it directly:** it used to go out as its own chat line (`audience="both"`), and the orchestrator then wrote its own reply beside it, so every change was said twice (2026-09-25). Only a result that ends the turn with a question to the user may post itself (`audience="user"`, e.g. `manage_assets` asking about an unclear image).
 
 ---
 
@@ -417,7 +415,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
 - **`platform_mapping.py` is a utility, not a tool.** Both tools call it; `add`/`delete` call it. The LLM never invokes it directly.
 - **No `GeoTargetingService`.** All three actions live on the agent. Minimum service files.
 - **Sub-session isolation.** The agent's reasoning is not the user's chat. Separate `BaseSession`, separate token record, separate audit trail.
-- **User-facing acknowledgement uses `audience="user"`, not a prompt-only rule.** Prompt-only rules were tried (commit `87cc5a4`, "capture-ack steer") and broke under model drift. The `audience=` mechanism is the deterministic fix.
+- **The orchestrator owns the chat reply.** Sub-agent and tool results reach only it; posting them beside its reply doubled every message (2026-09-25). If a run ever ends silent again, fix the orchestrator's reminder, not by posting the sub-agent's text.
 - **`services/geo/` was dissolved, not stubbed.** All in-repo importers re-pointed in the same change; its survivors (`search.py` + the UI-helper route, now `search_router.py`) moved into this package - the location agent owns geo search - and the route is folded into the adzump router so main.py mounts one router.
 
 ---

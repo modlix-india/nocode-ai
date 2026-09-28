@@ -31,7 +31,7 @@ from app.agents.adzump import _uploads, stores
 from app.agents.adzump._shared import host_of, normalize_business_url, resolve_url
 from app.agents.adzump.creative_intelligence import freshness, taxonomy
 from app.agents.adzump.models import CompetitorProfile
-from app.agents.adzump.creative_intelligence.dedup import dedupe
+from app.agents.adzump.creative_intelligence.dedup import dedupe, dedupe_by_creative_id
 from app.agents.adzump.creative_intelligence.enrich import CreativeImage, EnrichCreatives
 from app.agents.adzump.creative_intelligence.models import (
     Competitor,
@@ -65,6 +65,11 @@ MAX_CONCURRENT_VERIFICATIONS = 6
 # The dropped[] diagnostic trail is bounded so a chronically-failing
 # competitor can't grow its record without limit.
 MAX_DROPPED_ENTRIES = 50
+# At most this many NEW ads join a competitor per fetch - active first, then
+# newest - and fetching again takes the next batch, skipping ads already
+# stored: bounds each fetch's rehost + vision cost and what it adds (Kailash
+# 2026-09-25). Counted per ad, so a carousel's cards travel together.
+MAX_NEW_ADS_PER_FETCH = 10
 
 _default_source = ScrapeCreatorsSource()
 
@@ -131,8 +136,8 @@ async def _fetch_stage(
     ``(fetched, prior, searched_names)`` - when ``fetched`` is None, ``prior``
     IS the answer (cache hit, stale-serve on failure, or kept-prior on empty
     fetch); ``searched_names`` is what the resulting record should claim was
-    searched (union on an augment, replacement on a full refresh - a refresh
-    discards other names' ads, so it must discard their claims too).
+    searched - always the union with the prior claims, since a fetch adds to
+    the stored ads and never replaces them.
 
     ``names`` - every DISTINCT entry name sharing this key. The ad search is
     name-driven, so a shared domain searches once per name and merges (live
@@ -194,10 +199,8 @@ async def _fetch_stage(
         return None, record, []  # serve stale if we have it; else None
 
     if augment:
-        # Union: the stored creatives (other names' finds) re-enter the ingest
-        # alongside the new name's; dedup collapses overlap, the gate re-judges
-        # everything, and the record's claims grow to cover the new name.
-        fetched.creatives.extend(record.creatives)
+        # The stored creatives (other names' finds) stay via `prior`; the
+        # record's claims grow to cover the new name.
         return fetched, record, _merged_names(record.searched_names, searched_ok)
 
     if not fetched.creatives and record and record.creatives:
@@ -208,7 +211,8 @@ async def _fetch_stage(
                        "key=%s (%d creatives)", key, len(record.creatives))
         return None, record, []
 
-    return fetched, record, searched_ok
+    return fetched, record, _merged_names(
+        record.searched_names if record else [], searched_ok)
 
 
 def _uncovered_names(record: Competitor, names: list[str]) -> list[str]:
@@ -231,14 +235,22 @@ async def _process_stage(
     prior: Competitor | None, enrich: EnrichCreatives | None,
     searched_names: list[str] | None = None,
 ) -> Competitor:
-    """The unmetered half: rehost, dedup, VERIFY, essence, store. Safe to
-    overlap with other competitors' fetches - nothing here touches the vendor
-    API. The record is built fully validated before the ONE store write, so a
-    partially-verified record can never be observed (Rule 8)."""
+    """The unmetered half: pick this fetch's new ads, rehost, dedup against the
+    stored ones, VERIFY, essence, gate, store. Safe to overlap with other
+    competitors' fetches - nothing here touches the vendor API. The record
+    (stored ads + this fetch's new ones) is built fully validated before the
+    ONE store write, so a partially-verified record can never be observed
+    (Rule 8)."""
+    from app.agents.adzump.creative_intelligence import verify
+
+    stored = list(prior.creatives) if prior else []
     discovered = len(fetched.creatives)
-    # The vendor's raw hits this run, summed over the names searched. Not
-    # `discovered`: an augment also carries the stored creatives.
+    # The vendor's raw hits this run, summed over the names searched.
     searched = fetched.search_hits
+    batch, no_media, counts = _next_batch(fetched.creatives, stored)
+    now = datetime.now(timezone.utc).isoformat()
+    drop_entries = [{"creativeId": c.creative_id, "fileUrl": "",
+                     "reason": verify.NO_MEDIA, "droppedAt": now} for c in no_media]
     # The curated name, never the vendor's page name: the row is found by the
     # identity both writers share (live 2026-09-23: "Brigade Group" replaced
     # "Brigade Avalon" and the ads landed on a second, duplicate row).
@@ -247,38 +259,45 @@ async def _process_stage(
         name=name,
         domain="" if key.startswith("name:") else host_of(key),
         logo_url=await _rehost_logo(fetched.logo_url, name, prior, ctx),
-        creatives=fetched.creatives[:MAX_CREATIVES_PER_COMPETITOR],
-        # What this record's creatives can answer for (computed by the fetch
-        # stage: union on an augment, this fetch's names on a full refresh).
+        creatives=batch,
         searched_names=searched_names if searched_names is not None else [name],
-        last_fetched_at=datetime.now(timezone.utc).isoformat(),
+        last_fetched_at=now,
         fetched_count=searched,
     )
     binaries = await _attach_binaries(competitor, ctx)
-    rehosted = sum(1 for c in competitor.creatives if c.file_url)
-    # Deterministic dedup cascade: creative_id, then exact (md5), then
-    # perceptual (pHash). Vision never culls - it only adds essence.
-    competitor.creatives = dedupe(competitor.creatives)
-    # Rule 2/3/6: every asset is verified through the SERVED public URL before
-    # it can be written; failures are dropped with a diagnostic entry.
-    competitor.creatives, drop_entries, drop_reasons = await _verify_creatives(
-        competitor.creatives)
-    verified = len(competitor.creatives)
-
+    rehosted = sum(1 for c in batch if c.file_url)
+    # Deterministic dedup cascade over stored + new: creative_id, then exact
+    # (md5), then perceptual (pHash) - a new ad showing a stored image is
+    # never saved twice. Vision never culls - it only adds essence.
+    survivors = {id(c) for c in dedupe(stored + batch)}
+    stored = [c for c in stored if id(c) in survivors]
+    new = [c for c in batch if id(c) in survivors]
+    duplicates = counts["repeats"] + len(batch) - len(new)
+    # Rule 2/3/6: every NEW asset is verified through the SERVED public URL
+    # before it can be written; failures are dropped with a diagnostic entry.
+    new, verify_drops, drop_reasons = await _verify_creatives(new)
+    drop_entries += verify_drops
+    if no_media:
+        drop_reasons[verify.NO_MEDIA] = len(no_media)
+    verified = len(new)
     # One logical creative per placement-version set: same ad + same copy at
-    # distinct standard ratios folds into a primary with renditions (runs after
-    # verify so real dimensions exist, before essence so only primaries pay for
-    # the vision pass).
-    competitor.creatives = _group_renditions(competitor.creatives)
+    # distinct standard ratios folds into a primary with renditions (after
+    # verify so real dimensions exist, before essence so only primaries pay
+    # for the vision pass).
+    new = _group_renditions(new)
+    sizes_folded = verified - len(new)
 
+    competitor.creatives = new + stored  # newest first
+    for c in stored:  # classified under an older taxonomy: re-classify now
+        if c.essence and c.essence.taxonomy_version != taxonomy.TAXONOMY_VERSION:
+            c.essence = None
     _carry_forward_essence(prior, competitor)
     await _enrich_essence(competitor, binaries, enrich)
 
-    # Stage C (taxonomy.py): only ads whose category matches the product's may
-    # be written - a same-market competitor can absolutely run an ad for
-    # something else. Gate OFF (logged) when the product can't be classified
-    # or no classifier ran (enrich=None): never reject against a missing
-    # yardstick.
+    # Stage C (taxonomy.py): only ads in the product's top-level category (and
+    # market) may be written. Gate OFF (logged) when the product can't be
+    # classified or no classifier ran (enrich=None): never reject against a
+    # missing yardstick.
     gate_reasons: dict[str, int] = {}
     gate = _product_gate(ctx) if enrich is not None else None
     if gate:
@@ -288,19 +307,21 @@ async def _process_stage(
         # 2026-09-20: a truncated essence batch wiped a competitor's stored
         # library). Fresh unknowns still fail closed.
         grandfathered = frozenset(
-            key for c in (prior.creatives if prior else [])
-            for key in (c.creative_id, c.content_hash) if key)
+            ident for c in stored for ident in (c.creative_id, c.content_hash) if ident)
         competitor.creatives, gate_drops, gate_reasons = _gate_creatives(
             competitor.creatives, *gate, grandfathered=grandfathered)
         drop_entries += gate_drops
+    competitor.creatives = competitor.creatives[:MAX_CREATIVES_PER_COMPETITOR]
+    new_ids = {id(c) for c in new}
+    added = sum(1 for c in competitor.creatives if id(c) in new_ids)
 
     competitor.dropped = _dedupe_dropped(
         drop_entries + (prior.dropped if prior else []))[:MAX_DROPPED_ENTRIES]
 
     # Rule 7: the status must not lie. Everything-failed-verification is a
-    # PIPELINE failure; everything-gated-out is a RELEVANCE outcome ("empty" +
-    # emptyReason, dropped[] kept). Neither is ever disguised as "this
-    # competitor has no ads at all".
+    # PIPELINE failure; everything-gated-out, or no ad with any media, is an
+    # outcome ("empty" + emptyReason, dropped[] kept). Neither is ever
+    # disguised as "this competitor has no ads at all".
     if competitor.creatives:
         competitor.fetch_status = "ok"
         competitor.fetch_error = ""
@@ -312,6 +333,9 @@ async def _process_stage(
         competitor.fetch_status = "empty"
         if searched:
             competitor.empty_reason = "unattributed"
+    elif no_media and not batch:
+        competitor.fetch_status = "empty"
+        competitor.empty_reason = verify.NO_MEDIA
     elif verified and gate_reasons:
         competitor.fetch_status = "empty"
         competitor.empty_reason = max(gate_reasons, key=gate_reasons.get)
@@ -321,18 +345,54 @@ async def _process_stage(
             f"all {discovered} discovered creatives failed validation: "
             + ", ".join(f"{r}={n}" for r, n in sorted(drop_reasons.items())))
 
+    # Every stage's count, so no found ad goes unaccounted for (live
+    # 2026-09-25: 34 found, 8 written, and nothing said where 26 went).
     logger.info(
-        "creative_intelligence: ingest key=%s searched=%d discovered=%d "
-        "rehosted=%d verified=%d written=%d dropped=%s gated=%s",
-        key, searched, discovered, rehosted, verified, len(competitor.creatives),
-        (dict(sorted(drop_reasons.items())) or "{}"),
-        (dict(sorted(gate_reasons.items())) or "{}"),
+        "creative_intelligence: ingest key=%s searched=%d found=%d "
+        "already_stored=%d no_media=%d left_for_next_fetch=%d taken=%d "
+        "rehosted=%d duplicates=%d verified=%d sizes_folded=%d dropped=%s "
+        "gated=%s added=%d total=%d",
+        key, searched, discovered, counts["already_stored"], len(no_media),
+        counts["left_for_next_fetch"], len(batch), rehosted, duplicates, verified,
+        sizes_folded, (dict(sorted(drop_reasons.items())) or "{}"),
+        (dict(sorted(gate_reasons.items())) or "{}"), added,
+        len(competitor.creatives),
     )
 
     client_code, product_url = _product_scope(ctx)
     await stores.competitors.sync_competitor(
         client_code, product_url, competitor, ctx.get("user_id") or 0)
     return competitor
+
+
+def _next_batch(
+    fetched: list[Creative], stored: list[Creative],
+) -> tuple[list[Creative], list[Creative], dict[str, int]]:
+    """This fetch's new ads: not already stored (by the ad library's id), with
+    an image or video to show, the first MAX_NEW_ADS_PER_FETCH ads - active
+    first, then newest. Stored ads the vendor listed again take its live
+    status. Returns (batch, no_media, counts)."""
+    listed = {c.creative_id: c for c in dedupe_by_creative_id(fetched)}
+    known = {c.creative_id for c in stored}
+    for c in stored:
+        again = listed.get(c.creative_id)
+        if again:
+            c.is_active, c.last_seen, c.days_running = (
+                again.is_active, again.last_seen, again.days_running)
+    fresh = [c for cid, c in listed.items() if cid not in known]
+    no_media = [c for c in fresh if not c.source_asset_url]
+    ads: dict[str, list[Creative]] = {}
+    for c in fresh:
+        if c.source_asset_url:
+            ads.setdefault(c.creative_id.split(":", 1)[0], []).append(c)
+    ranked = sorted(ads.values(), reverse=True,
+                    key=lambda cards: (cards[0].is_active, cards[0].first_seen))
+    batch = [c for cards in ranked[:MAX_NEW_ADS_PER_FETCH] for c in cards]
+    return batch, no_media, {
+        "repeats": len(fetched) - len(listed),  # one ad listed twice (several names)
+        "already_stored": len(listed) - len(fresh),
+        "left_for_next_fetch": sum(len(cards) for cards in ranked[MAX_NEW_ADS_PER_FETCH:]),
+    }
 
 
 async def _verify_creatives(

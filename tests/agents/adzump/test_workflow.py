@@ -4,19 +4,22 @@ The S0 rows were written against the retired if-chain and passed UNCHANGED
 across the slice-3 conversion - they are the equivalence referee (D6:
 membership, order, tool named - never prose wording). S0-6 goes through the
 REAL ``from_session`` lenient path with raw legacy dicts, not the ``make_actx``
-fixture shortcut. S3 adds the registry-discipline lint and the engine's one
-deliberate semantic: waiting (an ask in flight) blocks review.
+fixture shortcut. S3 adds the engine's one deliberate semantic: waiting (an
+ask in flight) blocks review. The registry lint is ``Journey``'s own
+construction check (core/test_journey.py).
 """
 from __future__ import annotations
 
 import asyncio
 import unittest
+from dataclasses import replace
 
-from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext, missing_list
+from app.agents.adzump.core.journey import Status
+from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext
 from app.agents.adzump.tools.launch import _launch_campaign
 from app.agents.adzump.models import OfferResolution
 from app.agents.adzump.tools.campaign_data import CREATIVES_REVIEW_ASK
-from tests.agents.adzump._fixtures import SAAS, make_actx, make_session
+from tests.agents.adzump._fixtures import RE, SAAS, make_actx, make_session
 
 
 def _entry(missing: list[str], prefix: str) -> str | None:
@@ -56,7 +59,7 @@ class JourneyInvariantTests(unittest.TestCase):
         ]
         for label, actx, prefix in rows:
             with self.subTest(label):
-                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, actx), prefix))
+                self.assertIsNone(_entry(NEW_CAMPAIGN.walk(actx).missing, prefix))
 
     # S0-2 · decline honored through the REAL from_session/predicate wiring
     def test_decline_honored_from_raw_session(self):
@@ -77,7 +80,7 @@ class JourneyInvariantTests(unittest.TestCase):
             with self.subTest(label):
                 session = make_session(spec=spec, product=SAAS, **extra)
                 actx = AdzumpContext.from_session(session)
-                self.assertIsNone(_entry(missing_list(NEW_CAMPAIGN, actx), prefix))
+                self.assertIsNone(_entry(NEW_CAMPAIGN.walk(actx).missing, prefix))
 
     # S0-4 · an accepted creatives offer starts research, never a blind fetch:
     # known rivals get the list-review checkpoint first (Kailash 2026-09-09)
@@ -91,7 +94,7 @@ class JourneyInvariantTests(unittest.TestCase):
                 actx = make_actx(
                     {"platform": "Meta", "competitor_creatives": "accepted"},
                     product=SAAS, competitor_names=names, last_user="Yes")
-                line = _entry(missing_list(NEW_CAMPAIGN, actx), "competitor creatives")
+                line = _entry(NEW_CAMPAIGN.walk(actx).missing, "competitor creatives")
                 self.assertIsNotNone(line)
                 self.assertIn(tool, line)
                 self.assertNotIn('field "competitor_creatives"', line)  # not a re-ask
@@ -112,7 +115,7 @@ class JourneyInvariantTests(unittest.TestCase):
         ]
         for label, actx in rows:
             with self.subTest(label):
-                missing = missing_list(NEW_CAMPAIGN, actx)
+                missing = NEW_CAMPAIGN.walk(actx).missing
                 self.assertEqual(len(missing), 1)
                 block = missing[0]
                 self.assertTrue(block.startswith("review & publish"))
@@ -132,7 +135,7 @@ class JourneyInvariantTests(unittest.TestCase):
         actx = AdzumpContext.from_session(session)
         self.assertIs(actx.competitor_creatives_resolution,
                       OfferResolution.DECLINED)
-        missing = missing_list(NEW_CAMPAIGN, actx)
+        missing = NEW_CAMPAIGN.walk(actx).missing
         self.assertEqual(len(missing), 1)
         self.assertTrue(missing[0].startswith("review & publish"))
 
@@ -141,7 +144,7 @@ class JourneyInvariantTests(unittest.TestCase):
         actx = make_actx(
             {"platform": "Google Ads", "duration": "30 days",
              "competitive_analysis_declined": "true"}, product=SAAS)
-        missing = missing_list(NEW_CAMPAIGN, actx)
+        missing = NEW_CAMPAIGN.walk(actx).missing
         self.assertIsNotNone(_entry(missing, "budget"))
         self.assertIsNone(_entry(missing, "competitive analysis"))
 
@@ -161,8 +164,7 @@ class JourneyInvariantTests(unittest.TestCase):
 
 
 class JourneyEngineTests(unittest.TestCase):
-    """S3 · the engine semantics the if-chain could not express, plus the
-    registry-discipline lint."""
+    """S3 · the engine semantics the if-chain could not express."""
 
     def test_waiting_ask_blocks_review(self):
         # Everything set except the creatives offer, whose ask is ON SCREEN:
@@ -170,11 +172,12 @@ class JourneyEngineTests(unittest.TestCase):
         # complete, so review cannot fire over an unanswered ask (the retired
         # if-chain prescribed review here). The missing-section prompt must
         # not claim review-readiness either.
-        from app.agents.adzump.prompt_sections import _missing_section
         actx = make_actx({**META_DONE, "ig_page": "ig-7"}, product=SAAS,
                          pending_ask="competitor_creatives")
-        self.assertEqual(missing_list(NEW_CAMPAIGN, actx), [])
-        section = _missing_section([])
+        progress = NEW_CAMPAIGN.walk(actx)
+        self.assertEqual(progress.missing, ())
+        self.assertFalse(progress.complete)
+        section = progress.missing_section()
         self.assertNotIn("review", section)
         self.assertIn("pending on screen", section)
 
@@ -187,27 +190,65 @@ class JourneyEngineTests(unittest.TestCase):
             {**META_DONE, "ig_page": "ig-7", "competitor_creatives": "accepted"},
             product=SAAS, competitor_names=["Rival"],
             pending_ask="competitor_creatives")
-        missing = missing_list(NEW_CAMPAIGN, actx)
+        missing = NEW_CAMPAIGN.walk(actx).missing
         self.assertEqual(len(missing), 1)
         self.assertIn("fetch_competitor_creatives", missing[0])
 
     def test_upstream_ask_hides_dependents(self):
         # No product: every later step requires it, so the URL ask is the
         # ONLY line (the old early-return, now expressed as dependencies).
-        missing = missing_list(NEW_CAMPAIGN, make_actx({}, product={}))
+        missing = NEW_CAMPAIGN.walk(make_actx({}, product={})).missing
         self.assertEqual(len(missing), 1)
         self.assertIn("analyze_product", missing[0])
 
-    def test_registry_discipline(self):
-        names = [step.name for step in NEW_CAMPAIGN.steps]
-        self.assertEqual(len(names), len(set(names)), "step names must be unique")
-        seen: set[str] = set()
-        for step in NEW_CAMPAIGN.steps:
-            for required in step.requires:
-                self.assertIn(required, seen,
-                              f"{step.name} requires {required} which is not "
-                              "an earlier step")
-            seen.add(step.name)
+
+
+class StateRowTests(unittest.TestCase):
+    """What each step shows in State - one walk with Missing, so the two
+    sections can never disagree about a step."""
+
+    @staticmethod
+    def _step_states(actx: AdzumpContext) -> dict:
+        progress = NEW_CAMPAIGN.walk(actx, actx.set_at, actx.current_turn)
+        return {state.label: state for state in progress.step_states}
+
+    def test_rows(self):
+        rows = [
+            # (case, actx, row label, value, status)
+            ("no product: later steps wait behind the URL ask",
+             make_actx({}, product={}), "Platform", None, Status.BLOCKED),
+            ("location is off for a non-real-estate product",
+             make_actx({"platform": "Meta"}, product=SAAS), "Location", None, Status.OFF),
+            ("unmapped target areas are still owed",
+             make_actx({"location": "Whitefield", "platform": "Google Ads"},
+                       product={**RE, "target_areas": [{"name": "Whitefield"}]}),
+             "Target Areas", "Whitefield", Status.OPEN),
+            ("an on-screen creatives ask is waiting",
+             make_actx(dict(META_DONE), product=SAAS, pending_ask="competitor_creatives"),
+             "Competitor ads", None, Status.WAITING),
+            ("a Facebook-only decline settles instagram",
+             make_actx({**META_DONE, "instagram": "declined"}, product=SAAS),
+             "Instagram Account", "not linked (Facebook only)", Status.DONE),
+            ("Meta still shows the competitor list",
+             make_actx({"platform": "Meta"}, product=SAAS, competitor_names=["Rival"],
+                       attempted=True),
+             "Competitors", "Rival", Status.OFF),
+            ("a declined analysis says so",
+             make_actx({"platform": "Google Ads", "competitive_analysis": "declined"},
+                       product=SAAS),
+             "Competitors", "declined", Status.DONE),
+        ]
+        for case, actx, label, value, status in rows:
+            with self.subTest(case):
+                state = self._step_states(actx)[label]
+                self.assertEqual((state.value, state.status), (value, status))
+
+    def test_every_written_field_has_an_age(self):
+        actx = replace(make_actx(dict(GOOGLE_DONE), product=SAAS),
+                       set_at={"account": 3}, current_turn=5)
+        states = self._step_states(actx)
+        self.assertEqual(states["Ad Account"].turns_ago, 2)
+        self.assertIsNone(states["Duration"].turns_ago)  # never stamped
 
 
 class DependencyMirrorTests(unittest.TestCase):
@@ -217,23 +258,12 @@ class DependencyMirrorTests(unittest.TestCase):
     step B is asked after A because B's answer assumes A - so a change to A
     must clear B, or a stale B ships (the wrong-city-launch bug class, R11)."""
 
-    # Step name -> the spec field(s) that step fills. Steps outside the spec
-    # cascade are exempt: product is the whole session (a new URL restarts
+    # Each step's spec field(s) are its Step.fields. Steps outside the spec
+    # cascade write none: product is the whole session (a new URL restarts
     # everything), target_areas lives in product_data (its invalidation is the
     # location hook, behavior-tested in test_campaign_data).
-    STEP_FIELDS = {
-        "location": ("location",),
-        "platform": ("platform",),
-        "competitive_analysis": ("competitive_analysis",),
-        "competitor_creatives": ("competitor_creatives",),
-        "duration": ("duration",),
-        "budget": ("budget",),
-        "parent_account": ("parent_account",),
-        "account": ("account",),
-        "fb_page": ("fb_page",),
-        "instagram": ("ig_page", "instagram"),
-    }
     EXEMPT = {"product", "target_areas"}
+    STEP_FIELDS = {step.name: step.fields for step in NEW_CAMPAIGN.steps}
 
     @staticmethod
     def _invalidated_by(field: str) -> set[str]:
@@ -250,10 +280,13 @@ class DependencyMirrorTests(unittest.TestCase):
 
     def test_every_step_is_mapped_or_exempt(self):
         # A NEW step must be placed in this mirror deliberately - either
-        # mapped to its spec field(s) or exempted with a reason above.
-        names = {step.name for step in NEW_CAMPAIGN.steps}
-        self.assertEqual(names - self.EXEMPT, set(self.STEP_FIELDS))
-        self.assertTrue(self.EXEMPT <= names)
+        # declaring its spec field(s) or exempted with a reason above.
+        from app.agents.adzump.models import CampaignSpec
+        for name, fields in self.STEP_FIELDS.items():
+            with self.subTest(step=name):
+                self.assertEqual(not fields, name in self.EXEMPT)
+                self.assertLessEqual(set(fields), set(CampaignSpec.model_fields))
+        self.assertTrue(self.EXEMPT <= set(self.STEP_FIELDS))
 
     def test_requires_edges_have_invalidation_mirrors(self):
         for step in NEW_CAMPAIGN.steps:

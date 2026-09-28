@@ -18,10 +18,8 @@ Forward/drop matrix:
   │ thinking                 │ forward    │ CoT reasoning                  │
   ├──────────────────────────┼────────────┼────────────────────────────────┤
   │ text                     │ drop       │ The sub-agent's final text is  │
-  │                          │            │ surfaced via ToolResult.summary│
-  │                          │            │ (audience="both"), not as raw  │
-  │                          │            │ chat text. The parent tool     │
-  │                          │            │ owns chat text emission.       │
+  │                          │            │ returned to the orchestrator,  │
+  │                          │            │ which writes the chat reply.   │
   │ done                     │ drop       │ Parent owns turn-completion    │
   │ keepalive                │ drop       │ Connection-level, parent owns  │
   │ suggestions              │ drop       │ Sub-agent can't ask chips      │
@@ -113,10 +111,10 @@ class LocationPassthroughEventStream(AgentEventStream):
 
     # ── Dropped events (parent owns these) ────────────────────────────────
     async def emit_text(self, text: str) -> None:
-        # The sub-agent's text is its summary - surfaced via ToolResult.summary
-        # with audience="both" (see targeting_run.py::build_run_result).
-        # This also swallows a sub-loop tool's audience="user"/"both" summary
-        # emit - location tools must stay audience="assistant".
+        # The sub-agent's text is its summary - returned to the orchestrator
+        # (see targeting_run.py::build_run_result), which writes the reply.
+        # This also swallows a sub-loop tool's audience="user" summary emit -
+        # location tools must stay audience="assistant".
         return
 
     async def emit_done(self, session_id: str = "", usage: dict | None = None) -> None:

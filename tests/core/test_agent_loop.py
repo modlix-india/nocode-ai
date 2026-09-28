@@ -1,5 +1,5 @@
 """Unit: core BaseAgent run-loop — _with_tail_reminder (replace-not-append,
-tail-placed) + audience routing in _run_tool_block (user/both → emit + persist)."""
+tail-placed) + audience routing in _run_tool_block (user → emit + persist)."""
 from __future__ import annotations
 
 import types
@@ -60,9 +60,9 @@ class WithTailReminderTests(unittest.TestCase):
 
 
 class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
-    """_run_tool_block posts the summary to chat (emit + persist) iff audience
-    targets the user. Replaces relay_summary; NO de-dup — the tool-text contract
-    keeps the model to a lead-in, a rare verbatim echo is accepted."""
+    """_run_tool_block posts the summary to chat (emit + persist) iff
+    audience="user"; every other result reaches only the model, which writes
+    the reply (a tool posting beside it said everything twice)."""
 
     async def _run(self, result: ToolResult, streamed: str = ""):
         class _A(BaseAgent):
@@ -90,11 +90,6 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(texts, ["\n\nSaved.\n\n"])
         self.assertEqual(parts, ["\n\nSaved.\n\n"])     # persisted → survives refresh
 
-    async def test_both_also_emits(self):
-        texts, parts = await self._run(ToolResult(success=True, summary="Found 2.", audience="both"))
-        self.assertEqual(texts, ["\n\nFound 2.\n\n"])
-        self.assertEqual(parts, ["\n\nFound 2.\n\n"])
-
     async def test_assistant_default_does_not_post_to_chat(self):
         texts, parts = await self._run(ToolResult(success=True, summary="internal note"))
         self.assertEqual(texts, [])
@@ -109,12 +104,11 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(texts, [])
 
     async def test_posts_even_when_model_already_echoed_it(self):
-        # no de-dup: posts regardless of what the model streamed (both + user).
-        for aud in ("both", "user"):
-            texts, _ = await self._run(
-                ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience=aud),
-                streamed="Sure — Found 2 competitors: Sobha, Prestige. Continue?")
-            self.assertEqual(texts, ["\n\nFound 2 competitors: Sobha, Prestige.\n\n"], aud)
+        # no de-dup: posts regardless of what the model streamed.
+        texts, _ = await self._run(
+            ToolResult(success=True, summary="Saved your logo.", audience="user"),
+            streamed="Sure - Saved your logo. Continue?")
+        self.assertEqual(texts, ["\n\nSaved your logo.\n\n"])
 
 
 class DeferredElicitationBreakTests(unittest.TestCase):

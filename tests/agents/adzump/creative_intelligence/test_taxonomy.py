@@ -55,7 +55,8 @@ class EnsureProductClassifiedTests(unittest.TestCase):
             "place": {"display_name": "Whitefield, Bangalore"},
         }
         category = taxonomy.ensure_product_classified(product)
-        self.assertEqual(category, "residential_apartment")
+        # Top-level category, the kind as subcategory (Kailash 2026-09-25).
+        self.assertEqual((category, product["subcategory"]), ("real_estate", "apartment"))
         self.assertEqual(product["category_source"], "businessType")
         self.assertEqual(product["market"], "Whitefield, Bangalore")
         self.assertEqual(product["offering_stage"], "pre_launch")
@@ -65,36 +66,39 @@ class EnsureProductClassifiedTests(unittest.TestCase):
         with self.subTest("name decides when businessType is silent"):
             product = {"business_type": "premium living",
                        "product_name": "Nambiar Villas"}
-            self.assertEqual(taxonomy.ensure_product_classified(product),
-                             "residential_villa")
+            self.assertEqual(taxonomy.ensure_product_classified(product), "real_estate")
+            self.assertEqual(product["subcategory"], "villa")
             self.assertEqual(product["category_source"], "productName")
         with self.subTest("site links are the last resort"):
             product = {"site_links": [
                 {"href": "/villas-in-whitefield", "text": "Our projects"}]}
-            self.assertEqual(taxonomy.ensure_product_classified(product),
-                             "residential_villa")
+            self.assertEqual(taxonomy.ensure_product_classified(product), "real_estate")
             self.assertEqual(product["category_source"], "siteLinks")
         with self.subTest("nothing matches -> unknown, stamped anyway"):
             product = {"business_type": "artisanal candles"}
             self.assertEqual(taxonomy.ensure_product_classified(product), "unknown")
-            self.assertEqual(product["category_source"], "")
+            self.assertEqual((product["category_source"], product["subcategory"]), ("", ""))
 
     def test_stored_classification_is_reused_until_version_bump(self):
-        product = {"business_type": "villas",
-                   "category": "residential_apartment",  # human-visible: stale
+        product = {"business_type": "villas", "category": "real_estate",
+                   "subcategory": "apartment",  # human-visible: stale
                    "taxonomy_version": taxonomy.TAXONOMY_VERSION}
         # current vintage -> trusted as-is, NOT re-derived (once per record)
-        self.assertEqual(taxonomy.ensure_product_classified(product),
-                         "residential_apartment")
+        self.assertEqual(taxonomy.ensure_product_classified(product), "real_estate")
+        self.assertEqual(product["subcategory"], "apartment")
         product["taxonomy_version"] = "0"  # bump -> re-derives
-        self.assertEqual(taxonomy.ensure_product_classified(product),
-                         "residential_villa")
+        taxonomy.ensure_product_classified(product)
+        self.assertEqual(product["subcategory"], "villa")
+        # A record stored in the old leaf shape re-derives into the new one.
+        old = {"business_type": "villas", "category": "residential_villa",
+               "taxonomy_version": taxonomy.TAXONOMY_VERSION}
+        self.assertEqual(taxonomy.ensure_product_classified(old), "real_estate")
+        self.assertEqual(old["subcategory"], "villa")
 
     def test_override_wins_and_skips_derivation(self):
         product = {"business_type": "Pre-launch high-rise apartments",
-                   "category_override": "residential_villa"}
-        self.assertEqual(taxonomy.ensure_product_classified(product),
-                         "residential_villa")
+                   "category_override": "other_industry"}
+        self.assertEqual(taxonomy.ensure_product_classified(product), "other_industry")
         self.assertNotIn("category", product)  # Stage A never ran
 
 
@@ -133,9 +137,12 @@ class GateCreativeTests(unittest.TestCase):
             ("other_industry",
              Essence(category="other_industry", category_confidence=0.9),
              False, taxonomy.NON_REAL_ESTATE),
-            ("different category",
+            # A villa project's competitors sell apartments and plots too:
+            # only the top-level category has to match (live 2026-09-25:
+            # Godrej's and Lodha's apartment ads were all dropped).
+            ("another kind of real estate",
              Essence(category="residential_plot", category_confidence=0.9),
-             False, taxonomy.CATEGORY_MISMATCH),
+             True, ""),
             ("exactly at threshold passes",
              Essence(category="residential_apartment",
                      category_confidence=taxonomy.ACCEPT_THRESHOLD), True, ""),
@@ -150,8 +157,25 @@ class GateCreativeTests(unittest.TestCase):
         for label, essence, want_ok, want_reason in rows:
             with self.subTest(label):
                 ok, reason = taxonomy.gate_creative(
-                    "residential_apartment", "Whitefield, Bangalore", essence)
+                    "real_estate", "Whitefield, Bangalore", essence)
                 self.assertEqual((ok, reason), (want_ok, want_reason))
+
+    def test_top_level_and_subcategory(self):
+        rows = [("residential_villa", "real_estate", "villa"),
+                ("commercial_office", "real_estate", "office"),
+                ("hospitality", "real_estate", "hospitality"),
+                ("real_estate", "real_estate", ""),
+                ("other_industry", "other_industry", ""),
+                ("unknown", "unknown", ""), ("", "unknown", "")]
+        for leaf, top, sub in rows:
+            with self.subTest(leaf or "(empty)"):
+                self.assertEqual((taxonomy.top_level(leaf), taxonomy.subcategory(leaf)),
+                                 (top, sub))
+        # A real-estate ad never matches a product of another industry.
+        ok, reason = taxonomy.gate_creative(
+            "other_industry", "", Essence(category="residential_villa",
+                                          category_confidence=0.9))
+        self.assertEqual((ok, reason), (False, taxonomy.CATEGORY_MISMATCH))
 
 
 if __name__ == "__main__":

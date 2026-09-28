@@ -4,19 +4,22 @@ Two-stage classification, then a gate:
 
   Stage A - the PRODUCT is classified ONCE (``ensure_product_classified``) from
             the Product Analyst's own text, signals in priority order:
-            businessType -> productName -> summary -> siteLinks. The result is
-            stored on ``product_data`` so every ad is judged against ONE
-            yardstick - re-deriving per ad would drift. A manual
+            businessType -> productName -> summary -> siteLinks. It is stored
+            on ``product_data`` as a top-level category (``real_estate``) with
+            the kind as subcategory (``villa``), so every ad is judged against
+            ONE yardstick - re-deriving per ad would drift. A manual
             ``category_override`` wins and skips Stage A entirely (a
             wrong product category poisons every gate decision downstream).
   Stage B - each AD is classified by the essence analyst (vision + OCR + copy +
             landing URL; the enum lists in its prompt are generated from these
             Literals so prompt and validator can't disagree).
-  Stage C - ``gate_creative`` accepts a creative only when its category exactly
-            matches the product's, its confidence clears ``ACCEPT_THRESHOLD``,
-            and its market doesn't contradict the product's city. Fail CLOSED:
-            unknown never passes, a tie never passes, a same-market competitor
-            can absolutely run an ad for something else.
+  Stage C - ``gate_creative`` accepts a creative only when its top-level
+            category matches the product's (a villa project's competitors sell
+            apartments and plots too - research chose them, the kind is no
+            reason to drop their ads), its confidence clears
+            ``ACCEPT_THRESHOLD``, and its market doesn't contradict the
+            product's city. Fail CLOSED: unknown never passes, and another
+            industry or city never passes.
 
 Leaf module: ``models.py`` imports the Literals from here, never the reverse.
 """
@@ -61,6 +64,11 @@ OfferingStage = Literal[
 AdvertiserRole = Literal["developer", "broker", "aggregator", "unknown"]
 # Which signal decided an ad's category (auditability).
 CategoryMethod = Literal["ocr", "copy", "vision", "landing", "combined", ""]
+
+# The top-level category a product is stored and gated under; every leaf
+# above except other_industry / unknown belongs to it.
+REAL_ESTATE = "real_estate"
+_LEAF_PREFIXES = ("residential_", "commercial_")
 
 # Gate rejection reasons - written verbatim into Competitor.dropped[].
 CATEGORY_MISMATCH = "category_mismatch"
@@ -157,8 +165,8 @@ def ensure_product_classified(product_data: dict) -> str:
     if override:
         if not product_data.get("market"):
             product_data["market"] = _derive_market(product_data)
-        return override
-    if (product_data.get("category")
+        return top_level(override)
+    if (product_data.get("category") in (REAL_ESTATE, "other_industry", "unknown")
             and product_data.get("taxonomy_version") == TAXONOMY_VERSION):
         return product_data["category"]
 
@@ -175,8 +183,8 @@ def ensure_product_classified(product_data: dict) -> str:
             category, source, confidence = got, signal, conf
             break
     product_data.update({
-        "category": category,
-        "subcategory": "",
+        "category": top_level(category),
+        "subcategory": subcategory(category),
         "market": _derive_market(product_data),
         "offering_stage": classify_offering_stage(
             " ".join(text for _, text, _ in signals[:3])),
@@ -184,6 +192,25 @@ def ensure_product_classified(product_data: dict) -> str:
         "category_confidence": confidence,
         "taxonomy_version": TAXONOMY_VERSION,
     })
+    return product_data["category"]
+
+
+def top_level(category: str) -> str:
+    """The top-level category of a leaf: every real-estate leaf is
+    ``real_estate``; other_industry and unknown stand alone."""
+    if category in ("", "unknown", "other_industry"):
+        return category or "unknown"
+    return REAL_ESTATE
+
+
+def subcategory(category: str) -> str:
+    """The kind within real estate a leaf names: ``residential_villa`` ->
+    ``villa``; "" outside real estate."""
+    if top_level(category) != REAL_ESTATE or category == REAL_ESTATE:
+        return ""
+    for prefix in _LEAF_PREFIXES:
+        if category.startswith(prefix):
+            return category[len(prefix):]
     return category
 
 
@@ -263,7 +290,7 @@ def gate_creative(
         return False, UNKNOWN_CATEGORY
     if essence.category == "other_industry":
         return False, NON_REAL_ESTATE
-    if essence.category != product_category:
+    if top_level(essence.category) != top_level(product_category):
         return False, CATEGORY_MISMATCH
     if essence.category_confidence < ACCEPT_THRESHOLD:
         return False, LOW_CONFIDENCE

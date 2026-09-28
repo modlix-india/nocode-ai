@@ -339,6 +339,60 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
         m_modlix.assert_not_awaited()
 
 
+class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
+    """Turn start re-reads the list from its rows (live 2026-09-25: after a UI
+    delete the reply still said "three competitors remain: Sobha Magnus, ...")."""
+
+    CTX = {"client_code": "GRMEL"}
+
+    async def _refresh(self, entries, rows, ads):
+        session = {"product_profile": {"url": "https://springs.com"},
+                   "competitor_analysis": {"competitors": entries}}
+        with mock.patch("app.agents.adzump.stores.products.product_id",
+                        new=mock.AsyncMock(return_value=42)), \
+             mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
+                        new=mock.AsyncMock(return_value=rows)), \
+             mock.patch("app.agents.adzump.stores.competitors.list_product_creatives",
+                        new=mock.AsyncMock(return_value=ads)):
+            changed = await product_service.refresh_competitor_list(session, self.CTX)
+        return changed, session["competitor_analysis"]["competitors"]
+
+    async def test_rows_are_the_list(self):
+        sobha = product_service._competitor_entry(_row(1, "Sobha", "pending"), [])
+        shriram = product_service._competitor_entry(
+            _row(2, "Shriram", "ok", total=1), [Creative(creative_id="ad-1")])
+        unsaved = {"name": "Brigade"}
+        rows = [  # (label, chat entries, rows, ads, changed, names after)
+            ("unchanged list: no repaint", [sobha, shriram],
+             [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok", total=1)],
+             {2: [Creative(creative_id="ad-1")]}, False, ["Sobha", "Shriram"]),
+            ("deleted in the UI: dropped", [sobha, shriram],
+             [_row(2, "Shriram", "ok", total=1)],
+             {2: [Creative(creative_id="ad-1")]}, True, ["Shriram"]),
+            ("ad hidden in the UI: its ad goes", [sobha, shriram],
+             [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok")],
+             {}, True, ["Sobha", "Shriram"]),
+            ("added by another chat: adopted", [sobha],
+             [_row(1, "Sobha", "pending"), _row(3, "Prestige", "pending")],
+             {}, True, ["Sobha", "Prestige"]),
+            ("unsaved entry stays", [sobha, unsaved],
+             [_row(1, "Sobha", "pending")], {}, False, ["Sobha", "Brigade"]),
+        ]
+        for label, entries, stored, ads, changed, names in rows:
+            with self.subTest(label):
+                result, after = await self._refresh([dict(e) for e in entries], stored, ads)
+                self.assertEqual((result, [c["name"] for c in after]), (changed, names))
+        _, after = await self._refresh([dict(sobha), dict(shriram)],
+                                       [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok")], {})
+        self.assertEqual(after[1]["creatives"], [])
+
+    async def test_no_list_means_no_read(self):
+        with mock.patch("app.agents.adzump.stores.products.product_id",
+                        new=mock.AsyncMock()) as m_pid:
+            self.assertFalse(await product_service.refresh_competitor_list({}, self.CTX))
+        m_pid.assert_not_awaited()
+
+
 class DropDeletedCompetitorsTests(unittest.IsolatedAsyncioTestCase):
     async def test_research_never_re_suggests_a_deleted_competitor(self):
         deleted = [{"name": "Sobha Lake Gardens", "url": "https://sobha.com/lake-gardens"},

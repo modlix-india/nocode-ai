@@ -17,7 +17,7 @@ from app.agents.adzump.platform import (
     is_google as _platform_is_google,
     is_meta as _platform_is_meta,
 )
-from app.agents.adzump.models import CompetitorProfile, OfferState, offer_state
+from app.agents.adzump.models import CompetitorProfile, OfferState, ad_previews, offer_state
 from app.agents.adzump import stores
 from app.agents.adzump.models.product import Product, check_product
 from app.agents.adzump._shared import (
@@ -470,6 +470,39 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     return True
 
 
+async def refresh_competitor_list(session_ctx: dict, ctx: dict) -> bool:
+    """Start a turn from the competitor list's home: the chat's saved entries
+    are replaced by the product's active rows, so a delete, ad hide or another
+    chat's addition shows before the model replies. Unsaved entries (no
+    row_id yet) stay. Returns True when what the panel shows changed - the
+    stored shape alone differs from a fresh fetch's, which is no reason to
+    repaint."""
+    competitive = session_ctx.get("competitor_analysis")
+    if not competitive:
+        return False
+    client_code = ctx.get("client_code") or ""
+    url = normalize_business_url(resolve_url(session_ctx))
+    pid = await stores.products.product_id(client_code, url) if url else None
+    if pid is None:
+        return False
+    rows = await stores.competitors.list_product_competitors(client_code, pid)
+    ads = await stores.competitors.list_product_creatives(client_code, pid) if rows else {}
+    entries = competitive.get("competitors") or []
+    fresh = ([_competitor_entry(row, ads.get(row["id"], [])) for row in rows]
+             + [c for c in entries if isinstance(c, dict) and not c.get("row_id")])
+    competitive["competitors"] = fresh
+    return _panel_view(fresh) != _panel_view(entries)
+
+
+def _panel_view(entries: list) -> list:
+    """What the panel shows of a competitor list: who, and which ads (None =
+    never fetched)."""
+    return [(c.get("row_id"), c.get("name"),
+             None if c.get("creatives") is None
+             else [ad.get("creativeId") for ad in c["creatives"]])
+            for c in entries if isinstance(c, dict)]
+
+
 async def drop_deleted_competitors(competitive: dict, ctx: dict) -> list[str]:
     """Leave out of fresh research results every competitor the user deleted
     from this product - their "no" holds. Returns the names left out."""
@@ -503,7 +536,7 @@ def _competitor_entry(row: dict, creatives: list) -> dict:
         why_competitor=row["why_competitor"] or "",
     )
     if row["creative_status"] in ("ok", "empty"):
-        profile.creatives = [c.model_dump(by_alias=True) for c in creatives]
+        profile.creatives = ad_previews([c.model_dump(by_alias=True) for c in creatives])
         profile.total_creatives = row["total_creatives"]
         profile.active_creatives = row["active_creatives"]
     return profile.to_stored()

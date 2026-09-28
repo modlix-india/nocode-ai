@@ -59,11 +59,6 @@ class ToModelContentTests(unittest.TestCase):
         r = ToolResult(success=True, data={"k": 1})
         self.assertIn('"k": 1', r.to_tool_result_content())
 
-    def test_both_model_sees_the_summary(self):
-        # competitors: the model reasons over the list, so it gets the prose too.
-        r = ToolResult(success=True, summary="Found 2: Sobha, Prestige.", audience="both")
-        self.assertEqual(r.to_tool_result_content(), "Found 2: Sobha, Prestige.")
-
     def test_user_model_gets_model_summary_NOT_user_prose(self):
         # the whole point: model is blind to the user copy → it can't double it.
         r = ToolResult(success=True, summary="Saved your logo!",

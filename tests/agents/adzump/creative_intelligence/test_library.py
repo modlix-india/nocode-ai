@@ -218,7 +218,9 @@ class LibraryTests(unittest.TestCase):
                             source=FakeSource(creatives=[_ad("a1"), _ad("b2")]))
             self.assertEqual(enrich.calls, [["b2"]])  # a1 came from the cache
             by_id = {c.creative_id: c for c in rec.creatives}
-            self.assertEqual((by_id["a1"].essence.angle, by_id["b2"].essence.angle),
+            # a1 shows the stored image: the stored ad stays, never saved twice
+            self.assertEqual(set(by_id), {"old", "b2"})
+            self.assertEqual((by_id["old"].essence.angle, by_id["b2"].essence.angle),
                              ("cached", "fresh"))
             # fresh classifications are stamped with the current vintage
             self.assertEqual(by_id["b2"].essence.taxonomy_version,
@@ -250,13 +252,17 @@ class LibraryTests(unittest.TestCase):
             stored = rec.creatives[0]
             self.assertEqual(stored.file_url, "https://files/video.mp4")
             self.assertEqual(stored.poster_url, "https://files/vid.jpg")
-        with self.subTest("video with no still: skipped by vision, stored essence=None"):
+        with self.subTest("an ad the library sent with no media is dropped as no_media"):
+            # Dynamic / catalog ads arrive as templates - nothing to rehost,
+            # show or classify (live 2026-09-25: labelled empty_file_url).
             enrich = FakeEnrich(essences={"a1": Essence(angle="x")})
             rec = self._run(stored=None, enrich=enrich,
                             source=FakeSource(creatives=[
                                 _ad("a1"), Creative(creative_id="vid", media_type="video")]))
             self.assertEqual(enrich.calls, [["a1"]])
-            self.assertIsNone({c.creative_id: c for c in rec.creatives}["vid"].essence)
+            self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
+            self.assertEqual([(d["creativeId"], d["reason"]) for d in rec.dropped],
+                             [("vid", "no_media")])
         with self.subTest("enrich failure still stores the record"):
             rec = self._run(stored=None, enrich=FakeEnrich(fail=True),
                             source=FakeSource(creatives=[_ad("a1")]))
@@ -467,12 +473,11 @@ class LibraryTests(unittest.TestCase):
             rec = self._run(stored=_sound_of_water_record(),
                             source=FakeSource(exc=ScrapeCreatorsError("boom")))
             self.assertEqual([c.creative_id for c in rec.creatives], ["junk"])
-        with self.subTest("full stale refresh RESETS the name claims"):
-            # a refresh discards other names' ads - keeping their claims would
-            # serve name B the post-refresh record without B ever re-searching.
+        with self.subTest("a stale refresh adds to the stored ads, so claims accumulate"):
             src = FakeSource(creatives=[_ad("fresh")])
             rec = self._run(stored=_sound_of_water_record(age_days=99), source=src)
-            self.assertEqual(rec.searched_names, ["Nike"])
+            self.assertEqual(rec.searched_names, ["Puravankara The Sound of Water", "Nike"])
+            self.assertEqual([c.creative_id for c in rec.creatives], ["fresh", "junk"])
 
     def test_relevance_gate(self):
         """Library wiring of the gate: taxonomy owns the per-reason rules."""
@@ -496,13 +501,14 @@ class LibraryTests(unittest.TestCase):
             self.assertEqual(rec.fetch_status, "empty")
             self.assertEqual(rec.empty_reason, "unknown_category")  # fail closed
             self.assertEqual(rec.dropped[0]["reason"], "unknown_category")
-        with self.subTest("mixed batch: apartments kept, office rejected"):
+        with self.subTest("mixed batch: any real estate kept, another industry rejected"):
             rec = self._run(stored=None, ctx=apartment_ctx,
                             enrich=classified({
                                 "a1": apartment(),
-                                "b2": Essence(category="commercial_office",
+                                "b2": Essence(category="other_industry",
                                               category_confidence=0.9),
-                                "c3": apartment(),
+                                "c3": Essence(category="residential_villa",
+                                              category_confidence=0.9),
                             }),
                             source=FakeSource(creatives=[_ad("a1"), _ad("b2"),
                                                          _ad("c3")]))
@@ -523,7 +529,7 @@ class LibraryTests(unittest.TestCase):
                             source=FakeSource(creatives=[_ad("a1")]))
             self.assertEqual([c.creative_id for c in rec.creatives], ["a1"])
         with self.subTest("re-run never duplicates dropped[] entries"):
-            enrich = classified({"a1": Essence(category="commercial_office",
+            enrich = classified({"a1": Essence(category="other_industry",
                                                category_confidence=0.9)})
             first = self._run(stored=None, ctx=apartment_ctx, enrich=enrich,
                               source=FakeSource(creatives=[_ad("a1")]))
@@ -533,6 +539,27 @@ class LibraryTests(unittest.TestCase):
             second = self._run(stored=first, ctx=apartment_ctx, enrich=enrich,
                                source=FakeSource(creatives=[_ad("a1")]))
             self.assertEqual([d["creativeId"] for d in second.dropped], ["a1"])
+
+    def test_each_fetch_adds_at_most_ten_new_ads(self):
+        # Kailash 2026-09-25: 10 at a time, the next fetch takes the next 10,
+        # ads already stored are never taken again.
+        ads = [_ad(f"ad{i:02d}", is_active=i % 2 == 0,
+                   first_seen=f"2026-09-{i + 1:02d}T00:00:00+00:00") for i in range(14)]
+        first = self._run(stored=None, source=FakeSource(creatives=ads))
+        ids = [c.creative_id for c in first.creatives]
+        self.assertEqual(len(ids), 10)
+        # active first, then newest
+        self.assertEqual(ids[:3], ["ad12", "ad10", "ad08"])
+        first.last_fetched_at = (datetime.now(timezone.utc) - timedelta(days=99)).isoformat()
+        second = self._run(stored=first, source=FakeSource(creatives=ads))
+        self.assertEqual(len(second.creatives), 14)
+        self.assertEqual({c.creative_id for c in second.creatives} - set(ids),
+                         {"ad01", "ad03", "ad05", "ad07"})
+
+    def test_carousel_cards_count_as_one_ad(self):
+        cards = [_ad(f"car:{n}") for n in range(4)] + [_ad(f"s{i}") for i in range(12)]
+        rec = self._run(stored=None, source=FakeSource(creatives=cards))
+        self.assertEqual(len({c.creative_id.split(":")[0] for c in rec.creatives}), 10)
 
     def test_hung_processing_drops_one_competitor_not_the_batch(self):
         class HungEnrich:

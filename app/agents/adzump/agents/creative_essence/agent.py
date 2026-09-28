@@ -51,11 +51,12 @@ ESSENCE_MODEL_TIER = "deepseek-v4-flash-vision-exp"
 ESSENCE_MODEL_OVERRIDE = "deepseek:deepseek-v4-flash-vision-exp"
 
 # DeepSeek streams reasoning into the same output budget as the JSON, so the
-# ceiling must cover verdicts (~150-200 tokens each) PLUS the reasoning trail;
-# 4000 truncated a 5-image batch mid-JSON (all its creatives fell to
-# unknown_category and were gated out).
-ESSENCE_MAX_TOKENS = 6000
-MAX_IMAGES_PER_CALL = 12
+# ceiling must cover verdicts PLUS the reasoning trail (~2k base + ~700 per
+# image measured: 4 images used 5k). 6000 truncated every 8-10 image batch
+# (live 2026-09-25), each then re-run one call per creative - so batches stay
+# at 5 with room to spare.
+ESSENCE_MAX_TOKENS = 12000
+MAX_IMAGES_PER_CALL = 5
 # Chunks are independent (fresh session per call), so they run concurrently -
 # bounded, or a 60-creative competitor would fire 5 vision calls at once on top
 # of the other competitors' pipelines.

@@ -107,8 +107,8 @@ class Product(BaseModel):
     #    the relevance gate's yardstick for competitor creatives. Derived ONCE
     #    per record from the profile text above; the override wins and is the
     #    correction path when derivation got it wrong. ──
-    category: str = ""          # taxonomy enum value
-    subcategory: str = ""
+    category: str = ""          # top-level taxonomy category: real_estate | other_industry | unknown
+    subcategory: str = ""       # the kind within it: villa, apartment, plot...
     market: str = ""            # free text from place; city-token matched
     offering_stage: str = ""    # pre_launch | under_construction | ...
     category_source: str = ""   # which signal decided it (audit)

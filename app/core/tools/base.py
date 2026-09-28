@@ -83,12 +83,11 @@ class ToolResult:
     summary: str = ""
     error: str = ""
     # Who `summary` is for (MCP annotations.audience). The run loop routes by it:
-    #   "assistant" (default) — model only (tool_result content). Today's tools.
-    #   "user"  — posted to chat for the user; the MODEL gets only model_summary
-    #             (or data), never the user prose → it can't paraphrase-double it.
-    #   "both"  — model sees summary AND it's posted to chat (e.g. competitors,
-    #             whose list the model reasons over later). LLM writes a lead-in.
-    audience: Literal["assistant", "user", "both"] = "assistant"
+    #   "assistant" (default) - model only; the model writes the user's reply.
+    #   "user"  - posted to chat as-is; the MODEL gets only model_summary (or
+    #             data). Only for what the model can't say itself: a display
+    #             card, or an ask that ends the turn at this tool.
+    audience: Literal["assistant", "user"] = "assistant"
     # Terse model-facing note for audience="user" — what the model sees instead
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""

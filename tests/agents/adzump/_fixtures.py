@@ -91,7 +91,7 @@ def make_actx(
     field_asks: dict | None = None,
     pending_location: str | None = None,
 ) -> AdzumpContext:
-    """A `AdzumpContext` for `missing_list` / prescription tests."""
+    """A `AdzumpContext` for journey-walk / prescription tests."""
     return AdzumpContext(
         product=dict(product if product is not None else RE),
         product_profile={},

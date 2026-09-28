@@ -4,12 +4,13 @@ threshold), product_data writers, elicitation-payload decrements.
 Regression: PR1a project-identity grounding - story in plans/asset-upload-qa-findings.md."""
 import json
 import unittest
+from unittest import mock
 
 from app.agents.adzump.agents.product.models import AssetRequirements
 from app.agents.adzump.agents.vision.models import ImageVerdict
 from app.agents.adzump.tools.asset_manage import (
-    _build_brief, _fulfill_requirement, _saved_summary, classify_verdict,
-    store_image, store_logo,
+    _build_brief, _fulfill_requirement, _manage_assets, _saved_summary,
+    classify_verdict, store_image, store_logo,
 )
 
 
@@ -33,7 +34,7 @@ class BuildBriefTests(unittest.TestCase):
 
     def test_note_trimmed_and_capped(self):
         out = _build_brief(_sctx(), note="  x" * 400)
-        line = [l for l in out.splitlines() if l.startswith("The user said")][0]
+        line = [row for row in out.splitlines() if row.startswith("The user said")][0]
         self.assertLessEqual(len(line), 340)  # 300-char cap + wrapper
 
 
@@ -99,7 +100,7 @@ class StoreWriterTests(unittest.TestCase):
         self.assertEqual(pd["assets"]["logos"][0]["confidence"], 1.0)  # uploads are unbeatable
         self.assertTrue(sctx["_asset_logo_cleared"])
         store_logo(pd, {"url": "https://s/proj.png"}, "project", sctx)  # 2nd appends
-        self.assertEqual([l["url"] for l in pd["assets"]["logos"]],
+        self.assertEqual([logo["url"] for logo in pd["assets"]["logos"]],
                          ["https://s/logo.png", "https://s/proj.png"])
 
     def test_store_image_appends_and_dedups_url(self):
@@ -137,6 +138,30 @@ class StoreDecrementTests(unittest.TestCase):
         sctx = {"_pending_elicitation": {"id": "e1"}}  # no payload key
         _fulfill_requirement(sctx, lambda r: r.fulfill_logo())  # must not raise
         self.assertNotIn("payload", sctx["_pending_elicitation"])
+
+
+class ChatPostTests(unittest.IsolatedAsyncioTestCase):
+    """Only an ask posts itself (it ends the turn, so the model can't say it);
+    a plain report reaches only the model, which writes the reply."""
+
+    async def test_only_an_ask_posts_to_chat(self):
+        rows = [  # (verdict, audience, elicited)
+            (_v(relevant=False), "assistant", None),
+            (_v(needs_user=True, question="Is this the lobby?"), "user", True),
+        ]
+        for verdict, audience, elicited in rows:
+            sctx = {**_sctx(), "_pending_uploads": [{"data": "eA==", "mime": "image/png"}]}
+            reviewer = mock.Mock(review=mock.AsyncMock(
+                return_value=mock.Mock(verdicts=[verdict])))
+            with self.subTest(audience), \
+                 mock.patch("app.agents.adzump.agents.vision.agent.get_reviewer",
+                            return_value=reviewer), \
+                 mock.patch("app.agents.adzump.tools.asset_manage.emit_progress",
+                            new=mock.AsyncMock()):
+                result = await _manage_assets({}, {"session_context": sctx, "auth": object()})
+                self.assertEqual(result.audience, audience)
+                self.assertEqual(result.data.get("elicited"), elicited)
+                self.assertIn("image 1", result.summary)
 
 
 if __name__ == "__main__":

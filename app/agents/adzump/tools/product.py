@@ -56,7 +56,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
 
         # Emit the full craft panel (badge + key-values) immediately after analysis,
         # before geo-targeting runs. Map section is omitted because no target_areas yet.
-        craft_id = session_memory.get("craft_id") or session_memory.get("_craft_id", "")
+        craft_id = session_memory.get("craft_id") or ""
         if stream and craft_id:
             from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
             product_now = session_memory.get("product_data") or {}

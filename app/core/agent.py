@@ -1214,14 +1214,15 @@ class BaseAgent:
             if advice:
                 tool_content = f"{tool_content}{advice}"
 
-        # audience: a tool whose summary targets the user ("user"/"both") has it
-        # posted to chat AND persisted (append to the run-scoped parts the saved
-        # turn is built from, so it survives refresh). The model writes only a
-        # lead-in (tool-text contract); no de-dup — a rare verbatim echo is OK.
+        # audience="user": the summary is posted to chat AND persisted (append to
+        # the run-scoped parts the saved turn is built from, so it survives
+        # refresh). Every other result reaches only the model, which writes the
+        # reply - a tool posting beside it said everything twice (live
+        # 2026-09-25: the competitor list in the tool's line and the model's).
         # Framed as its own paragraph: the parts are "".join'd (they're stream
         # deltas) and the UI concatenates text events, so an unseparated summary
         # glues onto surrounding prose ("…Pride EuphoraFetched creatives…").
-        if result.audience in ("user", "both") and result.success and result.summary:
+        if result.audience == "user" and result.success and result.summary:
             paragraph = f"\n\n{result.summary}\n\n"
             await event_stream.emit_text(paragraph)
             assistant_text_parts.append(paragraph)

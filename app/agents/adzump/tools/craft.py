@@ -212,8 +212,8 @@ async def emit_craft_panel(
     # 2. Assets (logos + product images)
     assets = business.get("assets") or {}
     logos = assets.get("logos") or []
-    logo_urls = [l.get("url") for l in logos if l.get("url")]
-    logo_displays = [l.get("display") or {} for l in logos]
+    logo_urls = [logo.get("url") for logo in logos if logo.get("url")]
+    logo_displays = [logo.get("display") or {} for logo in logos]
 
     images = assets.get("images") or []
     image_urls = [i.get("url") for i in images if i.get("url")]
@@ -291,7 +291,7 @@ async def rerender_craft(
     from app.agents.adzump._shared import primary_screenshot_url, resolve_url
 
     stream = context.get("event_stream")
-    craft_id = session_ctx.get("craft_id") or session_ctx.get("_craft_id")
+    craft_id = session_ctx.get("craft_id")
     url = resolve_url(session_ctx)
     if not (stream and craft_id and url):
         return

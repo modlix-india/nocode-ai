@@ -2,7 +2,8 @@
 ``session_context["competitor_analysis"]["competitors"]``.
 
 Entries are born as Product Analyst JSON (schema in agents/product/context.py)
-and mutated once at runtime when fetch_competitor_creatives attaches creatives.
+and mutated once at runtime when fetch_competitor_creatives attaches a preview
+of the latest ads (the full ads live in adzump_creatives).
 Their home is the adzump_competitors table: a resume loads them from it and
 every save writes the chat's list back (product_service). The session keeps
 plain dicts for JSON persistence; every reader and writer goes through this model.
@@ -18,6 +19,34 @@ logger = logging.getLogger(__name__)
 # Optional-by-schema fields whose explicit null must survive the parse; every
 # other null is an LLM artifact and falls back to the field default.
 _NULLABLE_FIELDS = {"url", "pricing", "weakness"}
+# The ads a chat carries per competitor: the panel shows at most these, and a
+# full ad (essence, copy, renditions) stays in adzump_creatives - carried in
+# the context they sank every save past its 64KB column (live 2026-09-25).
+CHAT_ADS_PER_COMPETITOR = 10
+
+
+class AdPreview(BaseModel):
+    """What the chat keeps of one competitor ad: exactly what the panel draws."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    creative_id: str = Field("", alias="creativeId")
+    media_type: str = Field("image", alias="mediaType")
+    file_url: str = Field("", alias="fileUrl")
+    poster_url: str = Field("", alias="posterUrl")
+    headline: str = ""
+    is_active: bool = Field(False, alias="isActive")
+    last_seen: str = Field("", alias="lastSeen")
+    days_running: int = Field(0, alias="daysRunning")
+
+
+def ad_previews(creatives: list[dict]) -> list[dict]:
+    """The chat's view of a competitor's ads (stored-shape dicts): previews of
+    the latest CHAT_ADS_PER_COMPETITOR - active first, then newest."""
+    latest = sorted(creatives, reverse=True,
+                    key=lambda c: (bool(c.get("isActive")), c.get("firstSeen") or ""))
+    return [AdPreview.model_validate(c).model_dump(by_alias=True)
+            for c in latest[:CHAT_ADS_PER_COMPETITOR]]
 
 
 class CompetitorProfile(BaseModel):
@@ -38,8 +67,9 @@ class CompetitorProfile(BaseModel):
     key_usps: list[str] = Field(default_factory=list)
     weakness: str | None = None
     why_competitor: str = ""
-    # Attached by fetch_competitor_creatives. None = never fetched (badge-less
-    # card); [] = fetched and the ad library had none ("No ads found").
+    # Attached by fetch_competitor_creatives as ad_previews(). None = never
+    # fetched (badge-less card); [] = fetched and none kept ("No ads found").
+    # The totals count every stored ad, not just the previews.
     creatives: list[dict] | None = None
     total_creatives: int = Field(0, alias="totalCreatives")
     active_creatives: int = Field(0, alias="activeCreatives")

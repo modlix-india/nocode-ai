@@ -139,24 +139,12 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     stream = context.get("event_stream")
     if stream is not None:
         streamed = getattr(parent_session, "_turn_assistant_text", "") if parent_session else ""
-        # The acknowledgement backstop: a capture landed this
-        # turn but the model's streamed prose never named the value → prepend a
-        # short visible ack. The F9 emit-skip below may skip the QUESTION,
-        # never the ack - a click must never look ignored. Runs before the
-        # core turn-break (core/agent.py:478-502), so the ack always streams.
-        ack_pending = session_ctx.pop("_capture_ack_pending", None)
-        ack_text = ""
-        if ack_pending and str(ack_pending.get("value", "")) not in streamed:
-            ack_field = str(ack_pending.get("field", "")).replace("_", " ")
-            ack_text = f"Got it - {ack_field}: {ack_pending.get('value')}.\n"
         nq = _norm_q(question)
         already = bool(nq) and nq in _norm_q(streamed)
         if already:
             logger.info("present_options: question already in streamed prose - skip emit (F9)")
-            if ack_text:
-                await stream.emit_text(f"\n\n{ack_text}")
         else:
-            await stream.emit_text(f"\n\n{ack_text}{question}\n")
+            await stream.emit_text(f"\n\n{question}\n")
 
     logger.info("present_options: mode=%s field=%s options=%s question=%r",
                 mode, field, options, question[:80])
@@ -179,8 +167,9 @@ present_options = ToolDefinition(
     description=(
         "Ask the user a discrete-choice question with clickable option chips. "
         "This tool emits BOTH the question text and the chips - do not write "
-        "the question as free text yourself. You may write a brief one-line "
-        "conversational lead-in (e.g. \"Got it.\") before calling the tool. "
+        "the question as free text yourself. At most one short lead-in per "
+        "reply - never a second acknowledgement of an answer already "
+        "acknowledged. "
         "Use whenever the answer is a small set (2-6) of meaningful choices: "
         "platform, duration, budget presets, accounts, Yes/No confirms. Each "
         "option is a plain string (label==value) or a {label, value} object "

@@ -20,7 +20,7 @@ import time
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import emit_progress
 from app.agents.adzump import creative_intelligence as ci
-from app.agents.adzump.models import CompetitorProfile, OfferState, offer_state
+from app.agents.adzump.models import CompetitorProfile, OfferState, ad_previews, offer_state
 from app.agents.adzump.platform import is_meta
 from app.agents.adzump.tools.campaign_data import (
     _last_user_text,
@@ -235,7 +235,6 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
             success=True,
             data={"competitors": competitors},
             summary="Creatives already fetched for every current competitor - nothing new to fetch.",
-            audience="both",
         )
 
     # One live card row PER COMPETITOR (the user thinks in competitors, not
@@ -256,7 +255,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         dumped = record.model_dump(by_alias=True)
         for i in indices:
             profile = profiles[i]
-            profile.creatives = dumped["creatives"]
+            profile.creatives = ad_previews(dumped["creatives"])
             profile.total_creatives = dumped["totalCreatives"]
             profile.active_creatives = dumped["activeCreatives"]
             competitors[i] = profile.to_stored()
@@ -300,7 +299,6 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         success=True,
         data={"resolved": list(results.keys()), "total_creatives": total_creatives},
         summary=summary,
-        audience="both",
     )
 
 
