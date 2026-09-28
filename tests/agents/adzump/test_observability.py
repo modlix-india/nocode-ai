@@ -99,6 +99,27 @@ class ReminderIntegrationTests(unittest.TestCase):
         self.assertEqual(record2["captures"], [])
         self.assertIsNone(s.context["_prior_capture"])
 
+    def test_an_account_chip_is_saved_on_the_product_and_the_model_told(self):
+        from unittest import mock
+        rows = [  # (case, product save outcome, note in the reminder)
+            ("saved", True, "Saved on the product too"),
+            ("save failed", False, "saving it on the product for future campaigns failed"),
+        ]
+        for case, saved, note in rows:
+            with self.subTest(case):
+                s = make_session(
+                    last_user="Main ad account", product=SAAS,
+                    spec={"platform": "Meta", "parent_account": "B1"},
+                    pending_elicitation=elicitation("account", {"Main ad account": "A1"}),
+                    account_names={"B1": "AdZump Dummy", "A1": "Main ad account"})
+                with mock.patch("app.agents.adzump.services.product_service.save_product_fields",
+                                new=mock.AsyncMock(return_value=saved)) as m_save, \
+                     mock.patch.object(AdzumpAgent, "build_tool_context",
+                                       return_value={"client_code": "GRMEL"}):
+                    reminder = asyncio.run(AdzumpAgent.get_instance().build_turn_reminder(s, 1))
+                self.assertIn(note, reminder)
+                self.assertEqual(list(m_save.await_args.args[2]), ["ad_accounts.meta"])
+
 
 if __name__ == "__main__":
     unittest.main()

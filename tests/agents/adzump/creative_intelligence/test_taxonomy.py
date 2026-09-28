@@ -47,6 +47,26 @@ class ClassifyTextTests(unittest.TestCase):
                 self.assertEqual(taxonomy.classify_offering_stage(text), want)
 
 
+class ClassifyProductTests(unittest.TestCase):
+    """The fields to stamp - what the creatives tool saves on the product row."""
+
+    def test_stamps(self):
+        current = {"category": "real_estate", "taxonomy_version": taxonomy.TAXONOMY_VERSION}
+        rows = [  # (case, product, stamped keys)
+            ("already classified", current, set()),
+            ("override without a market", {"category_override": "residential_villa",
+                                           "place": {"address": "Hebbal"}}, {"market"}),
+            ("override with a market", {"category_override": "residential_villa",
+                                        "market": "Hebbal"}, set()),
+            ("unclassified", {"business_type": "villas"},
+             {"category", "subcategory", "market", "offering_stage", "category_source",
+              "category_confidence", "taxonomy_version"}),
+        ]
+        for case, product, keys in rows:
+            with self.subTest(case):
+                self.assertEqual(set(taxonomy.classify_product(dict(product))), keys)
+
+
 class EnsureProductClassifiedTests(unittest.TestCase):
     def test_signal_priority_business_type_first(self):
         product = {

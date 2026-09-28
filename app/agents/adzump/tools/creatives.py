@@ -146,13 +146,13 @@ def _essence_enrich(context: dict, spans: _CompetitorSpans):
     return _enrich
 
 
+# Fetch + cache competitor creatives for the current competitor set:
+#   1. two hard gates before any spend (ad-library credits + vision tokens) -
+#      Meta flow only, and the user's latest message is a clear go-ahead
+#   2. the product's classification (stamped at its first fetch) is saved on
+#      the product row before the relevance gate reads it
+#   3. fetch every competitor; each resolved one repaints the panel
 async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult:
-    """Fetch + cache competitor creatives for the current competitor set.
-
-    Two HARD gates before any spend (ad-library credits + vision tokens), same
-    backstop philosophy as launch_campaign - the prompt persuades, the code
-    enforces: (1) Meta flow only; (2) the user's LATEST message must be a clear
-    go-ahead."""
     session_ctx = context.get("session_context", {}) or {}
     spec = session_ctx.get("campaign_spec") or {}
     if not is_meta(spec.get("platform")):
@@ -266,6 +266,7 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         await rerender_craft(session_ctx, context, business,
                              spec.get("platform") or "")
 
+    await _save_classification(session_ctx, context, business)
     try:
         results = await ci.creatives_for_all(
             fetchable, context, force=force,
@@ -300,6 +301,20 @@ async def _fetch_competitor_creatives(params: dict, context: dict) -> ToolResult
         data={"resolved": list(results.keys()), "total_creatives": total_creatives},
         summary=summary,
     )
+
+
+# Stamps the product's classification on its first ads fetch and saves just
+# those fields; warn-only - the gate re-stamps the chat's copy if the save failed.
+async def _save_classification(session_ctx: dict, context: dict, business: dict) -> None:
+    from app.agents.adzump.creative_intelligence import taxonomy
+    from app.agents.adzump.services.product_service import save_product_fields
+    stamps = taxonomy.classify_product(business)
+    if not stamps:
+        return
+    try:
+        await save_product_fields(session_ctx, context, stamps)
+    except Exception as e:
+        logger.warning("classification_unsaved: %s: %s", type(e).__name__, str(e)[:200])
 
 
 fetch_competitor_creatives = ToolDefinition(

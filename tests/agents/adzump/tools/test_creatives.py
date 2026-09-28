@@ -130,6 +130,26 @@ class FetchCompetitorCreativesTests(unittest.TestCase):
         self.assertIs(_offer(ctx), OfferResolution.FULFILLED)
 
 
+class SaveClassificationTests(unittest.TestCase):
+    """The first ads fetch saves the product's classification on its row."""
+
+    def test_saved_once(self):
+        from app.agents.adzump.creative_intelligence import taxonomy
+        rows = [  # (case, product, saved)
+            ("unclassified: stamps saved", {"business_type": "villas"}, True),
+            ("already classified: nothing written",
+             {"category": "real_estate", "taxonomy_version": taxonomy.TAXONOMY_VERSION}, False),
+        ]
+        for case, product, saved in rows:
+            with self.subTest(case), mock.patch(
+                    "app.agents.adzump.services.product_service.save_product_fields",
+                    new=mock.AsyncMock()) as m_save:
+                asyncio.run(creatives._save_classification({}, {}, dict(product)))
+                self.assertEqual(m_save.await_count, int(saved))
+                if saved:
+                    self.assertIn("taxonomy_version", m_save.await_args.args[2])
+
+
 class EssenceRollupTests(unittest.TestCase):
     """The card row's takeaway line, computed from stored verdicts."""
 

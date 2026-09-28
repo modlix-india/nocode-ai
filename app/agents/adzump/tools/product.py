@@ -12,9 +12,13 @@ from app.agents.adzump.models.product import check_product
 logger = logging.getLogger(__name__)
 
 
+# Spawn the Product Analyst to scrape + profile the website:
+#   already analyzed in this chat  save it (heals a failed first save), return it
+#   analyzed in another chat       serve the saved product, no scrape
+#   otherwise                      scrape + profile; the first analysis creates
+#                                  the product's row, and the copy starts from it
 async def _analyze_product(params: dict, context: dict) -> ToolResult:
-    """Spawn the Product Analyst agent to scrape + generate a product profile.
-    Thin bridge: cache check → spawn agent → persist → return."""
+    from app.agents.adzump.services.product_service import save_analyzed_product
 
     url = _normalize_url(params.get("url", ""))
     if not url:
@@ -32,6 +36,12 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     existing_product = session_memory.get("product_data")
 
     if existing_product:
+        try:
+            await save_analyzed_product(session_memory, context)
+        except Exception as e:
+            logger.warning("analyze_product_save_failed: %s: %s", type(e).__name__, str(e)[:200])
+            return ToolResult(success=False, error=(
+                "The product is analyzed but couldn't be saved yet - try again."))
         name = existing_product.get("product_name", "product")
         return ToolResult(
             success=True,
@@ -53,6 +63,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             raise RuntimeError("Agent produced no usable result")
 
         _merge_product_into_context(session_memory, analysis, url)
+        await save_analyzed_product(session_memory, context)
 
         # Emit the full craft panel (badge + key-values) immediately after analysis,
         # before geo-targeting runs. Map section is omitted because no target_areas yet.

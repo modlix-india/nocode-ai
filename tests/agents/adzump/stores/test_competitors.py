@@ -116,7 +116,7 @@ class CompetitorWritesMySQLTests(unittest.IsolatedAsyncioTestCase):
         settings.MYSQL_PASSWORD = os.environ.get("ADZUMP_MYSQL_PASSWORD", "root")
         await connection.init_db_pool()
         self.url = f"https://{self._testMethodName.replace('_', '-')}.example"
-        self.pid = await products.upsert_product(self.CC, Product(product_name="Scratch"), self.url)
+        self.pid = await products.insert_product(self.CC, self.url, Product(product_name="Scratch"))
 
     async def asyncTearDown(self):
         from app.db import connection

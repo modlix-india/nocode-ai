@@ -152,6 +152,25 @@ class HandleTests(unittest.TestCase):
         self.assertFalse(res.success)
 
 
+class PlaceSaveTests(HandleTests):
+    """A geocode that stamps the place (coordinates, country) saves it on the product."""
+
+    def test_a_geocoded_place_is_saved(self):
+        async def stamp(location_name, place):
+            place["lat"] = 12.97
+            return None
+        rows = [  # (case, resolve_coordinates, saves)
+            ("stamped", stamp, 1),
+            ("already geocoded", mock.AsyncMock(return_value=None), 0),
+        ]
+        for case, resolve, saves in rows:
+            with self.subTest(case), self._patched(FakeSubSession(), mock.AsyncMock()), \
+                 mock.patch.object(agent_mod, "resolve_coordinates", resolve), \
+                 mock.patch.object(agent_mod, "save_place", mock.AsyncMock()) as m_save:
+                _run(get_location_agent().handle("set targeting", _ctx()))
+            self.assertEqual(m_save.await_count, saves)
+
+
 class ToolWrapperGuardTests(unittest.TestCase):
     """The orchestrator-side tool wrapper is the ONE owner of the
     empty-message guard - its retry-hint error is what the orchestrator

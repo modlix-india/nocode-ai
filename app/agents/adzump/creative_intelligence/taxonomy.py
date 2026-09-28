@@ -27,7 +27,7 @@ Leaf module: ``models.py`` imports the Literals from here, never the reverse.
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Any, Literal
 
 # Bump when the taxonomy changes: carried-forward essences are version-checked
 # (library._carry_forward_essence), so a bump re-classifies existing records on
@@ -153,22 +153,50 @@ def classify_offering_stage(text: str) -> str:
     return ""
 
 
+# Stage A on the chat's copy: stamp the missing classification fields
+# (classify_product) and return the product's effective category. The creatives
+# tool saves those stamps on the product row before the gate runs.
 def ensure_product_classified(product_data: dict) -> str:
-    """Stage A, idempotent: return the product's effective category, deriving
-    and stamping the classification fields onto ``product_data`` when absent or
-    written under an older taxonomy. Mutates the live session dict; the
-    campaign autosave persists the fields (product_service).
-
-    ``category_override`` wins unconditionally and skips derivation -
-    the correction path when Stage A got it wrong (no re-fetch needed)."""
+    product_data.update(classify_product(product_data))
     override = (product_data.get("category_override") or "").strip()
-    if override:
-        if not product_data.get("market"):
-            product_data["market"] = _derive_market(product_data)
-        return top_level(override)
+    return top_level(override) if override else product_data["category"]
+
+
+# Stage A: the classification fields to stamp on a product:
+#   already classified under this taxonomy  nothing
+#   category_override set                   only a missing market (the override
+#                                           wins, no derivation)
+#   otherwise                               category, subcategory, market,
+#                                           offering stage, source, confidence
+def classify_product(product_data: dict) -> dict[str, Any]:
+    if (product_data.get("category_override") or "").strip():
+        return {} if product_data.get("market") else {"market": _derive_market(product_data)}
     if (product_data.get("category") in (REAL_ESTATE, "other_industry", "unknown")
             and product_data.get("taxonomy_version") == TAXONOMY_VERSION):
-        return product_data["category"]
+        return {}
+
+    signals = [
+        ("businessType", product_data.get("business_type") or "", 0.9),
+        ("productName", product_data.get("product_name") or "", 0.85),
+        ("summary", product_data.get("summary") or "", 0.7),
+        ("siteLinks", _site_links_text(product_data), 0.6),
+    ]
+    category, source, confidence = "unknown", "", 0.0
+    for signal, text, conf in signals:
+        got, _evidence = classify_text(text)
+        if got != "unknown":
+            category, source, confidence = got, signal, conf
+            break
+    return {
+        "category": top_level(category),
+        "subcategory": subcategory(category),
+        "market": _derive_market(product_data),
+        "offering_stage": classify_offering_stage(
+            " ".join(text for _, text, _ in signals[:3])),
+        "category_source": source,
+        "category_confidence": confidence,
+        "taxonomy_version": TAXONOMY_VERSION,
+    }
 
     signals = [
         ("businessType", product_data.get("business_type") or "", 0.9),

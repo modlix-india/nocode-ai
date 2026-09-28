@@ -155,6 +155,16 @@ async def _manage_assets(params: dict, context: dict) -> ToolResult:
         else:  # escalate
             ambiguous.append({"idx": v.idx, "question": v.question or f"What is image {v.idx + 1}?"})
 
+    if stored:
+        from app.agents.adzump.services.product_service import save_product_fields
+        try:
+            await save_product_fields(sctx, context, {"assets": product_data.get("assets") or {}})
+        except Exception as e:
+            logger.warning("manage_assets: assets unsaved: %s: %s", type(e).__name__, str(e)[:200])
+            return ToolResult(success=False, error=(
+                "The images were uploaded but couldn't be saved on the product - "
+                "ask the user to upload them again."))
+
     if stream:
         craft_id = sctx.get("craft_id", "")
         if craft_id:

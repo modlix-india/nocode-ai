@@ -118,12 +118,12 @@ async def resolve_country_geo_constant(
 
 
 # ── Step 4: sub-session construction ───────────────────────────────────────
-async def build_sub_session(parent_ctx: dict, auth, chat_session_id: str = "") -> BaseSession:
+async def build_sub_session(parent_ctx: dict, auth) -> BaseSession:
     """Create a sub-session with shared context refs but isolated message history.
 
     Shared dict refs let the sub-agent's tools write through to the parent
     (same objects in memory). The keys below cover everything
-    ``finalize_targets`` / ``save_campaign`` read. The sub-agent's MESSAGE
+    ``finalize_targets`` and the craft panel read. The sub-agent's MESSAGE
     HISTORY stays isolated - that's the real isolation win.
     """
     sub_session = BaseSession(agent_name="location_agent")
@@ -133,11 +133,7 @@ async def build_sub_session(parent_ctx: dict, auth, chat_session_id: str = "") -
         "product_data": parent_ctx.setdefault("product_data", {}),
         "product_profile": parent_ctx.setdefault("product_profile", {}),
         "campaign_spec": parent_ctx.setdefault("campaign_spec", {}),
-        "account_names": parent_ctx.setdefault("account_names", {}),
         "craft_id": parent_ctx.get("craft_id", ""),
-        # Parent chat session id - save_campaign stamps it on the record so
-        # storage provenance points at the conversation, not this sub-session.
-        "_session_id": chat_session_id,
     }
     if isinstance(parent_ctx.get("competitor_analysis"), dict):
         shared["competitor_analysis"] = parent_ctx["competitor_analysis"]

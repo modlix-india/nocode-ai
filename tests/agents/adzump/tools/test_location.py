@@ -38,7 +38,9 @@ class ConfirmLocationTests(unittest.IsolatedAsyncioTestCase):
         stream = FakeStream()
         maps = mock.MagicMock()
         maps.return_value.geocode = mock.AsyncMock(return_value=geo)
-        with mock.patch("app.agents.adzump.adapters.google.maps.GoogleMapsClient", maps):
+        with mock.patch("app.agents.adzump.adapters.google.maps.GoogleMapsClient", maps), \
+             mock.patch("app.agents.adzump.tools.location.save_place",
+                        new=mock.AsyncMock()) as self.m_save:
             result = await _confirm_location(
                 {}, {"session_context": session_ctx, "event_stream": stream})
         self.assertTrue(result.success)
@@ -53,11 +55,13 @@ class ConfirmLocationTests(unittest.IsolatedAsyncioTestCase):
                          {"address": "Near ITPB (Whitefield), Bangalore",
                           "lat": 12.97, "lng": 77.73})
         self.assertNotIn("lat", ctx["product_data"]["place"])  # confirm not implied
+        self.m_save.assert_awaited_once()  # the country code is saved on the product
 
     async def test_geocode_miss_leaves_the_map_to_geocode(self):
         ctx, payload = await self._run(None)
         self.assertNotIn("coordinates", payload)
         self.assertEqual(ctx["product_data"]["place"].get("country_code", ""), "")
+        self.m_save.assert_not_awaited()
         self.assertIsNone(ctx["_pending_location_confirm"]["lat"])
 
 

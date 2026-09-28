@@ -1,6 +1,6 @@
 """AdzumpAgent: the chat agent that builds an ad campaign through conversation.
 
-    run()                    refresh the competitor list, then the shared tool loop
+    run()                    refresh the product and competitors, then the shared tool loop
     build_turn_reminder()    before every model call: capture the user's answer,
                              snapshot the chat, render ORCHESTRATOR_CONTEXT
     get_pending_suggestions()  the quick-reply chips under the reply
@@ -30,6 +30,8 @@ from app.agents.adzump.tools.campaign_data import (
     analysis_offer_resolution,
     instagram_offer_resolution,
     is_clear_decline_reply,
+    product_changes_for,
+    save_product_changes,
 )
 from app.agents.adzump._shared import primary_screenshot_url, resolve_url
 from app.agents.adzump.tools.registry import ALL_TOOLS
@@ -81,29 +83,32 @@ class AdzumpAgent(BaseAgent):
     ) -> None:
         self._current_stream = event_stream
         try:
-            await self._refresh_competitor_list(session, event_stream)
+            await self._refresh_from_storage(session, event_stream)
             await super().run(user_message, session, event_stream, image_blocks, model_override)
         finally:
             self._current_stream = None
 
-    # Before the model runs: re-read the competitor list from its saved rows -
-    # another chat on this product (a second tab, a teammate) may have added or
-    # removed competitors since the last reply - and repaint the panel only if
-    # it changed. On a database error the chat's own copy serves this reply.
-    async def _refresh_competitor_list(
+    # Before the model runs: re-read the product and its competitors from their
+    # saved rows - another chat on this product (a second tab, a teammate) may
+    # have changed them since the last reply - and repaint the panel only if
+    # something changed. On a database error the chat's own copy serves.
+    async def _refresh_from_storage(
         self, session: BaseSession, event_stream: AgentEventStream,
     ) -> None:
-        from app.agents.adzump.services.product_service import refresh_competitor_list
+        from app.agents.adzump.services.product_service import (
+            refresh_competitor_list, refresh_product,
+        )
         from app.agents.adzump.tools.craft import rerender_craft
         ctx = session.context
         tool_ctx = {**self.build_tool_context(session), "event_stream": event_stream}
         try:
-            changed = await refresh_competitor_list(ctx, tool_ctx)
+            product_changed = await refresh_product(ctx, tool_ctx)
+            list_changed = await refresh_competitor_list(ctx, tool_ctx)
         except Exception as e:
-            logger.warning("competitor_list_refresh_skipped: %s: %s",
+            logger.warning("storage_refresh_skipped: %s: %s",
                            type(e).__name__, str(e)[:200])
             return
-        if changed:
+        if product_changed or list_changed:
             await rerender_craft(ctx, tool_ctx, ctx.get("product_data") or {},
                                  (ctx.get("campaign_spec") or {}).get("platform") or "")
 
@@ -115,7 +120,9 @@ class AdzumpAgent(BaseAgent):
     # Called before every model call. In order:
     #   1. note the open question the user's message arrived into (for the log)
     #   2. capture a chip answer / a typed decline in code, before the snapshot,
-    #      so the answered step is already done in this reminder
+    #      so the answered step is already done in this reminder; an answer that
+    #      changes the product (an ad account) is saved on it now, and the note
+    #      tells the model whether that worked
     #   3. snapshot the chat (AdzumpContext) and render ORCHESTRATOR_CONTEXT,
     #      with this turn's one-off notes (answer ack, uploads, resume) on top
     #   4. write the turn decision record
@@ -123,6 +130,11 @@ class AdzumpAgent(BaseAgent):
         rail = session.context.get("_pending_elicitation") or {}
         open_rail_field, open_rail_untagged = rail.get("field"), bool(rail) and not rail.get("field")
         ack = self._capture_tagged_answer(session, turn)
+        captured = session.context.get("_captured_this_turn") or ""
+        if ack and product_changes_for(captured, session.context):
+            saved_note = await save_product_changes(
+                [captured], session.context, self.build_tool_context(session))
+            ack = f"{ack}\n{saved_note}"
 
         _hydrate_location_from_product_data(session.context)
         actx = AdzumpContext.from_session(session)
@@ -448,20 +460,21 @@ class AdzumpAgent(BaseAgent):
                                  "value": "yes, confirm the location"}], "mode": "single"}
         return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
 
-    # After each reply: save, then catch up the map for a newly picked platform.
+    # After each reply: catch up the map for a newly picked platform, save this
+    # chat's draft, show the map.
     async def _on_loop_complete(
         self, session: BaseSession, tool_call_log: list[dict[str, Any]],
     ) -> None:
         await super()._on_loop_complete(session, tool_call_log)
-        await self._autosave_campaign(session)
         await self._map_targets_for_new_platform(session)
+        await self._autosave_campaign(session)
         await self._emit_stored_targeting_panel(session)
-        # The loop saved the context before these hooks ran; the autosave writes
-        # competitor row ids back into it, and the next request reloads it.
+        # The loop saved the context before these hooks ran; the mapping and the
+        # panel marker changed it since, and the next request reloads it.
         await session.save_context()
 
-    # Saves the campaign draft after every reply (skipped until a product URL
-    # exists). A failed save is logged, never raised.
+    # Saves this chat's campaign draft after every reply (skipped until a
+    # product URL exists). A failed save is logged, never raised.
     async def _autosave_campaign(self, session: BaseSession) -> None:
         ctx = session.context
         from app.agents.adzump.services.product_service import save_campaign
@@ -483,13 +496,15 @@ class AdzumpAgent(BaseAgent):
         if not (platform and target_areas) or is_mapped_for(target_areas, platform):
             return
         from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
+        from app.agents.adzump.services.product_service import save_product_fields
         country_code = (product.get("place") or {}).get("country_code") or "IN"
         try:
-            mapped = await PlatformGeoMapper(self.build_tool_context(session)).map_target_areas(
+            tool_ctx = self.build_tool_context(session)
+            mapped = await PlatformGeoMapper(tool_ctx).map_target_areas(
                 target_areas, platform, country_code
             )
             if mapped:
-                product["target_areas"] = mapped
+                await save_product_fields(ctx, tool_ctx, {"target_areas": mapped})
         except Exception as e:
             logger.warning("End-of-turn geo auto-mapping failed (non-fatal): %s", e)
 

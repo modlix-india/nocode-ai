@@ -164,5 +164,32 @@ class ChatPostTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("image 1", result.summary)
 
 
+class AssetSaveTests(unittest.IsolatedAsyncioTestCase):
+    """Stored uploads are saved on the product; a failed save says so."""
+
+    async def test_stored_uploads_are_saved(self):
+        rows = [  # (case, save outcome, tool succeeds)
+            ("saved", None, True),
+            ("database error", RuntimeError("down"), False),
+        ]
+        for case, error, succeeds in rows:
+            sctx = {**_sctx(), "_pending_uploads": [{"data": "eA==", "mime": "image/png"}]}
+            reviewer = mock.Mock(review=mock.AsyncMock(
+                return_value=mock.Mock(verdicts=[_v(role="logo")])))
+            save = mock.AsyncMock(side_effect=error)
+            with self.subTest(case), \
+                 mock.patch("app.agents.adzump.agents.vision.agent.get_reviewer",
+                            return_value=reviewer), \
+                 mock.patch("app.agents.adzump.tools.asset_manage.emit_progress",
+                            new=mock.AsyncMock()), \
+                 mock.patch("app.agents.adzump._uploads.upload_and_analyze",
+                            new=mock.AsyncMock(return_value={"url": "/logo.png"})), \
+                 mock.patch("app.agents.adzump.services.product_service.save_product_fields",
+                            new=save):
+                result = await _manage_assets({}, {"session_context": sctx, "auth": object()})
+                self.assertEqual(result.success, succeeds)
+                self.assertEqual(list(save.await_args.args[2]), ["assets"])
+
+
 if __name__ == "__main__":
     unittest.main()

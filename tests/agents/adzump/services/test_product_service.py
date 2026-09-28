@@ -23,7 +23,7 @@ from app.agents.adzump.services.product_service import (
 from tests.agents.adzump._fixtures import RE
 
 # Captured before any patch replaces them: _awaited_arg binds against these.
-_UPSERT_PRODUCT = stores.products.upsert_product
+_INSERT_PRODUCT = stores.products.insert_product
 _UPSERT_FLOW = stores.flows.upsert_flow
 _SET_WEBSITE = stores.competitors.set_competitor_website
 _MIRROR = product_service._mirror_modlix_record
@@ -195,9 +195,9 @@ def _row(row_id: int, name: str, status: str, total: int = 0) -> dict:
 
 
 class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
-    """save_campaign: MySQL is the store of record, Modlix a warn-only mirror
-    without the campaign sub-object. hydrate_from_storage: MySQL first, legacy
-    MySQL miss is a fresh start (the Modlix mirror is never read back)."""
+    """save_campaign writes only this chat's draft (a failure raises) and the
+    warn-only Modlix mirror; shared data is never written from the chat's copy.
+    hydrate_from_storage: MySQL only (the Modlix mirror is never read back)."""
 
     SESSION = {
         "product_profile": {"url": "https://springs.com",
@@ -206,55 +206,55 @@ class MySQLFirstPersistenceTests(unittest.IsolatedAsyncioTestCase):
                          "summary": "villas"},
         "campaign_spec": {"platform": "Meta", "duration": "30 days"},
         "competitor_analysis": {"competitors": [{"name": "Sobha"}]},
-        "_session_id": "sess-1",
     }
     CTX = {"client_code": "GRMEL", "auth": types.SimpleNamespace(user_id=7),
            "session_id": "sess-1"}
 
-    def _patches(self):
+    def _patches(self, pid=42):
         return (
-            mock.patch("app.agents.adzump.stores.products.upsert_product",
-                       new=mock.AsyncMock(return_value=42)),
+            mock.patch("app.agents.adzump.stores.products.product_id",
+                       new=mock.AsyncMock(return_value=pid)),
             mock.patch("app.agents.adzump.stores.flows.upsert_flow",
                        new=mock.AsyncMock()),
             mock.patch("app.agents.adzump.services.product_service._mirror_modlix_record",
                        new=mock.AsyncMock(return_value="rec-1")),
         )
 
-    async def test_mysql_written_then_mirror_without_campaign(self):
-        p_prod, p_camp, p_mirror = self._patches()
-        with p_prod as m_prod, p_camp as m_camp, p_mirror as m_mirror, \
-             mock.patch("app.agents.adzump.stores.competitors.add_competitor") as m_add, \
-             mock.patch("app.agents.adzump.stores.competitors.delete_competitor") as m_delete:
-            result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
-        self.assertEqual(result, "rec-1")
-        m_prod.assert_awaited_once()
-        self.assertEqual(_awaited_arg(m_prod, _UPSERT_PRODUCT, "user_id"), 7)
-        # The display profile persists on the typed Product; the machine brief
-        # (product_data.summary) stays its own field.
-        saved_product = _awaited_arg(m_prod, _UPSERT_PRODUCT, "product")
-        self.assertEqual(saved_product.profile_summary,
-                         "The rich SummaryAgent profile text.")
-        self.assertEqual(saved_product.summary, "villas")
-        draft = _awaited_arg(m_camp, _UPSERT_FLOW, "data")
-        self.assertEqual(draft["platform"], "Meta")
-        # The competitor list's one home is its rows, never the draft, and the
-        # end-of-reply save never writes them: each change writes its own row.
-        self.assertNotIn("competitors", draft)
-        m_add.assert_not_called()
-        m_delete.assert_not_called()
-        mirror_record = _awaited_arg(m_mirror, _MIRROR, "record")
-        self.assertNotIn("campaign", mirror_record)
-        self.assertEqual(mirror_record["competitors"], [{"name": "Sobha"}])
+    async def test_only_the_draft_and_the_mirror(self):
+        rows = [  # (case, product row id, draft written)
+            ("product saved", 42, True),
+            ("no product row yet: draft skipped", None, False),
+        ]
+        for case, pid, drafted in rows:
+            p_pid, p_camp, p_mirror = self._patches(pid)
+            with self.subTest(case), p_pid, p_camp as m_camp, p_mirror as m_mirror, \
+                 mock.patch("app.agents.adzump.stores.products.update_product_fields") as m_fields, \
+                 mock.patch("app.agents.adzump.stores.products.insert_product") as m_insert, \
+                 mock.patch("app.agents.adzump.stores.competitors.add_competitor") as m_add, \
+                 mock.patch("app.agents.adzump.stores.competitors.delete_competitor") as m_delete:
+                result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
+                self.assertEqual(result, "rec-1")
+                for write in (m_fields, m_insert, m_add, m_delete):
+                    write.assert_not_called()
+                self.assertEqual(m_camp.await_count, int(drafted))
+                if drafted:
+                    self.assertEqual(_awaited_arg(m_camp, _UPSERT_FLOW, "session_id"), "sess-1")
+                    self.assertEqual(_awaited_arg(m_camp, _UPSERT_FLOW, "user_id"), 7)
+                    draft = _awaited_arg(m_camp, _UPSERT_FLOW, "data")
+                    self.assertEqual(draft["platform"], "Meta")
+                    self.assertNotIn("competitors", draft)  # the rows are the list's home
+                mirror_record = _awaited_arg(m_mirror, _MIRROR, "record")
+                self.assertNotIn("campaign", mirror_record)
+                self.assertEqual(mirror_record["competitors"], [{"name": "Sobha"}])
 
     async def test_mysql_failure_raises_mirror_failure_does_not(self):
-        p_prod, p_camp, p_mirror = self._patches()
-        with p_prod, p_camp as m_camp, p_mirror:
+        p_pid, p_camp, p_mirror = self._patches()
+        with p_pid, p_camp as m_camp, p_mirror:
             m_camp.side_effect = RuntimeError("db down")
             with self.assertRaises(RuntimeError):
                 await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
-        p_prod2, p_camp2, p_mirror2 = self._patches()
-        with p_prod2, p_camp2, p_mirror2 as m_mirror:
+        p_pid2, p_camp2, p_mirror2 = self._patches()
+        with p_pid2, p_camp2, p_mirror2 as m_mirror:
             m_mirror.return_value = None  # mirror failed internally, warn-only
             result = await product_service.save_campaign(_session(self.SESSION), dict(self.CTX))
         self.assertIsNone(result)
@@ -421,6 +421,86 @@ class RemoveAndPinTests(unittest.IsolatedAsyncioTestCase):
                         *m_site.await_args.args, **m_site.await_args.kwargs).arguments
                     self.assertEqual((call["url_source"], call["reset_ads"], call["keep_user_pin"]),
                                      ("user", True, False))
+
+
+class ProductWritesTests(unittest.IsolatedAsyncioTestCase):
+    """Each product change writes only its own fields; analysis creates the
+    row; every message starts from the row."""
+
+    SESSION = {"product_profile": {"url": "https://springs.com", "summary": "Display profile"}}
+    CTX = {"client_code": "GRMEL", "auth": types.SimpleNamespace(user_id=7)}
+
+    def _session(self, **product):
+        return {**self.SESSION, "product_data": {"product_name": "Springs", **product}}
+
+    async def test_save_product_fields(self):
+        meta, google = {"account": "act_1"}, {"account": "111"}
+        rows = [  # (case, fields, row id, db error, saved, copy after)
+            ("one field", {"place": {"address": "Hebbal"}}, 42, False, True,
+             {"place": {"address": "Hebbal"}, "ad_accounts": {"google": google}}),
+            ("one platform's accounts", {"ad_accounts.meta": meta}, 42, False, True,
+             {"place": {}, "ad_accounts": {"google": google, "meta": meta}}),
+            ("no product row: the copy still takes it", {"ad_accounts.meta": meta}, None,
+             False, False, {"place": {}, "ad_accounts": {"google": google, "meta": meta}}),
+            ("database error: raises, copy untouched", {"place": {"address": "Hebbal"}}, 42,
+             True, None, {"place": {}, "ad_accounts": {"google": google}}),
+        ]
+        for case, fields, pid, error, saved, after in rows:
+            with self.subTest(case):
+                session = self._session(place={}, ad_accounts={"google": dict(google)})
+                update = mock.AsyncMock(side_effect=RuntimeError("down") if error else None,
+                                        return_value=True)
+                with mock.patch("app.agents.adzump.stores.products.product_id",
+                                new=mock.AsyncMock(return_value=pid)), \
+                     mock.patch("app.agents.adzump.stores.products.update_product_fields",
+                                new=update):
+                    if error:
+                        with self.assertRaises(RuntimeError):
+                            await product_service.save_product_fields(session, self.CTX, fields)
+                    else:
+                        result = await product_service.save_product_fields(session, self.CTX, fields)
+                        self.assertEqual(result, saved)
+                for key, value in after.items():
+                    self.assertEqual(session["product_data"][key], value)
+                if pid and not error:
+                    self.assertEqual(update.await_args.args[2], fields)
+
+    async def test_refresh_product(self):
+        stored = Product(product_name="Springs", target_areas=[{"name": "Hebbal"}])
+        rows = [  # (case, chat copy, stored row, changed)
+            ("another chat added an area", {"product_name": "Springs"}, stored, True),
+            ("same product, other dict shape", stored.model_dump(mode="json"), stored, False),
+            ("no row: the copy stays", {"product_name": "Springs"}, None, False),
+        ]
+        for case, copy, row, changed in rows:
+            with self.subTest(case):
+                session = {**self.SESSION, "product_data": dict(copy)}
+                same_dict = session["product_data"]
+                with mock.patch("app.agents.adzump.stores.products.get_product",
+                                new=mock.AsyncMock(return_value=row)):
+                    self.assertEqual(await product_service.refresh_product(session, self.CTX), changed)
+                self.assertIs(session["product_data"], same_dict)  # sub-agents share it
+                if row is not None:
+                    self.assertEqual(session["product_data"]["target_areas"][0]["name"], "Hebbal")
+        with mock.patch("app.agents.adzump.stores.products.get_product",
+                        new=mock.AsyncMock()) as m_get:
+            self.assertFalse(await product_service.refresh_product({}, self.CTX))
+        m_get.assert_not_awaited()
+
+    async def test_analysis_creates_the_row_once(self):
+        stored = Product(product_name="Springs (saved)", profile_summary="Display profile")
+        session = self._session(summary="villas")
+        with mock.patch("app.agents.adzump.stores.products.insert_product",
+                        new=mock.AsyncMock(return_value=42)) as m_insert, \
+             mock.patch("app.agents.adzump.stores.products.get_product",
+                        new=mock.AsyncMock(return_value=stored)):
+            pid = await product_service.save_analyzed_product(session, self.CTX)
+        self.assertEqual(pid, 42)
+        inserted = _awaited_arg(m_insert, _INSERT_PRODUCT, "product")
+        self.assertEqual((inserted.profile_summary, inserted.summary), ("Display profile", "villas"))
+        self.assertEqual(_awaited_arg(m_insert, _INSERT_PRODUCT, "user_id"), 7)
+        # An existing row wins: the copy becomes the stored product.
+        self.assertEqual(session["product_data"]["product_name"], "Springs (saved)")
 
 
 class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):

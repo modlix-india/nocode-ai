@@ -462,6 +462,55 @@ class AdAccountsReuseTests(unittest.TestCase):
                     self.assertEqual(ctx["account_names"]["B1"], "AdZump Dummy")
 
 
+class ProductChangesTests(unittest.TestCase):
+    """A spec answer that changes the product (a location, an account) is
+    saved on the product row as just those fields, and the model is told."""
+
+    def test_product_changes_for(self):
+        from app.agents.adzump.tools.campaign_data import product_changes_for
+        meta = {"account": "A1"}
+        ctx = {"campaign_spec": {"platform": "Meta"},
+               "product_data": {"place": {"address": "Hebbal"}, "ad_accounts": {"meta": meta}}}
+        rows = [  # (case, field, changes)
+            ("location: place and the cleared areas", "location",
+             {"place": {"address": "Hebbal"}, "target_areas": []}),
+            ("an account: that platform's accounts", "account", {"ad_accounts.meta": meta}),
+            ("instagram decline", "instagram", {"ad_accounts.meta": meta}),
+            ("legacy instagram marker", "ig_page_declined", {"ad_accounts.meta": meta}),
+            ("budget: nothing on the product", "budget", {}),
+        ]
+        for case, field, changes in rows:
+            with self.subTest(case):
+                self.assertEqual(product_changes_for(field, ctx), changes)
+        no_platform = {"campaign_spec": {}, "product_data": ctx["product_data"]}
+        self.assertEqual(product_changes_for("account", no_platform), {})
+
+    def test_save_product_changes_tells_the_model(self):
+        from unittest import mock
+        from app.agents.adzump.tools.campaign_data import save_product_changes
+        ctx = {"campaign_spec": {"platform": "Meta"},
+               "product_data": {"ad_accounts": {"meta": {"account": "A1"}}}}
+        rows = [  # (case, fields, save outcome, note contains)
+            ("saved", ["account"], True, "Saved on the product"),
+            ("no product row", ["account"], False, "failed"),
+            ("database error", ["account"], RuntimeError("down"), "failed"),
+            ("nothing on the product", ["budget"], True, None),
+        ]
+        for case, fields, outcome, note in rows:
+            with self.subTest(case):
+                save = mock.AsyncMock(side_effect=outcome if isinstance(outcome, Exception)
+                                      else None, return_value=outcome)
+                with mock.patch("app.agents.adzump.services.product_service.save_product_fields",
+                                new=save):
+                    result = asyncio.run(save_product_changes(fields, ctx, {}))
+                if note is None:
+                    self.assertEqual(result, "")
+                    save.assert_not_awaited()
+                else:
+                    self.assertIn(note, result)
+                    self.assertEqual(save.await_args.args[2], {"ad_accounts.meta": {"account": "A1"}})
+
+
 class StoreConfirmedLocationTests(unittest.TestCase):
     """A pin confirmed where the backend put it keeps the detected address; a
     moved pin takes the map's street address (live 2026-09-23: an untouched

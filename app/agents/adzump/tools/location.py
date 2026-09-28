@@ -12,6 +12,7 @@ from app.config import settings
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import product_location_str as _detected_location
 from app.agents.adzump.models import LocationProposal
+from app.agents.adzump.services.product_service import save_place
 from app.agents.adzump.tools.campaign_data import is_real_estate
 from app.agents.adzump.agents.location.agent import get_location_agent
 
@@ -61,6 +62,7 @@ async def _confirm_location(params: dict, context: dict) -> ToolResult:
         payload["coordinates"] = {"lat": geo["lat"], "lng": geo["lng"]}
         if geo.get("country_code"):
             product.setdefault("place", {})["country_code"] = geo["country_code"]
+            await save_place(session_ctx, context)
 
     # The tool declares no parameters (see ToolDefinition below) - the prompt
     # is always built here, never model-supplied.

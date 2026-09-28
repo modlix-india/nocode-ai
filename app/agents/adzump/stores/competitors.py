@@ -202,15 +202,17 @@ async def delete_creative(
     return bool(hidden)
 
 
+# Insert one competitor, or land on the saved row with its name or website.
+# Landing on a saved row:
+#   name            never renamed
+#   website         the saved one stays
+#   profile fields  filled only where empty
+#   a deleted row   comes back only with `revive` (the user named it again)
+# Returns the active row's id; None when it didn't land (a deleted row, or a
+# name and a website that belong to two different saved competitors).
 async def add_competitor(
     client_code: str, product_id: int, profile: dict, user_id: int = 0, *, revive: bool,
 ) -> int | None:
-    """Insert one competitor, or land on the saved row with its name or website.
-    A landing never renames the row, keeps its website, and only fills empty
-    fields. A deleted row comes back only with ``revive`` (the user named it
-    again); research never undoes the user's "no". Returns the active row's id,
-    None when it did not land (a deleted row, or a name and a website that
-    belong to two different saved competitors)."""
     name = (profile.get("name") or "").strip()[:255]
     if not name:
         return None
@@ -228,7 +230,6 @@ async def add_competitor(
                 logger.warning("add_competitor: %r (%s) is one saved competitor's name "
                                "and another's website: %s", name, url, e)
                 return None
-            # The row the insert landed on: its name, else its website.
             await cur.execute(
                 "SELECT id, status FROM adzump_competitors "
                 "WHERE client_code=%s AND product_id=%s AND name=%s",
@@ -268,11 +269,11 @@ _ADD_COMPETITOR = """
 """
 
 
+# Fill a saved competitor's empty profile fields from a fresh lookup; fields
+# already set stay as they are.
 async def fill_competitor_profile(
     client_code: str, product_id: int, competitor_id: int, profile: dict, user_id: int = 0,
 ) -> None:
-    """Fill a saved competitor's empty profile fields from a fresh lookup;
-    fields already set stay as they are."""
     await execute_query(
         """
         UPDATE adzump_competitors SET
@@ -292,15 +293,16 @@ async def fill_competitor_profile(
     )
 
 
+# Move a saved competitor to a new website:
+#   reset_ads      its ads count as unfetched (the old rows stay until the next
+#                  fetch replaces them), so that fetch searches the new site
+#   keep_user_pin  a website the user pinned is left alone
+# False when nothing moved: another competitor owns that website, the pin held,
+# or there is no such row.
 async def set_competitor_website(
     client_code: str, product_id: int, competitor_id: int, url: str, url_source: str | None,
     user_id: int = 0, *, reset_ads: bool, keep_user_pin: bool,
 ) -> bool:
-    """Move a saved competitor to a new website. ``reset_ads`` marks its ads
-    unfetched (the old rows stay until the next fetch replaces them), so that
-    fetch searches the new site. ``keep_user_pin`` leaves a website the user
-    pinned alone. False when nothing moved: another competitor of the product
-    owns that website, the user's pin held, or there is no such row."""
     sql = ("UPDATE adzump_competitors SET creative_status=IF(%s, 'pending', creative_status), "
            "url=%s, url_source=%s, updated_by=%s "
            "WHERE client_code=%s AND product_id=%s AND id=%s")
@@ -484,8 +486,8 @@ def _website(url: str) -> str | None:
     return competitor_key(url) or None
 
 
+# A VARCHAR(255) profile field cut to fit, so one long value can't fail a write.
 def _clamp(value: str | None) -> str | None:
-    """A VARCHAR(255) profile field, cut to fit so one long value can't fail a write."""
     return value[:255] if value else None
 
 

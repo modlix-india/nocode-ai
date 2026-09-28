@@ -25,9 +25,9 @@ def build_ds_headers(context: dict) -> dict[str, str]:
     return headers
 
 
+# The signed-in user's id for created_by / updated_by, 0 when unknown (the tool
+# context carries it only on its `auth`).
 def acting_user_id(context: dict) -> int:
-    """The signed-in user's id for created_by / updated_by, 0 when unknown.
-    The tool context carries it only on its ``auth``."""
     return int(getattr(context.get("auth"), "user_id", 0) or 0)
 
 

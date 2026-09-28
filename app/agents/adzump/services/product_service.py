@@ -1,9 +1,10 @@
 """Product service - saves and restores the user's product and campaign draft.
 
-MySQL (``app.agents.adzump.stores``) is the store of record: ``save_campaign``
-writes the typed Product and the new_campaign flow draft; the competitor list
-(its adzump_competitors rows are its only home) is written by each change the
-chat makes, never from the chat's copy. ``hydrate_from_storage`` restores a
+MySQL (``app.agents.adzump.stores``) is the store of record. Shared data is
+written by the change that alters it, never from the chat's copy: the product
+row by analysis (``save_analyzed_product``) and then field by field
+(``save_product_fields``), the competitor rows one change each.
+``save_campaign`` writes only this chat's campaign draft. ``hydrate_from_storage`` restores a
 returning product from them. The Modlix ``AISuggestedData`` record is a
 warn-only mirror of the analysis fields DS still reads.
 """
@@ -12,6 +13,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+
+from pydantic import ValidationError
 from typing import Any  # noqa: F401  (used in type hints below)
 
 from app.agents.adzump.platform import (
@@ -20,7 +23,7 @@ from app.agents.adzump.platform import (
 )
 from app.agents.adzump.models import CompetitorProfile, OfferState, ad_previews, offer_state
 from app.agents.adzump import stores
-from app.agents.adzump.models.product import Product, check_product
+from app.agents.adzump.models.product import Product, apply_product_fields, check_product
 from app.agents.adzump._shared import (
     STORAGE_CREATE as CREATE,
     STORAGE_READ_PAGE as READ_PAGE,
@@ -80,33 +83,18 @@ async def get_by_url(url: str, ctx: dict) -> dict | None:
 # ── Writes ────────────────────────────────────────────────────────────────
 
 
+# Saves at the end of every reply:
+#   this chat's campaign draft  adzump_flows, flow=new_campaign (a failure raises)
+#   the Modlix mirror           the analysis fields DS still reads (warn-only)
+# Shared data - the product and its competitors - is written by the change that
+# alters it, never here: a chat's copy may be stale. Returns the Modlix record
+# id, or None when the mirror was skipped or failed.
 async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
-    """Persist the user's campaign (everything assembled in session.context).
-
-    nocode-ai MySQL is the store of record: the typed Product goes to
-    adzump_products, the campaign draft to adzump_flows (flow=new_campaign) -
-    a failure there RAISES, the save must not silently lose the authoritative
-    copy. The competitor list is not written here: each change writes its own
-    rows. The Modlix AISuggestedData
-    write survives only as a warn-only mirror of the ANALYSIS fields DS still
-    reads (finalSummary, siteLinks, screenshot, location...); the campaign
-    sub-object no longer rides in it - no DS code reads it.
-
-    Returns the Modlix record id, or None when the mirror was skipped/failed.
-    """
     url = resolve_url(session_ctx)
     if not url:
         logger.warning("save_campaign_skipped: no businessUrl in session")
         return None
-
-    # Schema drift check at the durable boundary - warn-only, never blocks a save.
-    check_product(session_ctx.get("product_data") or {}, where="save_campaign")
-
-    # Chat-session provenance: a sub-agent save carries the parent chat id
-    # (stamped into shared context by build_sub_session); a direct save uses
-    # the tool context's own session id.
-    chat_session_id = session_ctx.get("_session_id") or ctx.get("session_id", "")
-    record = _build_full_record(session_ctx, url, chat_session_id)
+    record = _build_full_record(session_ctx, url, ctx.get("session_id", ""))
     logger.info(
         "save_campaign_assets: url=%s logo=%s rule=%s conf=%.2f creatives=%d",
         url,
@@ -115,24 +103,100 @@ async def save_campaign(session_ctx: dict, ctx: dict) -> str | None:
         float((record.get("logoMeta") or {}).get("confidence") or 0.0),
         len(record.get("creativeImages") or []),
     )
-
-    # Authoritative half: product + campaign draft into nocode-ai MySQL.
     campaign_draft = record.pop("campaign")
-    # The SummaryAgent's rich profile lives in product_profile, not
-    # product_data - fold it into the persisted Product so resume can show it.
-    product = Product.model_validate({
-        **(session_ctx.get("product_data") or {}),
-        "profile_summary":
-            (session_ctx.get("product_profile") or {}).get("summary") or "",
-    })
-    pid = await stores.products.upsert_product(
-        ctx.get("client_code") or "", product, url, acting_user_id(ctx))
-    await stores.flows.upsert_flow(
-        ctx.get("client_code") or "", pid, chat_session_id, "new_campaign",
-        campaign_draft.get("status") or "draft", campaign_draft,
-        acting_user_id(ctx))
-
+    pid = await _product_id(session_ctx, ctx)
+    if pid is None:
+        logger.warning("campaign_draft_skipped: no product row for %s", url)
+    else:
+        await stores.flows.upsert_flow(
+            ctx.get("client_code") or "", pid, ctx.get("session_id", ""), "new_campaign",
+            campaign_draft.get("status") or "draft", campaign_draft, acting_user_id(ctx))
     return await _mirror_modlix_record(record, url, ctx)
+
+
+# ── Product changes: each writes only its own fields ─────────────────────────
+
+
+# The first analysis creates the product's row (an existing row is kept), then
+# the chat's copy starts from the row. Returns the row id; raises on a database
+# error.
+async def save_analyzed_product(session_ctx: dict, ctx: dict) -> int:
+    client_code = ctx.get("client_code") or ""
+    url = resolve_url(session_ctx)
+    check_product(session_ctx.get("product_data") or {}, where="save_analyzed_product")
+    pid = await stores.products.insert_product(
+        client_code, url, _persisted_product(session_ctx), acting_user_id(ctx))
+    stored = await stores.products.get_product(client_code, normalize_business_url(url))
+    if stored is not None:
+        _replace_product_copy(session_ctx, stored)
+    return pid
+
+
+# Write the product fields one change touched (`apply_product_fields` keys,
+# e.g. `place` or `ad_accounts.meta`) to the row, then to the chat's copy:
+#   saved               True
+#   no product row yet  False (the copy still takes the change)
+#   database error      raises, before the copy changes
+async def save_product_fields(session_ctx: dict, ctx: dict, fields: dict[str, Any]) -> bool:
+    pid = await _product_id(session_ctx, ctx)
+    saved = pid is not None and await stores.products.update_product_fields(
+        ctx.get("client_code") or "", pid, fields, acting_user_id(ctx))
+    if not saved:
+        logger.warning("product_fields_unsaved: no product row; fields=%s", sorted(fields))
+    apply_product_fields(session_ctx.setdefault("product_data", {}), fields)
+    return saved
+
+
+# Save the product's place after a geocode stamped it (coordinates, country).
+# Warn-only: the stamp stays in the chat's copy and the next geocode repeats it.
+async def save_place(session_ctx: dict, ctx: dict) -> None:
+    place = (session_ctx.get("product_data") or {}).get("place") or {}
+    try:
+        await save_product_fields(session_ctx, ctx, {"place": place})
+    except Exception as e:
+        logger.warning("place_unsaved: %s: %s", type(e).__name__, str(e)[:200])
+
+
+# Start a turn from the product's row: another chat on this product may have
+# changed its place, target areas or ad accounts since this chat's last reply.
+# Returns True when the chat's copy changed.
+async def refresh_product(session_ctx: dict, ctx: dict) -> bool:
+    if not session_ctx.get("product_data"):
+        return False
+    url = normalize_business_url(resolve_url(session_ctx))
+    stored = await stores.products.get_product(ctx.get("client_code") or "", url) if url else None
+    if stored is None:
+        return False
+    before = _product_view(session_ctx["product_data"])
+    _replace_product_copy(session_ctx, stored)
+    return _product_view(session_ctx["product_data"]) != before
+
+
+# The chat's product as the typed row, with the Summary Agent's display profile
+# (kept in product_profile) folded in.
+def _persisted_product(session_ctx: dict) -> Product:
+    return Product.model_validate({
+        **(session_ctx.get("product_data") or {}),
+        "profile_summary": (session_ctx.get("product_profile") or {}).get("summary")
+        or (session_ctx.get("product_data") or {}).get("profile_summary", ""),
+    })
+
+
+# The chat's product copy becomes the stored product, in place - sub-agents
+# hold the same dict.
+def _replace_product_copy(session_ctx: dict, product: Product) -> None:
+    copy = session_ctx.setdefault("product_data", {})
+    copy.clear()
+    copy.update(product.model_dump())
+
+
+# A product dict in its stored shape, so a copy and a fresh read compare equal
+# when only their dict shape differs.
+def _product_view(product_data: dict) -> dict | None:
+    try:
+        return Product.model_validate(product_data).model_dump(mode="json")
+    except ValidationError:
+        return None
 
 
 async def _mirror_modlix_record(record: dict, url: str, ctx: dict) -> str | None:
@@ -445,21 +509,20 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     return True
 
 
+# Start a turn from the competitor list's home: the chat's list becomes the
+# product's active rows, so another chat's addition or removal shows before the
+# model replies. Returns True when what the panel shows changed.
 async def refresh_competitor_list(session_ctx: dict, ctx: dict) -> bool:
-    """Start a turn from the competitor list's home: the chat's list becomes
-    the product's active rows, so a remove or addition in another chat (a
-    second tab, a teammate) shows before the model replies. Entries a failed
-    write left unsaved are saved first. Returns True when what the panel shows
-    changed - the stored shape alone differs from a fresh fetch's, which is no
-    reason to repaint."""
     competitive = session_ctx.get("competitor_analysis")
     return bool(competitive) and await reload_competitor_list(competitive, session_ctx, ctx)
 
 
+# Make `competitive`'s list the product's active rows:
+#   unsaved entries     saved first (a failed write left them)
+#   no product row yet  the list stays as it is
+# Returns True when what the panel shows changed - the stored shape alone
+# differs from a fresh fetch's, which is no reason to repaint.
 async def reload_competitor_list(competitive: dict, session_ctx: dict, ctx: dict) -> bool:
-    """Make ``competitive``'s list the product's active rows, saving its unsaved
-    entries first. Before the product has a row the list stays as it is.
-    Returns True when what the panel shows changed."""
     pid = await _product_id(session_ctx, ctx)
     if pid is None:
         return False
@@ -472,9 +535,9 @@ async def reload_competitor_list(competitive: dict, session_ctx: dict, ctx: dict
     return _panel_view(fresh) != _panel_view(entries)
 
 
+# The product's saved competitor list as chat entries ([] before the product
+# has a row) - what a chat that never loaded the list merges into.
 async def stored_competitor_entries(session_ctx: dict, ctx: dict) -> list[dict]:
-    """The product's saved competitor list as chat entries ([] before the
-    product has a row) - what a chat that never loaded the list merges into."""
     pid = await _product_id(session_ctx, ctx)
     return await _competitor_entries(ctx.get("client_code") or "", pid) if pid else []
 
@@ -482,17 +545,17 @@ async def stored_competitor_entries(session_ctx: dict, ctx: dict) -> list[dict]:
 # ── Competitor changes: each writes only its own row ─────────────────────────
 
 
+# Write research or add-by-name results to the product's rows, one change per
+# entry, stamping its row_id:
+#   new entry            added (lands on a saved row with its name or site)
+#   saved entry          empty fields filled, a new website adopted
+#   entry's row deleted  not landed (removed since this chat read the list)
+# Only the user naming a competitor (`named_by_user`) brings back one they
+# deleted. Returns the entries that did not land; the caller drops them.
+# Raises on a database error.
 async def save_competitors(
     session_ctx: dict, ctx: dict, entries: list[dict], *, named_by_user: bool,
 ) -> list[dict]:
-    """Write research or add-by-name results to the product's rows, each entry
-    as its own change, stamping its row_id:
-      new entry            -> added (lands on a saved row with its name or site)
-      saved entry          -> its empty fields filled, a new website adopted
-      entry's row deleted  -> not landed (a remove since this chat read the list)
-    Only the user naming a competitor (``named_by_user``) brings back one they
-    deleted. Returns the entries that did not land; the caller drops them.
-    Raises on a database error."""
     client_code = ctx.get("client_code") or ""
     pid = await _product_id(session_ctx, ctx)
     if pid is None:
@@ -521,13 +584,12 @@ async def save_competitors(
     return not_landed
 
 
+# A fresh lookup found a saved competitor on a new website: move the row there,
+# never over the user's pin, resetting its ads when the host changed. When
+# another competitor owns that website, the entry keeps its row's own.
 async def _adopt_website(
     client_code: str, product_id: int, row: dict, entry: dict, user_id: int,
 ) -> None:
-    """A fresh lookup found a saved competitor on a new website: move the row
-    there - never over the user's pin - and reset its ads when the site
-    changed host. When another competitor already owns that website, the
-    entry keeps its row's own."""
     website = stores.competitors.competitor_key(entry.get("url") or "")
     if not website or website == row["url"] or row["url_source"] == "user":
         return
@@ -539,12 +601,11 @@ async def _adopt_website(
         entry["url"] = row["url"]
 
 
+# Save the user's website for a competitor; its ads reset so the next fetch
+# searches the new site. Returns "" on success, else the reason for the user.
 async def pin_competitor_website(
     session_ctx: dict, ctx: dict, entry: dict, url: str,
 ) -> str:
-    """Save the user's website for a competitor; its ads reset so the next
-    fetch searches the new site. Returns "" on success, else the reason for
-    the user."""
     name = entry.get("name") or "That competitor"
     pid = await _product_id(session_ctx, ctx)
     if not entry.get("row_id") or pid is None:
@@ -555,10 +616,9 @@ async def pin_competitor_website(
     return "" if moved else f"{url} already belongs to another competitor in the list."
 
 
+# The user's "no": mark each saved entry's row deleted. Its row and ads stay,
+# and research leaves it out from then on; unsaved entries have no row.
 async def remove_competitors(session_ctx: dict, ctx: dict, entries: list[dict]) -> None:
-    """The user's "no": mark each saved entry's row deleted (its row and ads
-    stay, and research leaves it out from then on). Unsaved entries have no
-    row to mark."""
     pid = await _product_id(session_ctx, ctx)
     if pid is None:
         return
@@ -568,15 +628,15 @@ async def remove_competitors(session_ctx: dict, ctx: dict, entries: list[dict]) 
                 ctx.get("client_code") or "", pid, entry["row_id"], acting_user_id(ctx))
 
 
+# A product's active competitor rows, with their ads, as chat entries.
 async def _competitor_entries(client_code: str, product_id: int) -> list[dict]:
-    """A product's active competitor rows, with their ads, as chat entries."""
     rows = await stores.competitors.list_product_competitors(client_code, product_id)
     ads = await stores.competitors.list_product_creatives(client_code, product_id) if rows else {}
     return [_competitor_entry(row, ads.get(row["id"], [])) for row in rows]
 
 
+# The chat's product row id, None before the product is saved.
 async def _product_id(session_ctx: dict, ctx: dict) -> int | None:
-    """The chat's product row id, None before the product is saved."""
     url = normalize_business_url(resolve_url(session_ctx))
     return await stores.products.product_id(ctx.get("client_code") or "", url) if url else None
 

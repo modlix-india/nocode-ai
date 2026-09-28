@@ -609,14 +609,15 @@ async def _analyze_competitors_impl(params: dict, context: dict) -> ToolResult:
             logger.warning("competitor_deleted_filter_skipped: %s: %s",
                            type(e).__name__, str(e)[:200])
 
-        # Merge into the existing list, never replace it: a re-discovery
-        # ("find more competitors") refreshes known entries in place (pins and
-        # creatives survive) and appends only the genuinely new ones - ONE
-        # competitor group on the panel, however many times research runs.
+        # Merge into the existing list - the saved one when this chat never
+        # loaded it - never replace it: a re-discovery ("find more
+        # competitors") refreshes known entries in place (pins and creatives
+        # survive) and appends only the genuinely new ones - ONE competitor
+        # group on the panel, however many times research runs. What it found
+        # is then saved, one row per entry.
         fresh_competitors = competitive.get("competitors") or []
         existing_analysis = session_ctx.get("competitor_analysis")
         if existing_analysis is None:
-            # Never loaded in this chat: merge into the saved list, never replace it.
             existing_analysis = {"competitors": await _saved_entries(session_ctx, context)}
         had_existing = bool(existing_analysis.get("competitors"))
         appended: list[dict] = fresh_competitors
@@ -745,14 +746,15 @@ async def _lookup_single_competitor(
     - `query`: comma-separated names to look up via ProductAgent and add.
     - `set_url`: user-provided 'Name | URL' pins, verified then applied
       (runs after additions so add-with-URL works in one call).
-    After changes, the craft panel is rebuilt in full if any removals or URL
-    pins happened, or appended to if only additions.
+    Each change writes its own row as it happens; a chat that never loaded the
+    list edits the saved one, never an empty copy. After changes, the craft
+    panel is rebuilt in full if any removals or URL pins happened, or appended
+    to if only additions.
     """
     import time as _time
 
     _run_start = _time.monotonic()
 
-    # A chat that never loaded the list edits the saved one, never an empty copy.
     competitive = session_ctx.get("competitor_analysis")
     if competitive is None:
         competitive = {"competitors": await _saved_entries(session_ctx, context)}
@@ -798,7 +800,6 @@ async def _lookup_single_competitor(
                 )
         removed = [c for c in competitors_list
                    if _normalize_name(c.get("name") or "") in names_to_remove]
-        # The user's "no" is saved before the list changes.
         if removed:
             from app.agents.adzump.services.product_service import remove_competitors
             await remove_competitors(session_ctx, context, removed)
@@ -963,7 +964,6 @@ async def _lookup_single_competitor(
 
     session_ctx["competitor_analysis"] = competitive
     if removed_names or url_acks:
-        # The saved rows are the list now; a failed reload keeps this copy.
         await _reload_saved_list(session_ctx, context, competitive)
 
     # ── Craft panel update ──
@@ -1022,8 +1022,8 @@ async def _lookup_single_competitor(
     )
 
 
+# The product's saved competitor list, [] when it can't be read.
 async def _saved_entries(session_ctx: dict, context: dict) -> list[dict]:
-    """The product's saved competitor list, [] when it can't be read."""
     from app.agents.adzump.services.product_service import stored_competitor_entries
     try:
         return await stored_competitor_entries(session_ctx, context)
@@ -1032,23 +1032,24 @@ async def _saved_entries(session_ctx: dict, context: dict) -> list[dict]:
         return []
 
 
+# Save the entries this call added or refreshed, then make `competitive`'s list
+# the saved rows:
+#   didn't land  dropped from the list (into `skipped` when given)
+#   save failed  entries stay unsaved; the note tells the model they save at
+#                the start of the next message
+# Returns the added entries that landed, and that note ("" when saved).
 async def _save_changes(
     session_ctx: dict, context: dict, competitive: dict,
     changed: list[dict], added: list[dict], *,
     named_by_user: bool, skipped: list[dict] | None = None,
 ) -> tuple[list[dict], str]:
-    """Save the entries this call added or refreshed, then make ``competitive``'s
-    list the saved rows. Entries that didn't land leave the list (into ``skipped``
-    when given). Returns the added entries that landed, and a note for the
-    model when the save failed: the entries stay, unsaved, and save at the
-    start of the next message."""
     from app.agents.adzump.services.product_service import save_competitors
     if not changed:
         return added, ""
     try:
         not_landed = await save_competitors(
             session_ctx, context, changed, named_by_user=named_by_user)
-    except Exception as e:  # never lose a paid lookup over a failed write
+    except Exception as e:
         logger.warning("competitor_save_failed: %s: %s", type(e).__name__, str(e)[:200])
         return added, (" These competitors aren't saved yet - they save at the "
                        "start of the next message.")
@@ -1061,12 +1062,13 @@ async def _save_changes(
     return [c for c in added if all(c is not n for n in not_landed)], ""
 
 
+# Make `competitive`'s list the product's saved rows; on a failure the chat's
+# copy serves until the next message.
 async def _reload_saved_list(session_ctx: dict, context: dict, competitive: dict) -> None:
-    """Make ``competitive``'s list the product's saved rows."""
     from app.agents.adzump.services.product_service import reload_competitor_list
     try:
         await reload_competitor_list(competitive, session_ctx, context)
-    except Exception as e:  # the chat's copy serves until the next message
+    except Exception as e:
         logger.warning("competitor_reload_skipped: %s: %s", type(e).__name__, str(e)[:200])
 
 

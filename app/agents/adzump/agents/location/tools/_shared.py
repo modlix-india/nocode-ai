@@ -16,7 +16,7 @@ import logging
 from typing import Any
 
 from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
-from app.agents.adzump.services.product_service import save_campaign
+from app.agents.adzump.services.product_service import save_product_fields
 from app.agents.adzump.tools.craft import rerender_craft
 
 logger = logging.getLogger(__name__)
@@ -33,8 +33,9 @@ async def finalize_targets(
 ) -> list[dict[str, Any]]:
     """Map resolved areas to the active platform and make the result durable.
 
-    map → write session state → emit location chips → save_campaign →
-    re-render craft. Sets ``session_context["_geo_finalized"]`` so
+    map → save the areas on the product (then the chat's copy) → re-render
+    craft → emit location chips. A failed save raises, so the run reports it.
+    Sets ``session_context["_geo_finalized"]`` so
     ``targeting_run.build_run_result`` can tell "a tool actually landed
     targets" apart from "the model chatted and stopped". Returns the mapped list.
     """
@@ -56,9 +57,7 @@ async def finalize_targets(
 
     # Single write - the platform handle rides nested on each area, so no
     # per-platform copies. "Mapped for X" checks = platform.is_mapped_for.
-    product["target_areas"] = mapped
-
-    await save_campaign(session_ctx, context)
+    await save_product_fields(session_ctx, context, {"target_areas": mapped})
     await rerender_craft(session_ctx, context, product, platform)
 
     # Chips AFTER save + craft re-render - same SSE order the pre-refactor

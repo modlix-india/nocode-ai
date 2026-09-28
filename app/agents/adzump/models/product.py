@@ -134,6 +134,17 @@ class Product(BaseModel):
     ad_accounts: dict[str, AdAccounts] = Field(default_factory=dict)
 
 
+# Set each changed field on a product dict; a key `ad_accounts.<platform>` sets
+# that one platform's accounts and leaves the others as they are.
+def apply_product_fields(product_data: dict, fields: dict[str, Any]) -> None:
+    for key, value in fields.items():
+        head, _, platform = key.partition(".")
+        if platform:
+            product_data[head] = {**(product_data.get(head) or {}), platform: value}
+        else:
+            product_data[key] = value
+
+
 def check_product(product_data: dict, where: str) -> None:
     """Warn-only schema check at the save/restore boundary. Never raises -
     drift must not kill a live session; the strict check lives in tests."""

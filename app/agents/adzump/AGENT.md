@@ -52,8 +52,8 @@ drift off the funnel.
 │    set_campaign_spec / present_options / confirm_location /          │
 │    show_campaign_summary / launch_campaign / ...                     │
 │                                                                      │
-│  loop complete (code): autosave to AISuggestedData, re-map targets   │
-│  on a platform switch, restore stored targeting panel, suggestions   │
+│  loop complete (code): re-map targets on a platform switch,          │
+│  save this chat's draft, restore stored targeting panel              │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -208,9 +208,16 @@ All rails live in `agent.py`; the widgets they capture from are emitted by
   lists.
 - The competitor list is user-REVIEWED before ad-library credits are spent
   (the review checkpoint between analysis and the creatives fetch).
-- Every-turn autosave writes the product + campaign draft to MySQL
-  (`services/product_service.py`); `campaign.status` mirrors the launch
-  flag, never asserts it.
+- Shared data is written by the change that alters it, never from a chat's
+  copy (`services/product_service.py`): product analysis creates the product
+  row (`save_analyzed_product`), and after that each change writes only its
+  own fields (`save_product_fields`: place, target areas, one platform's ad
+  accounts, assets, classification). A chip answer that changes the product
+  is saved before the model runs, and the capture note tells the model
+  whether it landed. Every message starts from the saved product and
+  competitor rows (`AdzumpAgent._refresh_from_storage`). The every-turn
+  autosave writes only this chat's campaign draft; `campaign.status` mirrors
+  the launch flag, never asserts it.
 
 ## Provider configuration
 

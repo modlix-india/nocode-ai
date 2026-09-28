@@ -200,7 +200,7 @@ LocationAgent.handle(user_message, context)
    │  ┌─ tool: geocode_recommendations ──────────────────────────┐
    │  │  1. Geocode the picked {name, type}                       │
    │  │  2. platform_mapping.map_target_areas()                  │
-   │  │  3. save_campaign() + rerender_craft()                   │
+   │  │  3. save_product_fields() + rerender_craft()             │
    │  └─────────────────────────────────────────────────────────┘
    │
    │  ┌─ LLM summary turn ───────────────────────────────────────┐
@@ -232,7 +232,7 @@ LocationAgent.handle(user_message, context)
    │  │  execute parses params → AddLocation (pydantic boundary) │
    │  │  1. Append area to product.target_areas                  │
    │  │  2. platform_mapping.map_target_areas()                  │
-   │  │  3. save_campaign() + rerender_craft()                   │
+   │  │  3. save_product_fields() + rerender_craft()             │
    │  └─────────────────────────────────────────────────────────┘
    │
    │  LLM summary turn: "Added Juhu - 5 areas total."
@@ -286,7 +286,7 @@ The pre-refactor code called `provider.create_completion(...)` directly from a s
 ### One run, every action
 
 0. **Preamble** (deterministic, no LLM): guards (empty message, auth), resolve + geocode the business pin so the radial-scan tool has coordinates.
-1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
+1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `campaign_spec`, etc.). Tools write through to the parent. Message history stays isolated.
 2. **Wrapped event stream** - `_LocationPassthroughEventStream` forwards `tool_*` / `craft` / `data` / `agent_*` / `thinking`, drops `text` / `done` / `error`.
 3. **Run** - `self.run(build_run_prompt(...), sub_session, wrapped_stream)`; the model picks ONE of the four tools.
 4. **Verify + extract** - success is judged by the `_geo_finalized` marker `finalize_targets` stamps on the sub-context. A run where no mutation landed returns a structured error (carrying the model's final text), not success.

@@ -524,6 +524,9 @@ async def _set_campaign_spec(
             ),
         )
 
+    product_note = await save_product_changes(stored_keys, session_ctx, context)
+    product_note = f" {product_note}" if product_note else ""
+
     # v5 · kept no-ops get one steer line so the model stops re-sending them.
     kept_note = (
         (
@@ -566,7 +569,7 @@ async def _set_campaign_spec(
         return ToolResult(
             success=True,
             summary=user_summary,
-            model_summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}",
+            model_summary=f"{prefix}: {', '.join(summary_parts)}.{kept_note}{product_note}",
             data=None if stored_keys else {"no_progress": True},
         )
 
@@ -589,8 +592,47 @@ async def _set_campaign_spec(
     return ToolResult(
         success=True,
         summary=clean,
-        model_summary=f"{clean}{kept_note}",
+        model_summary=f"{clean}{kept_note}{product_note}",
     )
+
+
+# The product fields a stored spec field changed (`apply_product_fields` keys):
+#   location               place, and target_areas (a new location clears them)
+#   an account, instagram  that platform's saved accounts
+#   anything else          nothing
+def product_changes_for(field: str, session_ctx: dict) -> dict[str, Any]:
+    field = LEGACY_MARKER_TO_FIELD.get(field, field)
+    product = session_ctx.get("product_data") or {}
+    if field == "location":
+        return {"place": product.get("place") or {},
+                "target_areas": product.get("target_areas") or []}
+    if field in _ACCOUNT_LIKE_FIELDS or field == "instagram":
+        platform = Platform.from_value((session_ctx.get("campaign_spec") or {}).get("platform"))
+        accounts = (product.get("ad_accounts") or {}).get(platform.value) if platform else None
+        return {f"ad_accounts.{platform.value}": accounts} if accounts else {}
+    return {}
+
+
+# Save to the product row what these stored spec fields changed there, and
+# return a note telling the model whether it was saved for future campaigns
+# ("" when nothing on the product changed). Never raises: the spec already holds
+# the answer.
+async def save_product_changes(fields: list[str], session_ctx: dict, context: dict) -> str:
+    changes: dict[str, Any] = {}
+    for field in fields:
+        changes.update(product_changes_for(field, session_ctx))
+    if not changes:
+        return ""
+    from app.agents.adzump.services.product_service import save_product_fields
+    try:
+        saved = await save_product_fields(session_ctx, context, changes)
+    except Exception as e:
+        logger.warning("product_changes_unsaved: %s: %s", type(e).__name__, str(e)[:200])
+        saved = False
+    if saved:
+        return "Saved on the product too, so the next campaign for this website starts from it."
+    return ("It counts for this campaign, but saving it on the product for future "
+            "campaigns failed - mention that only if the user asks.")
 
 
 def _store_confirmed_location(
@@ -837,8 +879,9 @@ def _apply_field(
 
 
 def _remember_ad_accounts(session_ctx: dict) -> None:
-    """Snapshot the current platform's account picks onto product_data - the
-    product row persists them, so the next campaign's resume carries them."""
+    """Snapshot the current platform's account picks onto product_data; the
+    caller saves them on the product row (save_product_changes), so the next
+    campaign's resume carries them."""
     spec = session_ctx.get("campaign_spec") or {}
     platform = Platform.from_value(spec.get("platform"))
     if platform is None:
