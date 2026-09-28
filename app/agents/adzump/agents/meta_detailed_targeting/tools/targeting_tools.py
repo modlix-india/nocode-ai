@@ -259,8 +259,6 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
                     parsed = TargetingEntity.from_meta(item)
                     if parsed:
                         entities_to_validate.append(parsed)
-            elif sid_str:
-                entities_to_validate.append(TargetingEntity(id=sid_str, name=sid_str, type="interests"))
     else:
         logger.warning(
             "[DetailedTargeting] validate_targeting called with empty selected_ids — "

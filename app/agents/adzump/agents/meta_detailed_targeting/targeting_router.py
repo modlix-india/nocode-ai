@@ -43,6 +43,35 @@ _adapter = TargetingAdapter()
 
 
 
+# Helpers
+async def _get_authed_context(session_id: str, user_id: str) -> dict[str, Any]:
+    """Fetch session, verify tenant ownership, and parse context_json."""
+    _sm = get_session_manager()
+    _ai_session = await _sm.get_session(session_id)
+    if not _ai_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if _ai_session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
+
+    if not _ai_session.context_json:
+        return {}
+    try:
+        return json.loads(_ai_session.context_json)
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
+        return {}
+
+
+async def _save_context(session_id: str, context: dict[str, Any], user_id: str) -> None:
+    """Serialize and update session context in the database."""
+    _sm = get_session_manager()
+    await _sm.update_session_context(
+        session_id,
+        context_json=json.dumps(context),
+        user_id=user_id,
+    )
+
+
 # GET /sessions/{session_id}/detailed-targeting/search
 @router.get("/sessions/{session_id}/detailed-targeting/search")
 async def search_targeting_options(
@@ -50,24 +79,8 @@ async def search_targeting_options(
     q: str = Query(..., min_length=1),
     auth: AuthContext = Depends(require_auth_context),
 ):
-    """Typeahead search for Meta targeting segments matching a keyword.
-
-    """
-    _sm = get_session_manager()
-    _ai_session = await _sm.get_session(session_id)
-    if not _ai_session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Verify tenant authorization ownership
-    if _ai_session.user_id != auth.user_id:
-        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
-
-    session_ctx: dict[str, Any] = {}
-    if _ai_session.context_json:
-        try:
-            session_ctx = json.loads(_ai_session.context_json)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
+    """Typeahead search for Meta targeting segments matching a keyword."""
+    session_ctx = await _get_authed_context(session_id, auth.user_id)
 
     ad_account_id = resolve_ad_account_id(session_ctx)
     if not ad_account_id:
@@ -108,13 +121,8 @@ async def search_targeting_options(
             if e_id and e_id not in seen_ids:
                 seen_ids.add(e_id)
                 merged.append(e.model_dump())
-        new_search_results = merged[-50:]
-        session_ctx["detailed_targeting_search_results"] = new_search_results
-        await _sm.update_session_context(
-            session_id,
-            context_json=json.dumps(session_ctx),
-            user_id=auth.user_id,
-        )
+        session_ctx["detailed_targeting_search_results"] = merged[-50:]
+        await _save_context(session_id, session_ctx, auth.user_id)
 
         logger.info(
             "[targeting_router] search q=%r → %d results (session=%s)",
@@ -122,6 +130,8 @@ async def search_targeting_options(
         )
         return results
 
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("[targeting_router] search failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Targeting search failed: {exc}")
@@ -134,24 +144,9 @@ async def delete_targeting_segment(
     segment_id: str,
     auth: AuthContext = Depends(require_auth_context),
 ):
-    """Remove a targeting segment by ID from the current selection.
+    """Remove a targeting segment by ID from the current selection."""
+    session_ctx = await _get_authed_context(session_id, auth.user_id)
 
-    """
-    _sm = get_session_manager()
-    _ai_session = await _sm.get_session(session_id)
-    if not _ai_session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Verify tenant authorization ownership
-    if _ai_session.user_id != auth.user_id:
-        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
-
-    session_ctx: dict[str, Any] = {}
-    if _ai_session.context_json:
-        try:
-            session_ctx = json.loads(_ai_session.context_json)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
     targeting = session_ctx.setdefault("detailed_targeting", {})
     if not isinstance(targeting, dict):
         targeting = {}
@@ -165,11 +160,19 @@ async def delete_targeting_segment(
     ]
     removed_count = len(orig_list) - len(new_list)
     targeting["entities"] = new_list
-    await _sm.update_session_context(
-        session_id,
-        context_json=json.dumps(session_ctx),
-        user_id=auth.user_id,
-    )
+
+    # Record tombstone in excluded_ids
+    excluded_ids = targeting.setdefault("excluded_ids", [])
+    if str(segment_id) not in excluded_ids:
+        excluded_ids.append(str(segment_id))
+
+    # Remove from user_added_ids if present
+    if "user_added_ids" in targeting and str(segment_id) in targeting["user_added_ids"]:
+        targeting["user_added_ids"] = [
+            uid for uid in targeting["user_added_ids"] if str(uid) != str(segment_id)
+        ]
+
+    await _save_context(session_id, session_ctx, auth.user_id)
 
     logger.info(
         "[targeting_router] delete segment_id=%s removed=%d remaining=%d (session=%s)",
@@ -202,21 +205,8 @@ async def add_targeting_segment(
     authoritative response (correct type, name, audience_size) rather than
     trusting the client body. Enforces TOTAL_TARGETING_LIMIT (60 segments).
     """
-    _sm = get_session_manager()
-    _ai_session = await _sm.get_session(session_id)
-    if not _ai_session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    session_ctx = await _get_authed_context(session_id, auth.user_id)
 
-    # Verify tenant authorization ownership
-    if _ai_session.user_id != auth.user_id:
-        raise HTTPException(status_code=403, detail="Access denied: session ownership mismatch")
-
-    session_ctx: dict[str, Any] = {}
-    if _ai_session.context_json:
-        try:
-            session_ctx = json.loads(_ai_session.context_json)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning("[targeting_router] Could not parse context_json for session=%s", session_id)
     targeting = session_ctx.setdefault("detailed_targeting", {})
     if not isinstance(targeting, dict):
         targeting = {}
@@ -247,7 +237,7 @@ async def add_targeting_segment(
             detail="Meta ad_account_id not found in session context.",
         )
 
-    # Build a candidate entity.
+    # Build a candidate entity
     search_results = session_ctx.get("detailed_targeting_search_results") or []
     matched = next(
         (item for item in search_results if str(item.get("id")) == str(body.id)),
@@ -266,9 +256,7 @@ async def add_targeting_segment(
     if not candidate:
         raise HTTPException(status_code=400, detail="Invalid segment data in request.")
 
-    # Validate against Meta's targetingvalidation API.
-    # This rejects fabricated, deprecated, or inactive segment IDs.
-    # The returned entity carries Meta's authoritative type, name, and audience_size.
+    # Validate against Meta's targetingvalidation API
     try:
         valid_entities = await _adapter.validate(
             client_code=auth.client_code,
@@ -289,14 +277,21 @@ async def add_targeting_segment(
             detail=f"Segment '{body.id}' is not a valid or active Meta targeting segment.",
         )
 
-    # Use the validated entity — has Meta's correct type, name, and audience_size
     entity = valid_entities[0]
     orig_list.append(entity.model_dump())
-    await _sm.update_session_context(
-        session_id,
-        context_json=json.dumps(session_ctx),
-        user_id=auth.user_id,
-    )
+
+    # If this segment was previously in excluded_ids, remove it because user explicitly added it
+    if "excluded_ids" in targeting and str(entity.id) in targeting["excluded_ids"]:
+        targeting["excluded_ids"] = [
+            eid for eid in targeting["excluded_ids"] if str(eid) != str(entity.id)
+        ]
+
+    # Track as explicitly user-added
+    user_added_ids = targeting.setdefault("user_added_ids", [])
+    if str(entity.id) not in user_added_ids:
+        user_added_ids.append(str(entity.id))
+
+    await _save_context(session_id, session_ctx, auth.user_id)
 
     logger.info(
         "[targeting_router] add segment_id=%s name=%r type=%s total=%d (session=%s)",

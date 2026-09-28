@@ -14,6 +14,7 @@ Workflow (driven by the LLM via 6 tools):
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from typing import Any
@@ -21,6 +22,7 @@ from typing import Any
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream, current_agent_id
+from app.services.session_manager import get_session_manager
 from app.agents.adzump.agents.meta_detailed_targeting.subagent_event_stream import (
     MetaPassthroughEventStream,
 )
@@ -32,6 +34,9 @@ from app.agents.adzump.agents.meta_detailed_targeting.context import (
     build_detailed_targeting_context,
 )
 from app.agents.adzump.agents.meta_detailed_targeting.tools import INNER_TARGETING_TOOLS
+from app.agents.adzump.agents.meta_detailed_targeting.tools.targeting_tools import (
+    TOTAL_TARGETING_LIMIT,
+)
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -121,11 +126,9 @@ class DetailedTargetingAgent(BaseAgent):
         # Expose the live session object so the sub-agent tools can resolve
         # the parent session-level data when called from this sub-agent loop.
         ctx["_session"] = session
-        # Read auth from session.auth directly (never from session.context) to prevent token leaks
         if getattr(session, "auth", None):
             ctx["auth"] = session.auth
-        elif "auth" in session.context:
-            ctx["auth"] = session.context["auth"]
+        session.context.pop("auth", None)
         if "ad_account_id" in session.context:
             ctx["ad_account_id"] = session.context["ad_account_id"]
         return ctx
@@ -172,6 +175,8 @@ class DetailedTargetingAgent(BaseAgent):
     ) -> tuple[MetaTargetingSuggestionResult, str]:
 
         run_start = time.monotonic()
+
+
 
         # 1. Create throwaway sub-session with shared context
         sub_session = await build_sub_session(
@@ -226,26 +231,74 @@ class DetailedTargetingAgent(BaseAgent):
 
             # 3. Read the stashed result
             # validate_targeting writes to _validated_targeting.
-            # delete_targeting_segment writes directly to detailed_targeting.
-            # We check both: _validated_targeting first (recommend run), then
-            # detailed_targeting (delete run).
             raw = sub_session.context.get("_validated_targeting")
             if raw is None:
-                # Delete run: the LLM called delete_targeting_segment which
-                # updated detailed_targeting directly. Read the post-delete state.
-                dt = parent_session_context.get("detailed_targeting")
-                if dt and isinstance(dt, dict) and dt.get("entities") is not None:
-                    raw = dt
-                    logger.info("[DetailedTargeting] Delete run detected — using post-delete state.")
-                else:
-                    logger.warning("[DetailedTargeting] Neither validate_targeting nor delete ran.")
-                    raise RuntimeError("Targeting validation did not complete successfully.")
+                logger.warning("[DetailedTargeting] validate_targeting did not run.")
+                raise RuntimeError("Targeting validation did not complete successfully.")
 
             # 4. Assemble MetaTargetingSuggestionResult
             final_result = MetaTargetingSuggestionResult.from_dict(raw)
 
-            # Stash for parent session visibility
-            parent_session_context["detailed_targeting"] = final_result.model_dump()
+            # JIT Reconciliation with live database state (prevents overwriting user UI actions)
+            _sm = get_session_manager()
+            fresh_session = await _sm.get_session(session_id)
+            excluded_ids: set[str] = set()
+            user_added_ids: set[str] = set()
+            if fresh_session and fresh_session.context_json:
+                try:
+                    fresh_db_ctx = json.loads(fresh_session.context_json)
+                    dt_data = fresh_db_ctx.get("detailed_targeting") or {}
+                    live_entities = dt_data.get("entities") or []
+                    excluded_ids = set(str(eid) for eid in (dt_data.get("excluded_ids") or []))
+                    user_added_ids = set(str(aid) for aid in (dt_data.get("user_added_ids") or []))
+
+                    # 1. Start with live entities from database that haven't been excluded
+                    reconciled = [
+                        item for item in live_entities
+                        if str(item.get("id") if isinstance(item, dict) else getattr(item, "id", None)) not in excluded_ids
+                    ]
+                    existing_ids = {
+                        str(item.get("id") if isinstance(item, dict) else getattr(item, "id", None))
+                        for item in reconciled
+                    }
+
+                    # 2. Append new AI suggestions that are neither excluded nor already present
+                    for ai_ent in final_result.entities:
+                        ai_id = str(ai_ent.id)
+                        if ai_id not in excluded_ids and ai_id not in existing_ids:
+                            reconciled.append(ai_ent.model_dump())
+                            existing_ids.add(ai_id)
+
+                    reconciled = reconciled[:TOTAL_TARGETING_LIMIT]
+                    final_result.entities = [
+                        TargetingEntity.from_meta(e) if isinstance(e, dict) else e
+                        for e in reconciled
+                    ]
+
+                    if "detailed_targeting_search_results" in fresh_db_ctx:
+                        parent_session_context["detailed_targeting_search_results"] = (
+                            fresh_db_ctx["detailed_targeting_search_results"]
+                        )
+                except Exception as exc:
+                    logger.warning("[DetailedTargeting] JIT reconciliation fallback: %s", exc)
+
+            # Stash for parent session visibility (preserving tombstones)
+            dumped_result = final_result.model_dump()
+            if fresh_session and fresh_session.context_json:
+                dumped_result["excluded_ids"] = list(excluded_ids)
+                dumped_result["user_added_ids"] = list(user_added_ids)
+            parent_session_context["detailed_targeting"] = dumped_result
+
+            # Write reconciled context to DB immediately so any trailing tools in parent agent
+            # do not overwrite the live DB with stale pre-reconciliation memory
+            try:
+                await _sm.update_session_context(
+                    session_id,
+                    context_json=json.dumps(parent_session_context),
+                    user_id=auth.user_id if auth else None,
+                )
+            except Exception as e:
+                logger.warning("[DetailedTargeting] Failed immediate sync to DB: %s", e)
 
             # 5. Emit the targeting craft to the UI
             if explanation.strip() and parent_event_stream:
