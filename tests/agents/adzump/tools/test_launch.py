@@ -31,63 +31,35 @@ def _ctx(spec_over=None, *, last_user="Yes, launch", account_platforms=None, ses
     return {"session_context": session_ctx, "_session": _session_with(last_user)}
 
 
-class LaunchPlatformGateTests(unittest.TestCase):
-    def test_cross_platform_id_is_rejected(self):
-        ctx = _ctx({"parent_account": "G1", "account": "G2"},
-                   account_platforms={"G1": "google", "G2": "google"})
-        res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertFalse(res.success)
-        self.assertIn("different platform", res.error)
-
-    def test_matching_platform_passes_gate(self):
-        ctx = _ctx(account_platforms={"M1": "meta", "M2": "meta"})
-        with mock.patch("app.agents.adzump.tools.launch.save_campaign",
-                        new=mock.AsyncMock(return_value="rec_123")):
-            res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertTrue(res.success)
-
-    def test_untagged_ids_skip_gate_backcompat(self):
-        # Old session with no account_platforms map → no false reject.
-        ctx = _ctx()
-        with mock.patch("app.agents.adzump.tools.launch.save_campaign",
-                        new=mock.AsyncMock(return_value="rec_456")):
-            res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertTrue(res.success)
+class LaunchGateTests(unittest.TestCase):
+    def test_gates_in_order(self):
+        # (label, spec override, last user message, account platforms, saved id,
+        #  launches, error part)
+        meta = {"M1": "meta", "M2": "meta"}
+        for label, spec, user, platforms, saved, launches, error in [
+            ("a required field missing", {"budget": ""}, "Yes, launch", None, "rec", False,
+             "missing required fields: budget"),
+            ("an account from another platform", {"parent_account": "G1", "account": "G2"},
+             "Yes, launch", {"G1": "google", "G2": "google"}, "rec", False, "different platform"),
+            ("no user message", {}, "", None, "rec", False, "confirmation"),
+            ("a question, not a go-ahead", {}, "what budget did we pick?", None, "rec", False,
+             "confirmation"),
+            ("a clear no", {}, "no", None, "rec", False, "confirmation"),
+            ("the save failed", {}, "Yes, launch", meta, None, False, "NOT saved"),
+            ("matching platform tags", {}, "Yes, launch", meta, "rec", True, ""),
+            ("an old session with untagged ids", {}, "Yes, launch", None, "rec", True, ""),
+        ]:
+            with self.subTest(label):
+                ctx = _ctx(spec, last_user=user, account_platforms=platforms)
+                with mock.patch("app.agents.adzump.tools.launch.save_campaign",
+                                new=mock.AsyncMock(return_value=saved)):
+                    res = asyncio.run(_launch_campaign({}, ctx))
+                self.assertEqual(res.success, launches)
+                if error:
+                    self.assertIn(error, res.error)
 
 
 class LaunchConsentGateTests(unittest.TestCase):
-    def test_no_user_message_blocks_launch(self):
-        ctx = _ctx(last_user="")
-        res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertFalse(res.success)
-        self.assertIn("confirmation", res.error)
-
-    def test_non_affirmative_message_blocks_launch(self):
-        # e.g. the model jumps the gun while the user asked something else.
-        ctx = _ctx(last_user="what budget did we pick?")
-        res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertFalse(res.success)
-        self.assertIn("confirmation", res.error)
-
-    def test_clear_decline_blocks_launch(self):
-        ctx = _ctx(last_user="no")
-        res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertFalse(res.success)
-
-    def test_chip_click_yes_launch_passes(self):
-        ctx = _ctx(last_user="Yes, launch")
-        with mock.patch("app.agents.adzump.tools.launch.save_campaign",
-                        new=mock.AsyncMock(return_value="rec_1")):
-            res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertTrue(res.success)
-
-    def test_typed_go_ahead_passes(self):
-        ctx = _ctx(last_user="go ahead and publish it")
-        with mock.patch("app.agents.adzump.tools.launch.save_campaign",
-                        new=mock.AsyncMock(return_value="rec_2")):
-            res = asyncio.run(_launch_campaign({}, ctx))
-        self.assertTrue(res.success)
-
     def test_consent_phrases(self):
         # Only a plain go-ahead passes; a question, negation or hold-off blocks
         # even when it names the action (these all passed before 2026-09-24).

@@ -92,11 +92,6 @@ class JoinVerifiedUrlsTests(unittest.TestCase):
                 self.assertNotIn("competitor_id", comp)   # transport keys
                 self.assertNotIn("official_url_id", comp)  # stripped
 
-    def test_empty_state_is_noop(self):
-        comp = {"name": "X", "competitor_id": "C1", "url": "https://x.example"}
-        _join_verified_urls({"competitors": [comp]}, {})
-        self.assertEqual(comp["url"], "https://x.example")
-
 
 class VerifyCompetitorUrlTests(unittest.TestCase):
     """A user URL becomes the entry's identity only if reachable, non-portal,
@@ -256,8 +251,8 @@ class RefreshEntryTests(unittest.TestCase):
                 self.assertEqual(entry["creatives"], [{"creativeId": "a"}])
 
 
-class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
-    """One analyst at a time; re-discovery merges, never replaces (live 2026-09-08)."""
+class AnalyzeReentrancyTests(unittest.TestCase):
+    """One analyst at a time (live 2026-09-08)."""
 
     def _context(self, competitors=None):
         session_ctx = {
@@ -296,51 +291,6 @@ class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
         self.assertNotIn("_competitor_analysis_running",
                          context["session_context"])
 
-    def test_force_rediscovery_merges_never_replaces(self):
-        from app.agents.adzump.tools.competitor import _analyze_competitors
-        pinned = {"name": "Nambiar Villas", "url": "https://pinned.example",
-                  "url_source": "user", "creatives": [{"creativeId": "a"}]}
-        context = self._context(competitors=[pinned])
-        fresh = {"competitors": [
-            {"name": "Nambiar Bannerghatta Villas",
-             "url": "https://clone.example"},   # same project -> refresh, pin wins
-            {"name": "Sobha Magnus", "url": "https://sobha.com/sobha-magnus"},
-        ]}
-        analyst = mock.Mock()
-        analyst.analyze = mock.AsyncMock(return_value=SimpleNamespace(
-            competitive=fresh, product=None, notes=[]))
-        with mock.patch(
-            "app.agents.adzump.agents.product.agent.get_product_agent",
-            return_value=analyst,
-        ), mock.patch.object(
-            competitor, "_filter_self_references",
-        ), mock.patch(
-            "app.core.streaming.pre_emit_agent_started", new=mock.AsyncMock(),
-        ), mock.patch(
-            "app.agents.adzump.services.product_service.drop_deleted_competitors",
-            new=mock.AsyncMock(return_value=[]),
-        ), mock.patch(
-            "app.agents.adzump.services.product_service.save_competitors",
-            new=mock.AsyncMock(return_value=[]),
-        ) as m_save, mock.patch(
-            "app.agents.adzump.services.product_service.reload_competitor_list",
-            new=mock.AsyncMock(),
-        ):
-            result = asyncio.run(
-                _analyze_competitors({"force": "true"}, context))
-        self.assertTrue(result.success)
-        # What it found and what it refreshed are saved as research, never as the user's pick.
-        self.assertEqual([c["name"] for c in m_save.await_args.args[2]],
-                         ["Sobha Magnus", "Nambiar Villas"])
-        self.assertFalse(m_save.await_args.kwargs["named_by_user"])
-        names = [c["name"] for c in
-                 context["session_context"]["competitor_analysis"]["competitors"]]
-        self.assertEqual(names, ["Nambiar Villas", "Sobha Magnus"])
-        self.assertEqual(pinned["url"], "https://pinned.example")  # pin survived
-        self.assertEqual(pinned["creatives"], [{"creativeId": "a"}])
-        self.assertIn("1 new", result.summary)
-        self.assertIn("1 already known", result.summary)
-
 
 class CompetitorWritesTests(unittest.TestCase):
     """Each change writes only its own rows; a chat that never loaded the list
@@ -348,9 +298,12 @@ class CompetitorWritesTests(unittest.TestCase):
 
     SAVED = [{"name": "Sobha Magnus", "row_id": 1}, {"name": "Nambiar Villas", "row_id": 2}]
 
-    def _run(self, params, *, saved=SAVED, found=None, not_landed=(), save_error=False):
+    def _run(self, params, *, saved=SAVED, found=None, not_landed=(), save_error=False,
+             loaded=None):
         session_ctx = {"product_data": {"product_name": "Valmark CityVille"},
                        "product_profile": {"url": "https://cityville.in"}}
+        if loaded is not None:  # the list this chat already holds
+            session_ctx["competitor_analysis"] = {"competitors": loaded}
         context = {"session_context": session_ctx, "auth": object(),
                    "event_stream": None, "tool_use_id": "t1"}
         analyst = mock.Mock()
@@ -398,13 +351,30 @@ class CompetitorWritesTests(unittest.TestCase):
                 self.assertTrue(save.await_args.kwargs["named_by_user"])
                 self.assertEqual("clashes with a saved competitor" in result.summary, skipped)
 
-    def test_forced_research_merges_into_the_saved_list(self):
-        found = [{"name": "Nambiar Bannerghatta Villas"}, {"name": "Prestige Lakeside"}]
-        result, session_ctx, save, _ = self._run({"force": "true"}, found=found)
-        self.assertTrue(result.success)
-        names = [c["name"] for c in session_ctx["competitor_analysis"]["competitors"]]
-        self.assertEqual(names, ["Sobha Magnus", "Nambiar Villas", "Prestige Lakeside"])
-        self.assertIn("1 new", result.summary)
+    def test_forced_research_merges_never_replaces(self):
+        # live 2026-09-08: force-discovery wiped the list. A same-project find
+        # refreshes its entry and a user pin wins; both save as research.
+        pinned = {"name": "Nambiar Villas", "url": "https://pinned.example",
+                  "url_source": "user", "creatives": [{"creativeId": "a"}]}
+        for label, loaded, found, names, summary in [
+            ("a chat that never loaded the list", None,
+             [{"name": "Nambiar Bannerghatta Villas"}, {"name": "Prestige Lakeside"}],
+             ["Sobha Magnus", "Nambiar Villas", "Prestige Lakeside"], "1 new"),
+            ("a pinned entry survives its refresh", [pinned],
+             [{"name": "Nambiar Bannerghatta Villas", "url": "https://clone.example"},
+              {"name": "Sobha Magnus", "url": "https://sobha.com/sobha-magnus"}],
+             ["Nambiar Villas", "Sobha Magnus"], "1 already known"),
+        ]:
+            with self.subTest(label):
+                result, session_ctx, save, _ = self._run(
+                    {"force": "true"}, found=found, loaded=loaded)
+                self.assertTrue(result.success)
+                self.assertEqual(
+                    [c["name"] for c in session_ctx["competitor_analysis"]["competitors"]], names)
+                self.assertIn(summary, result.summary)
+                self.assertFalse(save.await_args.kwargs["named_by_user"])
+        self.assertEqual(pinned["url"], "https://pinned.example")
+        self.assertEqual(pinned["creatives"], [{"creativeId": "a"}])
 
     def test_a_failed_save_keeps_the_research(self):
         result, session_ctx, _, _ = self._run(

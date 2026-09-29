@@ -14,25 +14,19 @@ Run:
 from __future__ import annotations
 
 import asyncio
-import types
 import unittest
 
 from app.agents.adzump.answer_parse import field_candidates
-from app.agents.adzump.tools.campaign_data import (
-    _field_traceable, _set_campaign_spec, is_clear_decline_reply,
-)
+from app.agents.adzump.tools.campaign_data import _field_traceable, _set_campaign_spec
+from tests.agents.adzump._fixtures import RE, spec_context
 
-RE = {"product_name": "Sumadhura Solea", "summary": "Luxury 3 & 4 BHK apartments.",
-      "business_type": "real estate"}
 SC = {"product_data": dict(RE)}
 
 
 def _set(spec, last_user, params):
     """Run _set_campaign_spec against a minimal session; return (result, spec)."""
-    sc = {"campaign_spec": dict(spec), "_spec_set_at": {}, "product_data": dict(RE)}
-    session = types.SimpleNamespace(
-        messages=[{"role": "user", "content": last_user}], _turn_count=7)
-    r = asyncio.run(_set_campaign_spec(params, {"session_context": sc, "_session": session}))
+    ctx, sc = spec_context(dict(spec), last_user)
+    r = asyncio.run(_set_campaign_spec(params, ctx))
     return r, sc["campaign_spec"]
 
 
@@ -81,6 +75,7 @@ class TraceabilityTests(unittest.TestCase):
              "skip fetching their ads for now, let's continue with the campaign"),
             ("competitor_creatives", "declined", "let's move on"),
             ("competitor_creatives", "declined", "don't fetch their ads"),
+            ("competitor_creatives", "declined", "No"),
         ]:
             with self.subTest(field=field, msg=msg):
                 self.assertTrue(_field_traceable(field, value, msg, SC))
@@ -147,11 +142,6 @@ class SpecCaptureTests(unittest.TestCase):
             with self.subTest(msg=msg):
                 r, got = _set({}, msg, params)
                 self.assertNotIn(field, got)
-
-    def test_emoji_is_not_a_decline(self):
-        for msg in ("👍", "🤔", "👍 sounds good", "   "):
-            with self.subTest(msg=msg):
-                self.assertFalse(is_clear_decline_reply(msg))
 
 
 if __name__ == "__main__":

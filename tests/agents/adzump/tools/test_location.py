@@ -1,6 +1,5 @@
-"""location._detected_location - the place.address accessor (wire shapes are
-normalized into place at the merge boundary, tools/product.py) - and
-confirm_location's one server-side geocode (pin coords + country code).
+"""tools/location.py: confirm_location's one server-side geocode (pin coords +
+country code).
 
 Run:
     cd nocode-ai && ./venv/bin/python -m unittest tests.agents.adzump.tools.test_location -v
@@ -10,21 +9,8 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from app.agents.adzump.tools.location import _confirm_location, _detected_location
+from app.agents.adzump.tools.location import _confirm_location
 from tests.agents.adzump._fixtures import FakeStream
-
-
-class DetectedLocationTests(unittest.TestCase):
-    def test_table(self):
-        for product, expected in [
-            ({"place": {"address": "Bengaluru"}}, "Bengaluru"),
-            ({"place": {"address": "  Pune  "}}, "Pune"),
-            ({"place": {}}, ""),
-            ({"place": None}, ""),
-            ({}, ""),
-        ]:
-            with self.subTest(product=product):
-                self.assertEqual(_detected_location(product), expected)
 
 
 class ConfirmLocationTests(unittest.IsolatedAsyncioTestCase):

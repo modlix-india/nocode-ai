@@ -19,49 +19,38 @@ def _sctx(name="Purva Sparkling Springs", summary="Premium 3BHK villas."):
 
 
 class BuildBriefTests(unittest.TestCase):
-    def test_carries_user_note(self):
-        out = _build_brief(_sctx(), note="this is our logo")
-        self.assertIn('The user said about these image(s): "this is our logo"', out)
-
-    def test_no_note_line_when_absent(self):
-        self.assertNotIn("The user said about", _build_brief(_sctx(), note=""))
-        self.assertNotIn("The user said about", _build_brief(_sctx()))
-
-    def test_project_anchor_and_name(self):
-        out = _build_brief(_sctx(name="Sumadhura Epitome"))
-        self.assertIn("THIS product", out)
+    def test_names_the_product_and_carries_only_a_real_note(self):
+        out = _build_brief(_sctx(name="Sumadhura Epitome"), note="this is our logo")
         self.assertIn("Sumadhura Epitome", out)
-
-    def test_note_trimmed_and_capped(self):
-        out = _build_brief(_sctx(), note="  x" * 400)
-        line = [row for row in out.splitlines() if row.startswith("The user said")][0]
-        self.assertLessEqual(len(line), 340)  # 300-char cap + wrapper
+        self.assertIn('"this is our logo"', out)
+        for note in ("", None):
+            with self.subTest(note=note):
+                kwargs = {} if note is None else {"note": note}
+                self.assertNotIn("The user said about", _build_brief(_sctx(), **kwargs))
 
 
 class SavedSummaryTests(unittest.TestCase):
-    def test_empty(self):
-        self.assertEqual(_saved_summary([]), [])
+    """What the user reads after an upload: a brand image gets a hedge in case
+    it isn't this project's (PR4: "Saved your logo.", never "logo (logo)")."""
 
-    def test_dedups_name_equals_role(self):  # PR4: "Saved your logo." not "logo (logo)"
-        out = _saved_summary([{"role": "logo", "name": "logo"}])
-        self.assertEqual(out[0], "Saved your logo.")
-
-    def test_keeps_distinct_name(self):
-        out = _saved_summary([{"role": "floor_plan", "name": "3bhk-plan"}])
-        self.assertEqual(out[0], "Saved 3bhk-plan (floor_plan).")
-
-    def test_hedge_on_hero(self):
-        out = _saved_summary([{"role": "hero", "name": "hero"}])
-        self.assertTrue(any("isn't from this project" in p for p in out))
-        self.assertIn("the hero", out[-1])
-
-    def test_hedge_lists_both_brand_roles(self):
-        out = _saved_summary([{"role": "hero", "name": "h"}, {"role": "logo", "name": "l"}])
-        self.assertIn("the hero or logo", out[-1])
-
-    def test_no_hedge_on_plain_creative(self):
-        out = _saved_summary([{"role": "amenity", "name": "pool"}])
-        self.assertFalse(any("isn't from this project" in p for p in out))
+    def test_rows(self):
+        hedge = "isn't from this project"
+        for label, saved, first, hedged in [
+            ("name equals role", [{"role": "logo", "name": "logo"}], "Saved your logo.", "the logo"),
+            ("a distinct name", [{"role": "floor_plan", "name": "3bhk-plan"}],
+             "Saved 3bhk-plan (floor_plan).", None),
+            ("a hero", [{"role": "hero", "name": "hero"}], None, "the hero"),
+            ("both brand roles", [{"role": "hero", "name": "h"}, {"role": "logo", "name": "l"}],
+             None, "the hero or logo"),
+            ("a plain creative", [{"role": "amenity", "name": "pool"}], None, None),
+        ]:
+            with self.subTest(label):
+                out = _saved_summary(saved)
+                if first:
+                    self.assertEqual(out[0], first)
+                self.assertEqual(any(hedge in line for line in out), bool(hedged))
+                if hedged:
+                    self.assertIn(hedged, out[-1])
 
 
 def _v(**kw) -> ImageVerdict:

@@ -1,4 +1,4 @@
-"""Unit tests for app/agents/adzump/tools/suggestions.py (_present_options, _norm_q)."""
+"""Unit tests for app/agents/adzump/tools/suggestions.py (_present_options)."""
 # regression: F9 (present_options question de-dup) + tagged-capture elicit tagging
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 import types
 import unittest
 
-from app.agents.adzump.tools.suggestions import _present_options, _norm_q
+from app.agents.adzump.tools.suggestions import _present_options
 from tests.agents.adzump._fixtures import FakeStream
 
 
@@ -25,43 +25,29 @@ def _run(question, turn_text, stream, options=None):
 
 
 class QuestionDedupTests(unittest.TestCase):
+    """F9: the question renders once - skipped when the model already wrote it
+    this turn, emitted otherwise (a paraphrase must never swallow it)."""
+
     Q = "How long should the campaign run?"
 
-    def test_skips_emit_when_question_already_streamed(self):
-        stream = FakeStream()
-        res = _run(self.Q, "Got it.\n\nHow long should the campaign run?", stream)
-        self.assertTrue(res.success)
-        self.assertEqual(stream.texts, [])                       # no double-render
-
-    def test_emits_when_not_streamed(self):
-        stream = FakeStream()
-        res = _run(self.Q, "Got it.", stream)                    # only a lead-in
-        self.assertTrue(res.success)
-        self.assertTrue(any("How long should the campaign run?" in t for t in stream.texts))
-
-    def test_dedup_is_whitespace_and_punctuation_insensitive(self):
-        stream = FakeStream()
-        # Different spacing + no trailing '?' in the prose - should still match.
-        _run(self.Q, "ok... how long   should the campaign run", stream)
-        self.assertEqual(stream.texts, [])
-
-    def test_divergent_paraphrase_still_emits(self):
-        stream = FakeStream()
-        _run(self.Q, "Got it — how many days do you want to run this?", stream)
-        self.assertTrue(any(self.Q in t for t in stream.texts))  # documented limit
-
-    def test_no_session_falls_through_to_emit(self):
-        # No _session on context → no streamed text → emit (back-compat / safety).
-        stream = FakeStream()
-        asyncio.run(_present_options(
-            {"question": self.Q, "options": ["30 days", "Custom"]},
-            {"event_stream": stream, "session_context": {}},
-        ))
-        self.assertTrue(any(self.Q in t for t in stream.texts))
-
-    def test_norm_q(self):
-        self.assertEqual(_norm_q("How long should it run?"), "how long should it run")
-        self.assertEqual(_norm_q("  HOW   long  "), "how long")     # lower + collapse + strip
+    def test_rows(self):
+        for label, streamed, emitted in [
+            ("already streamed", "Got it.\n\nHow long should the campaign run?", False),
+            ("streamed with other spacing and no '?'",
+             "ok... how long   should the campaign run", False),
+            ("only a lead-in streamed", "Got it.", True),
+            ("a different wording streamed",
+             "Got it - how many days do you want to run this?", True),
+            ("no session to read", None, True),
+        ]:
+            with self.subTest(label):
+                stream = FakeStream()
+                context = ({"event_stream": stream, "session_context": {}} if streamed is None
+                           else _ctx(streamed, stream))
+                res = asyncio.run(_present_options(
+                    {"question": self.Q, "options": ["30 days", "Custom"]}, context))
+                self.assertTrue(res.success)
+                self.assertEqual(any(self.Q in t for t in stream.texts), emitted)
 
 
 class PresentOptionsTagTests(unittest.TestCase):
@@ -74,12 +60,9 @@ class PresentOptionsTagTests(unittest.TestCase):
             {"session_context": {}}))
         self.assertEqual(res.data["elicit_field"], "duration")
         self.assertEqual(res.data["elicit_answers"], {"30 days": "30 days"})  # Custom excluded
-
-    def test_untagged_data_is_none(self):
-        res = asyncio.run(_present_options(
-            {"question": "Launch?", "options": ["Yes", "No"]},
-            {"session_context": {}}))
-        self.assertIsNone(res.data)
+        untagged = asyncio.run(_present_options(
+            {"question": "Launch?", "options": ["Yes", "No"]}, {"session_context": {}}))
+        self.assertIsNone(untagged.data)  # a control-flow ask captures nothing
 
     def test_field_asks_are_counted(self):
         # Offer counts settle a twice-unanswered offer; duration/budget counts

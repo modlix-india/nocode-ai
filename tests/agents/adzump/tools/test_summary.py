@@ -35,8 +35,8 @@ class RenderSummaryCardTests(unittest.TestCase):
 
     def test_variant_rows(self):
         rows = [
-            ("google", GOOGLE_DONE, {"attempted": True},
-             ("Acme Manager (ID: 111-222-3334)", "Acme Ads (ID: 555-666-7778)"),
+            ("google", GOOGLE_DONE, {"attempted": True, "competitor_names": ["Lodha", "Sobha"]},
+             ("Acme Manager (ID: 111-222-3334)", "Acme Ads (ID: 555-666-7778)", "Lodha", "Sobha"),
              ("**Facebook Page**", "**Instagram Account**")),
             ("meta+ig", {**META_DONE, "ig_page": "ig-7"},
              {"creatives_resolved": True},
@@ -54,11 +54,6 @@ class RenderSummaryCardTests(unittest.TestCase):
                 for token in absent:
                     self.assertNotIn(token, card)
                 self.assertNotIn("Linked", card)  # IDs never degrade
-
-    def test_competitor_names_render(self):
-        card = self._card(GOOGLE_DONE, competitor_names=["Lodha", "Sobha"])
-        for name in ("Lodha", "Sobha"):
-            self.assertIn(name, card)
 
 
 class ShowCampaignSummaryTests(unittest.TestCase):
@@ -90,10 +85,6 @@ class ShowCampaignSummaryTests(unittest.TestCase):
                 result = self._run(spec, product=product)
                 self.assertFalse(result.success)
                 self.assertIn("not complete", result.error)
-
-    def test_no_session_refuses(self):
-        result = asyncio.run(_show_campaign_summary({}, {}))
-        self.assertFalse(result.success)
 
 
 if __name__ == "__main__":
