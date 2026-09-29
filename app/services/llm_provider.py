@@ -673,14 +673,14 @@ class AnthropicProvider(LLMProvider):
         if thinking:
             # Adaptive thinking: Claude decides when/how much to think and
             # auto-enables interleaved thinking with tool use (no beta header).
-            # Sonnet 4.6 returns summarized thinking by default; `display` is
-            # not set here because that field is Opus-4.7+/Sonnet-5 only and
-            # 4.6 would reject it. On a model bump, add display="summarized".
-            stream_kwargs["thinking"] = {"type": "adaptive"}
+            # display="summarized" is what streams the reasoning to the UI:
+            # Sonnet 5.5 omits the thinking text by default (an empty block,
+            # live 2026-09-29), and Sonnet 4.6 accepts the field too.
+            stream_kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
         if effort:
             # Bounds adaptive thinking depth. Without it the API defaults to
             # "high" - a 101k-token final judgment turn spent 6.5 min thinking
-            # (live 2026-09-21). Sonnet 4.6 accepts low|medium|high|max.
+            # (live 2026-09-21). Accepts low|medium|high|max.
             stream_kwargs["output_config"] = {"effort": effort}
         if context_management:
             extra_headers = extra_headers or {}
