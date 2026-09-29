@@ -1192,9 +1192,9 @@ class BaseAgent:
         )
         tool_content = result.to_tool_result_content()
 
-        # What the user's tool row shows (never `error` - that text steers the
-        # model; see ToolResult.to_display_text). Kept short: the UI truncates,
-        # and very large payloads can fragment SSE lines and stall the spinner.
+        # What the user's tool row shows (see ToolResult.to_display_text). Kept
+        # short: the UI truncates, and very large payloads can fragment SSE
+        # lines and stall the spinner.
         display_summary = result.to_display_text(tool_content)
 
         await event_stream.emit_tool_result(tool_name, result.success, display_summary, tool_use_id)

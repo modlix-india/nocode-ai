@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import unittest
 
-from app.core.tools.base import GENERIC_FAILURE_DISPLAY, ToolResult
+from app.core.tools.base import ToolResult
 
 
 class ToDisplayTextTests(unittest.TestCase):
-    """to_display_text — what the USER's tool row shows. Failures never show
-    `error` (model-steering text: gate refusals, "call X NOW" prescriptions);
-    tools set `display_error` for a customer-appropriate line."""
+    """to_display_text - what the USER's tool row shows. A failure shows the
+    real error, as it always has, unless the tool sets `display_error` because
+    its `error` is model-steering text (gate refusals, "call X NOW")."""
 
     def test_table(self):
         cases = [
@@ -22,23 +22,17 @@ class ToDisplayTextTests(unittest.TestCase):
              ToolResult(success=True, summary="Fetched 5 ads."), "", "Fetched 5 ads."),
             ("success without summary falls to the model content",
              ToolResult(success=True), "raw model text", "raw model text"),
-            ("failure NEVER shows error - display_error wins",
+            ("failure shows the real error (AppBuilder, LeadZump)",
+             ToolResult(success=False, error="Component not found: hero"),
+             "model text", "Component not found: hero"),
+            ("display_error replaces model-steering error text",
              ToolResult(success=False, error="Consent gate: call present_options NOW",
                         display_error="Waiting for your go-ahead."),
              "", "Waiting for your go-ahead."),
-            ("failure without display_error gets the calm generic",
-             ToolResult(success=False, error="Run analyze_competitors NOW"),
-             "", GENERIC_FAILURE_DISPLAY),
-            ("failure ignores the model-content fallback too",
-             ToolResult(success=False, error="steering"), "model text",
-             GENERIC_FAILURE_DISPLAY),
         ]
         for name, result, model_content, expected in cases:
             with self.subTest(case=name):
                 self.assertEqual(result.to_display_text(model_content), expected)
-                if not result.success:
-                    self.assertNotIn(result.error.split()[0],
-                                     result.to_display_text(model_content))
 
     def test_model_still_gets_the_full_error(self):
         # display routing must not weaken the model's steering channel

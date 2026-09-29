@@ -40,10 +40,6 @@ def _data_text(data: Any) -> str | None:
         return str(data)
 
 
-# Shown in the user's tool row when a failed tool set no `display_error`.
-GENERIC_FAILURE_DISPLAY = "This step didn't complete."
-
-
 @dataclass(frozen=True)
 class ToolParameter:
     """A single parameter for a tool definition."""
@@ -91,9 +87,9 @@ class ToolResult:
     # Terse model-facing note for audience="user" — what the model sees instead
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""
-    # User-facing one-liner for FAILURES (model_summary's mirror image): `error`
-    # is model-steering text (gate refusals, "call X NOW" prescriptions) and
-    # never reaches the UI; unset falls back to GENERIC_FAILURE_DISPLAY.
+    # User-facing one-liner for FAILURES (model_summary's mirror image), for a
+    # tool whose `error` is model-steering text (gate refusals, "call X NOW"
+    # prescriptions). Unset, the user's row shows `error` as it always has.
     display_error: str = ""
 
     # Per-result cap on the content sent to the LLM; falls back to
@@ -111,12 +107,12 @@ class ToolResult:
     def to_display_text(self, model_content: str = "") -> str:
         """What the USER's tool row shows (SSE event + persisted turn).
 
-        Success keeps today's display (summary, else the model content the
-        caller passes). Failure shows `display_error` or the calm generic -
-        NEVER `error`, which is written to steer the model."""
-        if self.success:
-            return self.summary or model_content
-        return self.display_error or GENERIC_FAILURE_DISPLAY
+        The summary, else the error, else the model content the caller passes.
+        A failure shows `display_error` instead when the tool sets one, so an
+        error written to steer the model never reaches the user."""
+        if not self.success and self.display_error:
+            return self.display_error
+        return self.summary or self.error or model_content
 
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM.
