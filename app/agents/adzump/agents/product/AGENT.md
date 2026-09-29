@@ -76,9 +76,9 @@ app/agents/adzump/agents/product/
 | Constant | Value | Why |
 |---|---|---|
 | `ANALYST_PROVIDER` | `"anthropic"` | pinned - the server-side `web_search`/`web_fetch` builtin tools only exist on Anthropic |
-| `ANALYST_MODEL_OVERRIDE` | `anthropic:claude-sonnet-4-6` | 25-turn research flow needs the strong tier |
+| `ANALYST_MODEL_TIER` | `"balanced"` | Anthropic's balanced tier = `settings.CLAUDE_SONNET` (Sonnet 5.5); the 25-turn research flow needs the strong tier |
 | `ANALYST_MAX_TURNS` | `25` | 1 scrape + 7 searches + extract + fetch + final JSON + slack |
-| `ANALYST_MAX_TOKENS` | `16384` | the final JSON is 3-5K tokens; 4K truncated mid-JSON (stop_reason=max_tokens) |
+| `ANALYST_MAX_TOKENS` | `32768` | adaptive thinking shares it with the answer; 16K ran out while thinking and emitted no JSON |
 | `context_management` | clear_tool_uses at 100k input tokens, `exclude_tools=["web_search"]` | search results ARE the judgment evidence; clearing them mid-run starved the final turns (B1, 2026-09-02) |
 
 All constants live at the top of `agent.py`.

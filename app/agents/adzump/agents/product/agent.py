@@ -30,12 +30,12 @@ from app.agents.adzump._shared import extract_json, primary_screenshot_url
 
 logger = logging.getLogger(__name__)
 
-# Anthropic Sonnet 4.6 handles the 25-turn research flow with the built-in
-# server-side web_search tool (see tools/__init__.py). Pinned to Anthropic
-# so the server tool is available - other providers lack this capability.
+# Claude Sonnet (the balanced tier, settings.CLAUDE_SONNET) handles the
+# 25-turn research flow with the built-in server-side web_search tool (see
+# tools/__init__.py). Pinned to Anthropic so the server tool is available -
+# other providers lack this capability.
 ANALYST_PROVIDER = "anthropic"
-ANALYST_MODEL_TIER = "balanced"  # kept for the BaseAgent constructor
-ANALYST_MODEL_OVERRIDE = "anthropic:claude-sonnet-4-6"
+ANALYST_MODEL_TIER = "balanced"
 ANALYST_MAX_TURNS = 25  # 1 scrape + multiple web_search + 3-5 web_fetch + final JSON turn + slack
 # Adaptive thinking shares this budget with the answer: a 9-candidate
 # re-judge spent all 16384 tokens THINKING and emitted zero JSON
@@ -443,7 +443,6 @@ class ProductAgent(BaseAgent):
             user_message=msg,
             session=sub_session,
             event_stream=wrapped_stream,
-            model_override=ANALYST_MODEL_OVERRIDE,
         )
         final_text = self._last_assistant_text(sub_session)
 
@@ -459,7 +458,6 @@ class ProductAgent(BaseAgent):
                     user_message=_bounce_message(violations, research_state),
                     session=sub_session,
                     event_stream=wrapped_stream,
-                    model_override=ANALYST_MODEL_OVERRIDE,
                 )
                 final_text = self._last_assistant_text(sub_session)
                 violations = _discovery_violations(extract_json(final_text),

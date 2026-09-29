@@ -4,7 +4,7 @@ from __future__ import annotations
 LLM Provider abstraction for supporting multiple LLM backends.
 
 Supports:
-- Anthropic (Claude): claude-haiku-4-5, claude-sonnet-4
+- Anthropic (Claude): settings.CLAUDE_HAIKU / CLAUDE_SONNET (Haiku 4.5, Sonnet 5.5)
 - OpenAI (GPT): gpt-4o-mini, gpt-4o
 - DeepSeek: deepseek-flash (V4.1-Flash)
 

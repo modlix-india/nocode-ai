@@ -93,7 +93,7 @@ Configuration is loaded in priority order:
 | `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` |
 | `ANTHROPIC_API_KEY` | — | Claude API key |
 | `OPENAI_API_KEY` | — | OpenAI API key (if using openai provider) |
-| `CLAUDE_SONNET` | `claude-sonnet-4-20250514` | Model for balanced tasks |
+| `CLAUDE_SONNET` | `claude-sonnet-5-5` | Model for balanced tasks |
 | `CLAUDE_HAIKU` | `claude-haiku-4-5-20251001` | Model for fast/cheap tasks |
 | `GATEWAY_URL` | `http://localhost:8080` | nocode-saas Gateway URL |
 | `COMPONENT_CATALOG_URL` | — | CDN URL for component-catalog.json |
