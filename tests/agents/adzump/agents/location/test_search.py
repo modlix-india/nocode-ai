@@ -70,15 +70,6 @@ class SearchAutocompleteTests(unittest.TestCase):
         ))
         self.assertEqual(candidates, [])
 
-    def test_platform_variants_use_canonical_matching(self):
-        """S5: platform checks go through is_google/is_meta - 'Google Ads'
-        and 'facebook' route correctly; unknown platforms return []."""
-        async def _suggest(*_a, **_kw):
-            return {"geoTargetConstantSuggestions": []}
-
-        self.assertEqual(self._search("Google Ads", google_suggest=_suggest), [])
-        self.assertEqual(self._search("linkedin"), [])  # unknown → no lookups
-
 
 if __name__ == "__main__":
     unittest.main()

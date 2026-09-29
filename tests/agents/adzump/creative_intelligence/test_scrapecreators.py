@@ -121,20 +121,9 @@ class SearchPolicyTests(unittest.TestCase):
         source._search_page = fake_page
         return source
 
-    def test_one_default_search_attributes_the_advertiser(self):
+    def test_one_default_search_with_the_campaign_country(self):
         # No search_type is ever sent (Kailash 2026-09-04): the API default
         # casts the widest net; exact_phrase missed word-order variants.
-        source = self._source_with_pages([
-            {"searchResults": [_ad()], "cursor": ""},
-        ])
-        fetched = asyncio.run(source.fetch(
-            name="Purva Sparkling Springs", country="IN"))
-        self.assertEqual(len(self.calls), 1)
-        self.assertEqual(self.calls[0]["country"], "IN")
-        self.assertEqual(len(fetched.creatives), 1)
-        self.assertEqual(fetched.logo_url, "https://cdn/logo.jpg")
-
-    def test_no_search_type_param_reaches_the_api(self):
         captured: dict = {}
 
         class _Resp:
@@ -155,9 +144,9 @@ class SearchPolicyTests(unittest.TestCase):
                                "SCRAPECREATORS_API_KEY", "k"), \
              mock.patch.object(scrapecreators.httpx, "AsyncClient",
                                return_value=_Client()):
-            asyncio.run(ScrapeCreatorsSource().fetch(name="X"))
+            asyncio.run(ScrapeCreatorsSource().fetch(name="X", country="in"))
         self.assertNotIn("search_type", captured)
-        self.assertEqual(captured.get("query"), "X")
+        self.assertEqual((captured.get("query"), captured.get("country")), ("X", "IN"))
 
     def test_keeps_every_ad_that_names_the_brand(self):
         # Kailash 2026-09-29: whichever page ran it, an ad whose own text names

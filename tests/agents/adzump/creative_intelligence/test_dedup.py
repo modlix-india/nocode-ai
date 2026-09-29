@@ -28,15 +28,20 @@ ZEROS = "0000000000000000"
 
 
 def _png(img: Image.Image) -> bytes:
-    b = BytesIO(); img.save(b, "PNG"); return b.getvalue()
+    b = BytesIO()
+    img.save(b, "PNG")
+    return b.getvalue()
 
 
 def _jpeg(img: Image.Image) -> bytes:
-    b = BytesIO(); img.save(b, "JPEG", quality=60); return b.getvalue()
+    b = BytesIO()
+    img.save(b, "JPEG", quality=60)
+    return b.getvalue()
 
 
 def _gradient() -> Image.Image:
-    im = Image.new("RGB", (400, 400), "white"); d = ImageDraw.Draw(im)
+    im = Image.new("RGB", (400, 400), "white")
+    d = ImageDraw.Draw(im)
     for i in range(400):
         d.line([(0, i), (400, i)], fill=(i % 256, (i * 2) % 256, 120))
     d.ellipse([100, 100, 300, 300], fill=(200, 30, 30))
@@ -44,7 +49,8 @@ def _gradient() -> Image.Image:
 
 
 def _other() -> Image.Image:
-    im = Image.new("RGB", (400, 400), "navy"); d = ImageDraw.Draw(im)
+    im = Image.new("RGB", (400, 400), "navy")
+    d = ImageDraw.Draw(im)
     d.rectangle([50, 50, 350, 150], fill="yellow")
     return im
 

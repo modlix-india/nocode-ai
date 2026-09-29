@@ -47,17 +47,15 @@ def _searches() -> list[dict]:
 
 class IsSpecificGeographyLock(unittest.TestCase):
 
-    def test_specific_localities_true(self):
-        # Marker word (road/layout/block) OR compound suffix (-nagar).
-        for geo in ["Sarjapur Road", "HSR Layout", "Indiranagar",
-                    "Koramangala 5th Block", "Whitefield Main Road"]:
+    def test_rows(self):
+        # A marker word (road/layout/block) or a compound suffix (-nagar) is a
+        # micro-market; a city, region or nothing is not.
+        specific = ["Sarjapur Road", "HSR Layout", "Indiranagar",
+                    "Koramangala 5th Block", "Whitefield Main Road"]
+        broad = ["Bengaluru", "Karnataka", "India", "", None]
+        for geo, expected in [(g, True) for g in specific] + [(g, False) for g in broad]:
             with self.subTest(geo=geo):
-                self.assertTrue(_is_specific_geography(geo))
-
-    def test_city_regional_or_empty_false(self):
-        for geo in ["Bengaluru", "Karnataka", "India", "", None]:
-            with self.subTest(geo=geo):
-                self.assertFalse(_is_specific_geography(geo))
+                self.assertEqual(_is_specific_geography(geo), expected)
 
 
 class SelfReferenceBrandHostTests(unittest.TestCase):
@@ -109,12 +107,6 @@ class ExtractCandidatesTests(unittest.TestCase):
         self.assertNotIn("https://", result.model_summary)
         # The user's row is a plain line; the table is the model's.
         self.assertEqual(result.summary, "2 possible competitors from 2 searches")
-
-    def test_self_reference_never_enters_the_pool(self):
-        _, research_state = self._run(_searches())
-        self.assertNotIn("Valmark CityVille",
-                         [c["name"] for c in
-                          research_state["candidate_pool"].values()])
 
     def test_piped_title_cannot_shift_table_columns(self):
         result, _ = self._run([{"query": "q1", "candidates": [

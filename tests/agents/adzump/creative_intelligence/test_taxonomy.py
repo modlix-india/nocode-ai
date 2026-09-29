@@ -173,11 +173,15 @@ class GateCreativeTests(unittest.TestCase):
              Essence(category="residential_apartment", category_confidence=0.9,
                      market="Mumbai / Andheri"),
              False, taxonomy.MARKET_MISMATCH),
+            # the optional last column is the product's category (real estate by default)
+            ("a real-estate ad for another industry's product",
+             Essence(category="residential_villa", category_confidence=0.9),
+             False, taxonomy.CATEGORY_MISMATCH, "other_industry"),
         ]
-        for label, essence, want_ok, want_reason in rows:
+        for label, essence, want_ok, want_reason, *product in rows:
             with self.subTest(label):
                 ok, reason = taxonomy.gate_creative(
-                    "real_estate", "Whitefield, Bangalore", essence)
+                    product[0] if product else "real_estate", "Whitefield, Bangalore", essence)
                 self.assertEqual((ok, reason), (want_ok, want_reason))
 
     def test_top_level_and_subcategory(self):
@@ -191,11 +195,6 @@ class GateCreativeTests(unittest.TestCase):
             with self.subTest(leaf or "(empty)"):
                 self.assertEqual((taxonomy.top_level(leaf), taxonomy.subcategory(leaf)),
                                  (top, sub))
-        # A real-estate ad never matches a product of another industry.
-        ok, reason = taxonomy.gate_creative(
-            "other_industry", "", Essence(category="residential_villa",
-                                          category_confidence=0.9))
-        self.assertEqual((ok, reason), (False, taxonomy.CATEGORY_MISMATCH))
 
 
 if __name__ == "__main__":

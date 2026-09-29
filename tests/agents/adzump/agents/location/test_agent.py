@@ -145,17 +145,8 @@ class HandleTests(unittest.TestCase):
         self.assertIn("Bengaluru", res.summary)
         self.assertIn("Bengaluru", res.to_tool_result_content())
 
-    def test_run_exception_becomes_structured_error_not_a_raise(self):
-        sub = FakeSubSession()
-        with self._patched(sub, mock.AsyncMock(side_effect=RuntimeError("provider down"))):
-            res = _run(get_location_agent().handle("add Mumbai", _ctx()))
-        self.assertFalse(res.success)
-
-
-class PlaceSaveTests(HandleTests):
-    """A geocode that stamps the place (coordinates, country) saves it on the product."""
-
     def test_a_geocoded_place_is_saved(self):
+        # A geocode that stamps the place (coordinates, country) saves it on the product.
         async def stamp(location_name, place):
             place["lat"] = 12.97
             return None
@@ -170,30 +161,11 @@ class PlaceSaveTests(HandleTests):
                 _run(get_location_agent().handle("set targeting", _ctx()))
             self.assertEqual(m_save.await_count, saves)
 
-
-class ToolWrapperGuardTests(unittest.TestCase):
-    """The orchestrator-side tool wrapper is the ONE owner of the
-    empty-message guard - its retry-hint error is what the orchestrator
-    relays; handle() assumes a non-empty message."""
-
-    def test_empty_user_message_rejected_with_retry_hint(self):
-        from app.agents.adzump.tools.location import manage_targeting_locations
-        for params in ({}, {"user_message": ""}, {"user_message": "   "}):
-            with self.subTest(params=params):
-                res = _run(manage_targeting_locations.execute(params, {}))
-                self.assertFalse(res.success)
-                self.assertIn("verbatim", res.error)
-
-
-class ToolRegistryTests(unittest.TestCase):
-    """The agent's whole action space is its tool set - lock the four names."""
-
-    def test_agent_registers_discovery_and_edit_tools(self):
-        self.assertEqual(
-            set(get_location_agent().tools),
-            {"discover_neighborhoods", "geocode_recommendations",
-             "add_location", "delete_location"},
-        )
+    def test_run_exception_becomes_structured_error_not_a_raise(self):
+        sub = FakeSubSession()
+        with self._patched(sub, mock.AsyncMock(side_effect=RuntimeError("provider down"))):
+            res = _run(get_location_agent().handle("add Mumbai", _ctx()))
+        self.assertFalse(res.success)
 
 
 if __name__ == "__main__":

@@ -98,9 +98,7 @@ error; see the docstring in `summary/agent.py::_emit_finished` for the rule).
 
 | File | Covers |
 |---|---|
-| `tests/agents/adzump/agents/vision/test_resolve_picks.py` | index→URL resolution, dedupe, OOB, filename guard, completeness derivation |
-| `tests/agents/adzump/agents/vision/test_select_seams.py` | message building (screenshot block #0, SVG text-only), parse failures → empty |
-| `tests/agents/adzump/agents/vision/test_vision_review.py` | review-each verdict parsing + failure contract |
+| `tests/agents/adzump/agents/vision/test_agent.py` | review-each verdict parsing + failure contract; message building (screenshot block #0, SVG text-only); selection parse failures → empty; index→URL resolution, dedupe, OOB, filename guard, completeness derivation |
 
 ## Design decisions
 

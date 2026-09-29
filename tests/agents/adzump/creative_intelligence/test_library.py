@@ -553,11 +553,10 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(len(second.creatives), 14)
         self.assertEqual({c.creative_id for c in second.creatives} - set(ids),
                          {"ad01", "ad03", "ad05", "ad07"})
-
-    def test_carousel_cards_count_as_one_ad(self):
-        cards = [_ad(f"car:{n}") for n in range(4)] + [_ad(f"s{i}") for i in range(12)]
-        rec = self._run(stored=None, source=FakeSource(creatives=cards))
-        self.assertEqual(len({c.creative_id.split(":")[0] for c in rec.creatives}), 10)
+        with self.subTest("a carousel's cards count as one ad"):
+            cards = [_ad(f"car:{n}") for n in range(4)] + [_ad(f"s{i}") for i in range(12)]
+            rec = self._run(stored=None, source=FakeSource(creatives=cards))
+            self.assertEqual(len({c.creative_id.split(":")[0] for c in rec.creatives}), 10)
 
     def test_hung_processing_drops_one_competitor_not_the_batch(self):
         class HungEnrich:

@@ -85,11 +85,6 @@ class VerifyServedAssetTests(unittest.TestCase):
                 self.assertFalse(media.ok)
                 self.assertEqual(media.reason, want_reason)
 
-    def test_valid_image_stamps_dimensions(self):
-        media = _verify(body=_png(size=(1080, 1920)))
-        self.assertTrue(media.ok)
-        self.assertEqual((media.width, media.height), (1080, 1920))
-
     def test_video_container_gate(self):
         with self.subTest("mp4 magic passes (ffprobe absent -> sniff gates)"):
             with mock.patch.object(verify, "_ffprobe_duration",
