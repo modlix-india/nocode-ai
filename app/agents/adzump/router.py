@@ -5,6 +5,9 @@ the location agent's geo-search typeahead route (a UI helper, see
 ``agents/location/search_router.py``) is folded in below so main.py mounts
 ONE adzump router. The orchestrator's HTTP surface is intentionally small:
 the LLM is the interface, the chat endpoint is the only conversational entry.
+
+The detailed targeting agent's UI-helper routes (keyword search, segment add,
+segment delete) are folded in the same way via ``targeting_router.py``.
 """
 
 from __future__ import annotations
@@ -26,12 +29,14 @@ from app.core.session import BaseSession, AuthContext
 from app.services.session_manager import get_session_manager
 from app.agents.adzump.agent import AdzumpAgent
 from app.agents.adzump.agents.location.search_router import router as location_search_router
+from app.agents.adzump.agents.meta_detailed_targeting.targeting_router import router as targeting_router
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 create_common_routes(router, agent_name="adzump")
 router.include_router(location_search_router)
+router.include_router(targeting_router)
 
 
 class ChatRequest(BaseModel):
