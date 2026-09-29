@@ -50,6 +50,7 @@ app/agents/adzump/
 │   ├── agent.py                          DetailedTargetingAgent (BaseAgent) + .recommend()
 │   ├── context.py                        System prompt & rules for DetailedTargetingAgent
 │   ├── models.py                         Pydantic models (TargetingEntity, MetaTargetingSuggestionResult)
+│   ├── mutation.py                       Centralized domain logic for mutations (add, delete) and safe concurrent merging
 │   ├── subagent_event_stream.py          MetaPassthroughEventStream (UI event wrapper)
 │   ├── targeting_router.py               REST API endpoints for UI chip search, add, and delete
 │   ├── AGENT.md                          This file
@@ -74,7 +75,7 @@ The LLM selects seeds (e.g. brand names, job titles) and passes them to the fetc
 - **`fetch_demographics`**: Browses fixed demographic catalogs (`DEMOGRAPHIC_FIXED_SUBTYPES`: `life_events`, `family_statuses`, `income`, `industries`, `education_statuses`) in parallel without needing seeds (~99 total entries).
 - **`search_professional_demographics`**: Searches open demographic databases (`DEMOGRAPHIC_SEARCHABLE_SUBTYPES`: `work_positions`, `work_employers`, `education_majors`) using keyword seeds.
 
-**Candidate Pool Stashing:** Whenever candidates are fetched, Python calls `_stash_candidates()` to cache full `TargetingEntity` objects in `session_context["_candidate_pool"]` indexed by entity ID. This preserves exact Meta metadata (`name`, `type`, `audience_size`) in Python memory.
+**Candidate Pool Stashing:** Whenever candidates are fetched, Python calls `_stash_candidates()` to cache full `TargetingEntity` objects in an ephemeral, in-memory dictionary (`context["targeting_ephemeral"]["candidate_pool"]`) indexed by entity ID. This safely preserves exact Meta metadata (`name`, `type`, `audience_size`) without polluting the persistent database session.
 
 *Note: Candidate lists returned to the LLM are capped at `CANDIDATE_DISPLAY_LIMIT = 30` items per fetch call to manage context window size.*
 
@@ -90,10 +91,10 @@ The final step of the LLM's loop MUST be `validate_targeting`.
 - **Context Memory Lookup:** Python looks up each `selected_id` from `_candidate_pool` memory, instantly restoring the complete `TargetingEntity` object (including exact original Meta `type` like `life_events` or `income`).
 - **Graph API Validation:** Python batches the entities (by 50) and calls Meta's `/targetingvalidation` endpoint (`GET /act_<id>/targetingvalidation?targeting_list=[...]`).
 - **Global Limits:** Applies a hard cap (`TOTAL_TARGETING_LIMIT = 60` segments total across all categories).
-- **Session Stash:** Stashes the final validated dictionary into `session_ctx["detailed_targeting"]`.
+- **Session Stash:** Stashes the final validated dictionary into the in-memory `ephemeral["validated_targeting"]` so the parent agent loop can safely retrieve it.
 
-### 4. Result Assembly & UI Sync
-Once the LLM loop finishes, `agent.py` reads the validated dictionary from the session, builds `MetaTargetingSuggestionResult`, and pushes the `targeting_manager` craft block to the UI.
+### 4. Result Assembly, JIT Reconciliation & UI Sync
+Once the LLM loop finishes, `agent.py` retrieves the validated segments from ephemeral memory. Because the user may have interacted with the UI while the sub-agent was running (e.g., manually deleting a segment), the agent performs a **Just-In-Time (JIT) Reconciliation** via `mutation.py`. It fetches a fresh snapshot of the database and safely merges the AI's new suggestions with the user's live UI state (respecting any segments the user explicitly excluded). Finally, it saves this reconciled state to the database and pushes the `targeting_manager` craft block to the UI.
 
 ---
 

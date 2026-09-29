@@ -31,6 +31,9 @@ from app.agents.adzump.agents.meta_detailed_targeting.models import (
     TargetingEntity,
     resolve_ad_account_id,
 )
+from app.agents.adzump.agents.meta_detailed_targeting.mutation import (
+    apply_targeting_edit,
+)
 from app.agents.adzump.agents.meta_detailed_targeting.tools.targeting_tools import (
     TOTAL_TARGETING_LIMIT,
 )
@@ -45,7 +48,6 @@ _adapter = TargetingAdapter()
 
 # Helpers
 async def _get_authed_context(session_id: str, user_id: str) -> dict[str, Any]:
-    """Fetch session, verify tenant ownership, and parse context_json."""
     _sm = get_session_manager()
     _ai_session = await _sm.get_session(session_id)
     if not _ai_session:
@@ -63,7 +65,6 @@ async def _get_authed_context(session_id: str, user_id: str) -> dict[str, Any]:
 
 
 async def _save_context(session_id: str, context: dict[str, Any], user_id: str) -> None:
-    """Serialize and update session context in the database."""
     _sm = get_session_manager()
     await _sm.update_session_context(
         session_id,
@@ -147,41 +148,22 @@ async def delete_targeting_segment(
     """Remove a targeting segment by ID from the current selection."""
     session_ctx = await _get_authed_context(session_id, auth.user_id)
 
-    targeting = session_ctx.setdefault("detailed_targeting", {})
-    if not isinstance(targeting, dict):
-        targeting = {}
-        session_ctx["detailed_targeting"] = targeting
-
-    orig_list = targeting.get("entities") or []
-    new_list = [
-        item for item in orig_list
-        if str(item.get("id") if isinstance(item, dict) else getattr(item, "id", None))
-        != str(segment_id)
-    ]
-    removed_count = len(orig_list) - len(new_list)
-    targeting["entities"] = new_list
-
-    # Record tombstone in excluded_ids
-    excluded_ids = targeting.setdefault("excluded_ids", [])
-    if str(segment_id) not in excluded_ids:
-        excluded_ids.append(str(segment_id))
-
-    # Remove from user_added_ids if present
-    if "user_added_ids" in targeting and str(segment_id) in targeting["user_added_ids"]:
-        targeting["user_added_ids"] = [
-            uid for uid in targeting["user_added_ids"] if str(uid) != str(segment_id)
-        ]
+    success, msg = apply_targeting_edit("delete", segment_id, session_ctx)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
 
     await _save_context(session_id, session_ctx, auth.user_id)
 
+    # Note: We omit SSE here because the frontend manages its own state
+    # or reloads data after a successful 200 OK.
+    
     logger.info(
-        "[targeting_router] delete segment_id=%s removed=%d remaining=%d (session=%s)",
-        segment_id, removed_count, len(new_list), session_id,
+        "[targeting_router] delete segment_id=%s msg=%r (session=%s)",
+        segment_id, msg, session_id,
     )
     return {
         "success": True,
-        "removed": removed_count,
-        "remaining": len(new_list),
+        "message": msg,
     }
 
 
@@ -278,21 +260,23 @@ async def add_targeting_segment(
         )
 
     entity = valid_entities[0]
-    orig_list.append(entity.model_dump())
-
-    # If this segment was previously in excluded_ids, remove it because user explicitly added it
-    if "excluded_ids" in targeting and str(entity.id) in targeting["excluded_ids"]:
-        targeting["excluded_ids"] = [
-            eid for eid in targeting["excluded_ids"] if str(eid) != str(entity.id)
-        ]
+    
+    success, msg = apply_targeting_edit("add", entity.model_dump(), session_ctx)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
 
     # Track as explicitly user-added
+    targeting = session_ctx.get("detailed_targeting", {})
     user_added_ids = targeting.setdefault("user_added_ids", [])
     if str(entity.id) not in user_added_ids:
         user_added_ids.append(str(entity.id))
 
     await _save_context(session_id, session_ctx, auth.user_id)
+    
+    # Note: We omit SSE here because the frontend manages its own state
+    # or reloads data after a successful 200 OK.
 
+    orig_list = targeting.get("entities", [])
     logger.info(
         "[targeting_router] add segment_id=%s name=%r type=%s total=%d (session=%s)",
         entity.id, entity.name, entity.type, len(orig_list), session_id,
@@ -300,5 +284,6 @@ async def add_targeting_segment(
     return {
         "success": True,
         "added": True,
+        "message": msg,
         "total": len(orig_list),
     }

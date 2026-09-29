@@ -26,6 +26,9 @@ from app.services.session_manager import get_session_manager
 from app.agents.adzump.agents.meta_detailed_targeting.subagent_event_stream import (
     MetaPassthroughEventStream,
 )
+from app.agents.adzump.agents.meta_detailed_targeting.mutation import (
+    reconcile_ai_suggestions,
+)
 from app.agents.adzump.agents.meta_detailed_targeting.models import (
     MetaTargetingSuggestionResult,
     TargetingEntity,
@@ -63,16 +66,21 @@ async def build_sub_session(
     # Share parent context directly in RAM
     sub_session.context = parent_ctx
     sub_session.context["ad_account_id"] = ad_account_id
-    sub_session.context["_parent_session_id"] = parent_session_id
 
     # Pre-populate candidate pool with existing targeting entities
     parent_targeting = parent_ctx.get("detailed_targeting") or {}
     existing_entities = parent_targeting.get("entities") or []
-    pool: dict[str, TargetingEntity] = parent_ctx.setdefault("_candidate_pool", {})
+    pool: dict[str, Any] = {}
     for raw_ent in existing_entities:
         parsed_ent = TargetingEntity.from_meta(raw_ent)
         if parsed_ent and parsed_ent.id:
             pool[str(parsed_ent.id)] = parsed_ent.model_dump()
+
+    sub_session._targeting_ephemeral = {
+        "candidate_pool": pool,
+        "validated_targeting": None,
+        "parent_session_id": parent_session_id,
+    }
 
     return sub_session
 
@@ -126,6 +134,7 @@ class DetailedTargetingAgent(BaseAgent):
         # Expose the live session object so the sub-agent tools can resolve
         # the parent session-level data when called from this sub-agent loop.
         ctx["_session"] = session
+        ctx["targeting_ephemeral"] = getattr(session, "_targeting_ephemeral", {})
         if getattr(session, "auth", None):
             ctx["auth"] = session.auth
         session.context.pop("auth", None)
@@ -200,8 +209,6 @@ class DetailedTargetingAgent(BaseAgent):
             # Ensure the context builder is loaded
             await self.context_builder.load()
 
-            parent_session_context.pop("_validated_targeting", None)
-
             # 2. Run the LLM loop
             await self.run(
                 user_query,
@@ -230,8 +237,9 @@ class DetailedTargetingAgent(BaseAgent):
                             break
 
             # 3. Read the stashed result
-            # validate_targeting writes to _validated_targeting.
-            raw = sub_session.context.get("_validated_targeting")
+            # validate_targeting writes to _validated_targeting in ephemeral memory.
+            ephemeral = getattr(sub_session, "_targeting_ephemeral", {})
+            raw = ephemeral.get("validated_targeting")
             if raw is None:
                 logger.warning("[DetailedTargeting] validate_targeting did not run.")
                 raise RuntimeError("Targeting validation did not complete successfully.")
@@ -242,37 +250,17 @@ class DetailedTargetingAgent(BaseAgent):
             # JIT Reconciliation with live database state (prevents overwriting user UI actions)
             _sm = get_session_manager()
             fresh_session = await _sm.get_session(session_id)
-            excluded_ids: set[str] = set()
-            user_added_ids: set[str] = set()
+            
             if fresh_session and fresh_session.context_json:
                 try:
                     fresh_db_ctx = json.loads(fresh_session.context_json)
-                    dt_data = fresh_db_ctx.get("detailed_targeting") or {}
-                    live_entities = dt_data.get("entities") or []
-                    excluded_ids = set(str(eid) for eid in (dt_data.get("excluded_ids") or []))
-                    user_added_ids = set(str(aid) for aid in (dt_data.get("user_added_ids") or []))
-
-                    # 1. Start with live entities from database that haven't been excluded
-                    reconciled = [
-                        item for item in live_entities
-                        if str(item.get("id") if isinstance(item, dict) else getattr(item, "id", None)) not in excluded_ids
-                    ]
-                    existing_ids = {
-                        str(item.get("id") if isinstance(item, dict) else getattr(item, "id", None))
-                        for item in reconciled
-                    }
-
-                    # 2. Append new AI suggestions that are neither excluded nor already present
-                    for ai_ent in final_result.entities:
-                        ai_id = str(ai_ent.id)
-                        if ai_id not in excluded_ids and ai_id not in existing_ids:
-                            reconciled.append(ai_ent.model_dump())
-                            existing_ids.add(ai_id)
-
-                    reconciled = reconciled[:TOTAL_TARGETING_LIMIT]
+                    
+                    reconciled_targeting = reconcile_ai_suggestions(fresh_db_ctx, final_result.entities)
+                    parent_session_context["detailed_targeting"] = reconciled_targeting
+                    
                     final_result.entities = [
                         TargetingEntity.from_meta(e) if isinstance(e, dict) else e
-                        for e in reconciled
+                        for e in reconciled_targeting["entities"]
                     ]
 
                     if "detailed_targeting_search_results" in fresh_db_ctx:
@@ -281,16 +269,10 @@ class DetailedTargetingAgent(BaseAgent):
                         )
                 except Exception as exc:
                     logger.warning("[DetailedTargeting] JIT reconciliation fallback: %s", exc)
+                    parent_session_context["detailed_targeting"] = final_result.model_dump()
+            else:
+                parent_session_context["detailed_targeting"] = final_result.model_dump()
 
-            # Stash for parent session visibility (preserving tombstones)
-            dumped_result = final_result.model_dump()
-            if fresh_session and fresh_session.context_json:
-                dumped_result["excluded_ids"] = list(excluded_ids)
-                dumped_result["user_added_ids"] = list(user_added_ids)
-            parent_session_context["detailed_targeting"] = dumped_result
-
-            # Write reconciled context to DB immediately so any trailing tools in parent agent
-            # do not overwrite the live DB with stale pre-reconciliation memory
             try:
                 await _sm.update_session_context(
                     session_id,
@@ -330,9 +312,6 @@ class DetailedTargetingAgent(BaseAgent):
             )
             raise
         finally:
-            parent_session_context.pop("_candidate_pool", None)
-            parent_session_context.pop("_parent_session_id", None)
-            parent_session_context.pop("_validated_targeting", None)
             current_agent_id.reset(ctx_token)
 
     # UI helpers

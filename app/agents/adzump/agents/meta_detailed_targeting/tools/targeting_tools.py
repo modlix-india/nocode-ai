@@ -46,7 +46,6 @@ def _get_auth(context: dict[str, Any]):
 
 
 def _entity_to_dict(e: TargetingEntity) -> dict[str, Any]:
-    """Serialise a TargetingEntity to a compact dict for the LLM."""
     d: dict[str, Any] = {
         "id": e.id,
         "name": e.name,
@@ -58,16 +57,13 @@ def _entity_to_dict(e: TargetingEntity) -> dict[str, Any]:
 
 
 def _stash_candidates(context: dict[str, Any], entities: list[TargetingEntity]) -> None:
-    """Stash fetched candidate entities in context memory as serializable dicts indexed by entity ID."""
-    session_ctx = context.get("session_context")
-    target = session_ctx if session_ctx is not None else context
-    pool = target.setdefault("_candidate_pool", {})
+    ephemeral = context.get("targeting_ephemeral", {})
+    pool = ephemeral.setdefault("candidate_pool", {})
     for e in entities:
         if e and e.id:
             pool[str(e.id)] = e.model_dump()
 
 
-# Tool 1 - fetch_interests
 async def _fetch_interests(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Fetch interest targeting candidates using keyword search + recommendation expansion.
 
@@ -108,7 +104,6 @@ async def _fetch_interests(params: dict[str, Any], context: dict[str, Any]) -> T
         return ToolResult(success=False, error=str(exc))
 
 
-# Tool 2 - fetch_behaviors
 async def _fetch_behaviors(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Fetch behavior targeting candidates via full catalog browse + per-seed search.
 
@@ -148,7 +143,6 @@ async def _fetch_behaviors(params: dict[str, Any], context: dict[str, Any]) -> T
         return ToolResult(success=False, error=str(exc))
 
 
-# Tool 3 - fetch_demographics  (fixed catalog — no seeds)
 async def _fetch_demographics(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Fetch the complete fixed demographic catalog (life_events, family, income, industries, education_statuses).
 
@@ -181,7 +175,6 @@ async def _fetch_demographics(params: dict[str, Any], context: dict[str, Any]) -
         return ToolResult(success=False, error=str(exc))
 
 
-# Tool 3b - search_professional_demographics  (open subtypes — needs seeds)
 async def _search_professional_demographics(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Search open demographic databases for job titles, employers, and education majors.
 
@@ -222,7 +215,6 @@ async def _search_professional_demographics(params: dict[str, Any], context: dic
         return ToolResult(success=False, error=str(exc))
 
 
-# Tool 4 - validate_targeting
 async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
     """Validate curated segments and store the final targeting result.
 
@@ -243,8 +235,8 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
         return ToolResult(success=False, error="ad_account_id not found in context")
 
     session_ctx = context.get("session_context")
-    target = session_ctx if session_ctx is not None else context
-    pool: dict[str, Any] = target.get("_candidate_pool") or {}
+    ephemeral = context.get("targeting_ephemeral", {})
+    pool: dict[str, Any] = ephemeral.get("candidate_pool") or {}
 
     entities_to_validate: list[TargetingEntity] = []
 
@@ -291,10 +283,7 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
     }
 
     # Store result in unseeded _validated_targeting key for recommend() to read after loop
-    if session_ctx is not None:
-        session_ctx["_validated_targeting"] = final
-    else:
-        context["_validated_targeting"] = final
+    ephemeral["validated_targeting"] = final
 
     counts = f"total_segments={len(final['entities'])}"
     logger.info("validate_targeting complete - final result stored: %s", counts)
@@ -308,7 +297,6 @@ async def _validate_targeting(params: dict[str, Any], context: dict[str, Any]) -
     )
 
 
-# Inner-loop tools — consumed by DetailedTargetingAgent.__init__
 INNER_TARGETING_TOOLS: list[ToolDefinition] = [
     ToolDefinition(
         name="fetch_interests",

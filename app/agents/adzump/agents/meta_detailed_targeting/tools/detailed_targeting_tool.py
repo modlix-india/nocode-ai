@@ -11,7 +11,9 @@ This module contains only:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Optional
+
+from pydantic import BaseModel, model_validator, ValidationError
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.core.streaming import pre_emit_agent_started
@@ -21,7 +23,9 @@ from app.agents.adzump.agents.meta_detailed_targeting.agent import (
 )
 from app.agents.adzump.agents.meta_detailed_targeting.models import (
     MetaTargetingSuggestionResult,
+    DeleteSegmentArgs,
 )
+from app.agents.adzump.agents.meta_detailed_targeting.mutation import apply_targeting_edit
 
 logger = logging.getLogger(__name__)
 
@@ -155,109 +159,92 @@ suggest_meta_targeting = ToolDefinition(
 
 # delete_targeting_segment — LLM-callable for conversational deletes
 
+def _handle_clear_all(session_ctx: dict) -> tuple[bool, str, list[str]]:
+    success, msg = apply_targeting_edit("clear_all", "", session_ctx)
+    return success, msg, ["all segments"] if success else []
+
+def _handle_delete_category(category: str, session_ctx: dict) -> tuple[bool, str, list[str]]:
+    removed_items = []
+    dt = session_ctx.get("detailed_targeting", {})
+    entities = list(dt.get("entities") or [])
+    
+    for e in entities:
+        e_type = (e.get("type") if isinstance(e, dict) else getattr(e, "type", "")) or ""
+        if e_type.lower() == category.lower():
+            e_id = e.get("id") if isinstance(e, dict) else getattr(e, "id", None)
+            if e_id:
+                success, _ = apply_targeting_edit("delete", str(e_id), session_ctx)
+                if success:
+                    e_name = e.get("name") if isinstance(e, dict) else getattr(e, "name", "")
+                    removed_items.append(e_name)
+                    
+    if removed_items:
+        return True, f"Cleared category: {category}", removed_items
+    return False, f"No segments found in category: {category}", []
+
+def _handle_delete_specific(target_id: Optional[str], name: Optional[str], session_ctx: dict) -> tuple[bool, str, list[str]]:
+    success = False
+    msg = ""
+    matched_term = None
+
+    if target_id:
+        success, msg = apply_targeting_edit("delete", target_id, session_ctx)
+        if success:
+            matched_term = target_id
+
+    # Fallback to name if target_id was not provided OR if target_id resolution failed
+    if not success and name:
+        success, msg = apply_targeting_edit("delete", name, session_ctx)
+        if success:
+            matched_term = name
+
+    if success:
+        return True, msg, [matched_term or target_id or name]
+    return False, msg, []
+
 async def _delete_targeting_segment(
     params: dict[str, Any], context: dict[str, Any]
 ) -> ToolResult:
-    """Delete one or more targeting segments by name, ID, or category.
-
-    Called when the user asks conversationally to remove segments, e.g.:
-      "delete the Real Estate segment"
-      "remove all behavior segments"
-      "clear everything"
-
-    UI chip delete buttons use the REST DELETE endpoint (targeting_router.py)
-    and never invoke this tool.
-    """
-    clear_all_param = bool(params.get("clear_all", False))
-    clear_all = clear_all_param or (name.lower() in ("all", "everything", "all segments") if name else False)
-
-    if not target_id and not name and not category and not clear_all:
-        return ToolResult(
-            success=False,
-            error="Provide at least one of: target_id, name, category, or clear_all to identify what to delete.",
-        )
-
-    session_ctx = context.get("session_context", {}) or {}
     session = context.get("_session")
-
     if not session:
         return ToolResult(success=False, error="No active session found in tool context.")
 
-    targeting = session_ctx.setdefault("detailed_targeting", {})
-    if not isinstance(targeting, dict):
-        targeting = {}
-        session_ctx["detailed_targeting"] = targeting
+    session_ctx = context.get("session_context", {}) or {}
 
-    orig_list = targeting.get("entities") or []
-    new_list = []
-    removed_names: list[str] = []
-    removed_ids: list[str] = []
+    # 1. Pydantic validation & precedence sanitization
+    try:
+        args = DeleteSegmentArgs(**params)
+    except ValidationError as e:
+        return ToolResult(success=False, error=str(e))
 
-    import re
-
-    def _clean_name(s: str) -> str:
-        # Strip trailing parenthetical category tag like '(design)' or '(publication)'
-        cleaned = re.sub(r"\s*\([^)]*\)$", "", s).strip().lower()
-        return cleaned or s.strip().lower()
-
-    target_clean = _clean_name(name) if name else ""
-
-    # Check for exact normalized name match first across all items
-    has_exact_name_match = (
-        bool(name) and not clear_all and any(
-            _clean_name(item.get("name") if isinstance(item, dict) else getattr(item, "name", "")) == target_clean
-            for item in orig_list
+    if not args.target_id and not args.name and not args.category and not args.clear_all:
+        return ToolResult(
+            success=False,
+            error="Provide at least one of: target_id, name, category, or clear_all to identify what to delete."
         )
-    )
 
-    for item in orig_list:
-        item_id = str(item.get("id") if isinstance(item, dict) else getattr(item, "id", None))
-        item_name = item.get("name") if isinstance(item, dict) else getattr(item, "name", "")
-        item_type = (item.get("type") if isinstance(item, dict) else getattr(item, "type", "")) or ""
-        item_clean = _clean_name(item_name)
+    # 2. Dispatcher
+    success, error_msg, removed_items = False, "", []
+    
+    if args.clear_all:
+        success, error_msg, removed_items = _handle_clear_all(session_ctx)
+    elif args.target_id or args.name:
+        success, error_msg, removed_items = _handle_delete_specific(args.target_id, args.name, session_ctx)
+    elif args.category:
+        success, error_msg, removed_items = _handle_delete_category(args.category, session_ctx)
 
-        match_id = bool(target_id and str(item_id) == str(target_id))
-        match_clear_all = clear_all
-        match_category = bool(category and item_type.lower() == category)
+    if not success and not removed_items:
+        return ToolResult(success=False, error=error_msg)
 
-        if match_clear_all or match_id or match_category:
-            should_remove = True
-        elif name:
-            if has_exact_name_match:
-                # Prefer exact match so 'Interior design (design)' does not delete other interior design items
-                should_remove = (item_clean == target_clean or item_name.strip().lower() == name.strip().lower())
-            else:
-                should_remove = (target_clean in item_clean)
-        else:
-            should_remove = False
-
-        if should_remove:
-            removed_names.append(item_name)
-            if item_id:
-                removed_ids.append(item_id)
-        else:
-            new_list.append(item)
-
-    targeting["entities"] = new_list
-
-    # Record tombstones in excluded_ids
-    excluded_ids = targeting.setdefault("excluded_ids", [])
-    for rid in removed_ids:
-        if str(rid) not in excluded_ids:
-            excluded_ids.append(str(rid))
-
-    # Remove from user_added_ids if present
-    if "user_added_ids" in targeting:
-        targeting["user_added_ids"] = [
-            uid for uid in targeting["user_added_ids"] if str(uid) not in removed_ids
-        ]
-
+    # Re-build result to emit
+    targeting = session_ctx.get("detailed_targeting", {})
     result = MetaTargetingSuggestionResult.from_dict(targeting)
     session_ctx["detailed_targeting"] = result.model_dump()
 
     # Anchor craft ID to parent session so subagent calls never emit temporary subsession IDs
     stream = context.get("event_stream")
-    target_session_id = context.get("_parent_session_id") or getattr(session, "session_id", "")
+    ephemeral = context.get("targeting_ephemeral", {})
+    target_session_id = ephemeral.get("parent_session_id") or context.get("_parent_session_id") or getattr(session, "session_id", "")
     if stream and target_session_id:
         craft_id = f"detailed_targeting_{target_session_id}"
         search_results = session_ctx.get("detailed_targeting_search_results") or []
@@ -276,7 +263,7 @@ async def _delete_targeting_segment(
         except Exception as e:
             logger.warning("[delete_targeting_segment] Failed to save session context: %s", e)
 
-    removed_summary = ", ".join(removed_names) if removed_names else (target_id or name or category)
+    removed_summary = ", ".join(removed_items) if removed_items else (args.target_id or args.name or args.category)
     return ToolResult(
         success=True,
         data=result.model_dump(),

@@ -1,6 +1,6 @@
 from typing import Any
 import logging
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,27 @@ class TargetingEntity(BaseModel):
     @property
     def audience_size(self) -> int:
         return self.audience_size_upper_bound or 0
+
+
+class DeleteSegmentArgs(BaseModel):
+    """Arguments for deleting a targeting segment, enforcing priority."""
+    target_id: str | None = None
+    name: str | None = None
+    category: str | None = None
+    clear_all: bool = False
+
+    @model_validator(mode='after')
+    def enforce_precedence(self):
+        # Allow LLMs that try to use `name="all"` instead of `clear_all=True`
+        if self.name and self.name.lower() in ("all", "everything", "all segments"):
+            self.clear_all = True
+
+        # Enforce intent hierarchy
+        if self.clear_all:
+            self.target_id = self.name = self.category = None
+        elif self.target_id or self.name:
+            self.category = None
+        return self
 
 
 class MetaTargetingSuggestionResult(BaseModel):
