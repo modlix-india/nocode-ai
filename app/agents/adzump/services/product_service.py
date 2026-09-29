@@ -508,14 +508,6 @@ async def hydrate_from_storage(url: str, session_ctx: dict, ctx: dict) -> bool:
     return True
 
 
-# Start a turn from the competitor list's home: the chat's list becomes the
-# product's active rows, so another chat's addition or removal shows before the
-# model replies. Returns True when what the panel shows changed.
-async def refresh_competitor_list(session_ctx: dict, ctx: dict) -> bool:
-    competitive = session_ctx.get("competitor_analysis")
-    return bool(competitive) and await reload_competitor_list(competitive, session_ctx, ctx)
-
-
 # Make `competitive`'s list the product's active rows:
 #   unsaved entries     saved first (a failed write left them)
 #   no product row yet  the list stays as it is

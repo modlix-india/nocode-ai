@@ -500,24 +500,25 @@ class ProductWritesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session["product_data"]["product_name"], "Springs (saved)")
 
 
-class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
-    """Turn start re-reads the list from its rows: another chat on the same
-    product may have added or removed competitors since this chat's last reply."""
+class ReloadCompetitorListTests(unittest.IsolatedAsyncioTestCase):
+    """After the chat's own remove or website pin, the list is re-read from its
+    rows (unsaved entries saved first)."""
 
     CTX = {"client_code": "GRMEL"}
 
-    async def _refresh(self, entries, rows, ads):
+    async def _refresh(self, entries, rows, ads, pid=42):
         session = {"product_profile": {"url": "https://springs.com"},
                    "competitor_analysis": {"competitors": entries}}
         with mock.patch("app.agents.adzump.stores.products.product_id",
-                        new=mock.AsyncMock(return_value=42)), \
+                        new=mock.AsyncMock(return_value=pid)), \
              mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
                         new=mock.AsyncMock(return_value=rows)), \
              mock.patch("app.agents.adzump.stores.competitors.list_product_creatives",
                         new=mock.AsyncMock(return_value=ads)), \
              mock.patch("app.agents.adzump.stores.competitors.add_competitor",
                         new=mock.AsyncMock(return_value=4)) as self.m_add:
-            changed = await product_service.refresh_competitor_list(session, self.CTX)
+            changed = await product_service.reload_competitor_list(
+                session["competitor_analysis"], session, self.CTX)
         return changed, session["competitor_analysis"]["competitors"]
 
     async def test_rows_are_the_list(self):
@@ -529,13 +530,13 @@ class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
             ("unchanged list: no repaint", [sobha, shriram],
              [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok", total=1)],
              {2: [Creative(creative_id="ad-1")]}, False, ["Sobha", "Shriram"]),
-            ("removed in another chat: dropped", [sobha, shriram],
+            ("a row gone: its entry dropped", [sobha, shriram],
              [_row(2, "Shriram", "ok", total=1)],
              {2: [Creative(creative_id="ad-1")]}, True, ["Shriram"]),
             ("an ad hidden: its ad goes", [sobha, shriram],
              [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok")],
              {}, True, ["Sobha", "Shriram"]),
-            ("added by another chat: adopted", [sobha],
+            ("a new row: adopted", [sobha],
              [_row(1, "Sobha", "pending"), _row(3, "Prestige", "pending")],
              {}, True, ["Sobha", "Prestige"]),
             ("an unsaved entry is saved first, then read back", [sobha, unsaved],
@@ -550,11 +551,10 @@ class RefreshCompetitorListTests(unittest.IsolatedAsyncioTestCase):
                                        [_row(1, "Sobha", "pending"), _row(2, "Shriram", "ok")], {})
         self.assertEqual(after[1]["creatives"], [])
 
-    async def test_no_list_means_no_read(self):
-        with mock.patch("app.agents.adzump.stores.products.product_id",
-                        new=mock.AsyncMock()) as m_pid:
-            self.assertFalse(await product_service.refresh_competitor_list({}, self.CTX))
-        m_pid.assert_not_awaited()
+    async def test_no_product_row_keeps_the_list(self):
+        changed, after = await self._refresh([{"name": "Brigade"}], [], {}, pid=None)
+        self.assertEqual((changed, after), (False, [{"name": "Brigade"}]))
+        self.m_add.assert_not_awaited()
 
 
 class DropDeletedCompetitorsTests(unittest.IsolatedAsyncioTestCase):

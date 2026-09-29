@@ -509,7 +509,7 @@ class LoopCompleteTests(unittest.IsolatedAsyncioTestCase):
             await agent._on_loop_complete(session, [])
         self.assertEqual(order, ["autosave", "save_context"])
 
-    async def test_list_refreshes_before_the_model_and_repaints_on_change(self):
+    async def test_product_refreshes_before_the_model_and_repaints_on_change(self):
         rows = [("changed", True, 1), ("unchanged", False, 0),
                 ("refresh read failed", RuntimeError("db down"), 0)]
         for label, outcome, repaints in rows:
@@ -523,7 +523,7 @@ class LoopCompleteTests(unittest.IsolatedAsyncioTestCase):
                     return outcome
                 session = mock.Mock(context={}, session_id="s1")
                 agent = AdzumpAgent.__new__(AdzumpAgent)
-                with mock.patch("app.agents.adzump.services.product_service.refresh_competitor_list",
+                with mock.patch("app.agents.adzump.services.product_service.refresh_product",
                                 new=refresh), \
                      mock.patch("app.agents.adzump.tools.craft.rerender_craft",
                                 new=mock.AsyncMock()) as m_paint, \

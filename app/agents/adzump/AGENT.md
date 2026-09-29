@@ -214,8 +214,9 @@ All rails live in `agent.py`; the widgets they capture from are emitted by
   own fields (`save_product_fields`: place, target areas, one platform's ad
   accounts, assets, classification). A chip answer that changes the product
   is saved before the model runs, and the capture note tells the model
-  whether it landed. Every message starts from the saved product and
-  competitor rows (`AdzumpAgent._refresh_from_storage`). The every-turn
+  whether it landed. Every message starts from the saved product row
+  (`AdzumpAgent._refresh_from_storage`); a chat that has the competitor list
+  keeps its own. The every-turn
   autosave writes only this chat's campaign draft; `campaign.status` mirrors
   the launch flag, never asserts it.
 
@@ -253,10 +254,10 @@ product delete is real; competitors and ads carry `status` (active | deleted,
 `updated_by` = who changed it). A competitor is deleted only by the user's
 remove (in the chat or the UI); it leaves every listing and resume, research
 never suggests it again, and only the user adding it back by name revives the
-same row with its ads. An open chat re-reads the list from the rows at the
-start of every turn (`AdzumpAgent.run`) and after each change, so another
-chat's addition or removal shows before the model replies, and the panel
-repaints. A hidden ad stays hidden: a refetch never re-inserts it.
+same row with its ads. A chat that has the list keeps its own and re-reads
+the rows only after its own remove or website pin; another chat's changes
+don't reach it (Kailash 2026-09-29). A hidden ad stays hidden: a refetch never
+re-inserts it.
 
 Each ads fetch adds at most 10 new ads per competitor (active first, then
 newest; `library.MAX_NEW_ADS_PER_FETCH`), skipping ads already stored by the ad

@@ -88,27 +88,25 @@ class AdzumpAgent(BaseAgent):
         finally:
             self._current_stream = None
 
-    # Before the model runs: re-read the product and its competitors from their
-    # saved rows - another chat on this product (a second tab, a teammate) may
-    # have changed them since the last reply - and repaint the panel only if
-    # something changed. On a database error the chat's own copy serves.
+    # Before the model runs: re-read the product from its saved row - another
+    # chat on this product may have changed its place, target areas or ad
+    # accounts since the last reply - and repaint the panel only if it changed.
+    # The competitor list is not re-read: a chat that has it keeps its own
+    # (Kailash 2026-09-29). On a database error the chat's own copy serves.
     async def _refresh_from_storage(
         self, session: BaseSession, event_stream: AgentEventStream,
     ) -> None:
-        from app.agents.adzump.services.product_service import (
-            refresh_competitor_list, refresh_product,
-        )
+        from app.agents.adzump.services.product_service import refresh_product
         from app.agents.adzump.tools.craft import rerender_craft
         ctx = session.context
         tool_ctx = {**self.build_tool_context(session), "event_stream": event_stream}
         try:
-            product_changed = await refresh_product(ctx, tool_ctx)
-            list_changed = await refresh_competitor_list(ctx, tool_ctx)
+            changed = await refresh_product(ctx, tool_ctx)
         except Exception as e:
             logger.warning("storage_refresh_skipped: %s: %s",
                            type(e).__name__, str(e)[:200])
             return
-        if product_changed or list_changed:
+        if changed:
             await rerender_craft(ctx, tool_ctx, ctx.get("product_data") or {},
                                  (ctx.get("campaign_spec") or {}).get("platform") or "")
 

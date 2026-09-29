@@ -1061,7 +1061,7 @@ async def _save_changes(
 
 
 # Make `competitive`'s list the product's saved rows; on a failure the chat's
-# copy serves until the next message.
+# copy serves.
 async def _reload_saved_list(session_ctx: dict, context: dict, competitive: dict) -> None:
     from app.agents.adzump.services.product_service import reload_competitor_list
     try:

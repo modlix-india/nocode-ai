@@ -7,8 +7,8 @@ routes - products and competitors come from the chat's analysis. A product
 delete is real (a fresh start); a competitor or ad delete only marks the row
 deleted, so research never re-suggests it, a refetch never brings the ad back,
 and an explicit re-add restores the competitor with its ads. The competitor
-rows are the list's only home, so the delete holds: a resume reads the rows,
-and an open chat re-reads them at the start of its next turn.
+rows are the list's only home, so the delete holds: a new chat on the product
+reads the rows, while a chat that already has the list keeps its own.
 """
 
 from __future__ import annotations
