@@ -164,21 +164,24 @@ class CompetitorWritesMySQLTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((row["location"], row["pricing"]), ("Hebbal", "2 Cr"))
 
     async def test_set_competitor_website(self):
+        from app.db import connection
         sobha = await self._add({"name": "Sobha Magnus"})
         prestige = await self._add({"name": "Prestige Lakeside", "url": "https://prestige.com/lake"})
         taken = await competitors.set_competitor_website(
             self.CC, self.pid, sobha, "https://prestige.com/lake", "user",
-            reset_ads=True, keep_user_pin=False)
+            keep_user_pin=False)
         self.assertFalse(taken)
+        await connection.execute_query(
+            "UPDATE adzump_competitors SET creative_status='ok' WHERE id=%s", (sobha,))
         self.assertTrue(await competitors.set_competitor_website(
             self.CC, self.pid, sobha, "https://sobha.com/magnus", "user",
-            reset_ads=True, keep_user_pin=False))
+            keep_user_pin=False))
         row = await self._row(sobha)
         self.assertEqual((row["url"], row["url_source"], row["creative_status"]),
-                         ("https://sobha.com/magnus", "user", "pending"))
+                         ("https://sobha.com/magnus", "user", "ok"))  # ads stay
         pin_held = await competitors.set_competitor_website(
             self.CC, self.pid, sobha, "https://sobha.com/other", None,
-            reset_ads=False, keep_user_pin=True)
+            keep_user_pin=True)
         self.assertFalse(pin_held)
         self.assertEqual((await self._row(prestige))["url"], "https://prestige.com/lake")
 

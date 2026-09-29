@@ -27,7 +27,7 @@ class FakeSource:
         self._exc = exc
         self.calls = 0
 
-    async def fetch(self, *, domain, name, country=""):
+    async def fetch(self, *, name, country=""):
         self.calls += 1
         if self._exc is not None:
             raise self._exc
@@ -73,29 +73,28 @@ async def _rehost_hashing_by_creative_id(src, kind, ctx, hints=None, name="", pe
 
 class LibraryTests(unittest.TestCase):
     def setUp(self):
-        p = mock.patch.object(library._uploads, "rehost_image",
-                              new=mock.AsyncMock(side_effect=_rehost_hashing_by_creative_id))
-        p.start(); self.addCleanup(p.stop)
-        v = mock.patch.object(library._uploads, "rehost_video",
-                              new=mock.AsyncMock(return_value="https://files/video.mp4"))
-        v.start(); self.addCleanup(v.stop)
-        u = mock.patch.object(library.stores.competitors, "sync_competitor",
-                              new=mock.AsyncMock(return_value="id1"))
-        u.start(); self.addCleanup(u.stop)
         # Served-URL verification passes by default here (it has its own
         # dedicated tests in test_verify.py) - these tests own the
         # cache/fetch/essence policy, not asset validity.
-        ver = mock.patch(
-            "app.agents.adzump.creative_intelligence.verify.verify_creative",
-            new=mock.AsyncMock(return_value=(True, "")))
-        ver.start(); self.addCleanup(ver.stop)
+        for patcher in (
+            mock.patch.object(library._uploads, "rehost_image",
+                              new=mock.AsyncMock(side_effect=_rehost_hashing_by_creative_id)),
+            mock.patch.object(library._uploads, "rehost_video",
+                              new=mock.AsyncMock(return_value="https://files/video.mp4")),
+            mock.patch.object(library.stores.competitors, "sync_competitor",
+                              new=mock.AsyncMock(return_value="id1")),
+            mock.patch("app.agents.adzump.creative_intelligence.verify.verify_creative",
+                       new=mock.AsyncMock(return_value=(True, ""))),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def test_shared_key_searches_every_name(self):
         # regression: live 2026-09-10 (one name represented the whole key)
         calls: list[str] = []
 
         class RecordingSource(FakeSource):
-            async def fetch(self, *, domain, name, country=""):
+            async def fetch(self, *, name, country=""):
                 calls.append(name)
                 return SourceFetch(creatives=[_ad("ad-" + name)], search_hits=len(name))
 
@@ -127,7 +126,7 @@ class LibraryTests(unittest.TestCase):
     def test_attribution_wipe_reads_as_fetched_not_missing(self):
         # regression: live 2026-09-21 (49 ads found, record said fetched=0)
         class AttributionWipedSource(FakeSource):
-            async def fetch(self, *, domain, name, country=""):
+            async def fetch(self, *, name, country=""):
                 return SourceFetch(creatives=[], search_hits=49)
 
         rec = self._run(stored=None, source=AttributionWipedSource())
@@ -382,19 +381,18 @@ class LibraryTests(unittest.TestCase):
 
         captured: dict = {}
 
-        class DomainCapturingSource(FakeSource):
-            async def fetch(self, *, domain, name, country=""):
-                captured.update(domain=domain, name=name)
-                return await super().fetch(domain=domain, name=name,
-                                           country=country)
+        class NameCapturingSource(FakeSource):
+            async def fetch(self, *, name, country=""):
+                captured.update(name=name)
+                return await super().fetch(name=name, country=country)
 
         with mock.patch.object(library.stores.competitors, "get_competitor",
                                new=mock.AsyncMock(return_value=None)):
             results = asyncio.run(library.creatives_for_all(
                 [CompetitorProfile(name="Nambiar Villas", url=None)], {},
-                source=DomainCapturingSource(creatives=[_ad("a1")])))
+                source=NameCapturingSource(creatives=[_ad("a1")])))
         self.assertIn("name:nambiar-villas", results)
-        self.assertEqual(captured, {"domain": "", "name": "Nambiar Villas"})
+        self.assertEqual(captured, {"name": "Nambiar Villas"})
         record = results["name:nambiar-villas"]
         self.assertEqual(record.domain, "")  # a name key is not a host
 

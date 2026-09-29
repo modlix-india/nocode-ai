@@ -1,4 +1,4 @@
-"""scrapecreators.com adapter - raw ad mapping, advertiser selection, search policy."""
+"""scrapecreators.com adapter - raw ad mapping, the brand-mention filter, search policy."""
 from __future__ import annotations
 
 import asyncio
@@ -9,7 +9,6 @@ from app.agents.adzump.creative_intelligence import scrapecreators
 from app.agents.adzump.creative_intelligence.scrapecreators import (
     ScrapeCreatorsError,
     ScrapeCreatorsSource,
-    _ads_of_the_advertiser,
     _to_creative,
 )
 
@@ -110,42 +109,6 @@ class ToCreativeTests(unittest.TestCase):
         self.assertEqual(creative.days_running, 0)
 
 
-class AdvertiserSelectionTests(unittest.TestCase):
-    """Keyword search mixes advertisers; exactly one page's ads may enter the
-    shared library, chosen by domain link, else name match, else nobody."""
-
-    def test_domain_link_beats_name_and_size(self):
-        ads = ([_ad(page_id="agg", page_name="99acres Deals")] * 5
-               + [_ad(page_id="dev", page_name="Puravankara",
-                      link_url="https://purvasparklingspring.com/offer")])
-        chosen = _ads_of_the_advertiser(
-            ads, domain="purvasparklingspring.com", name="Purva Sparkling Springs")
-        self.assertEqual({a["page_id"] for a in chosen}, {"dev"})
-
-    def test_leadgen_domain_match_via_extra_links(self):
-        # Live shape (2026-09-01): lead ads carry link_url=fb.me; the real
-        # site rides in snapshot.extra_links.
-        ad = _ad(page_id="dev", page_name="Some Renamed Page",
-                 link_url="http://fb.me/")
-        ad["snapshot"]["extra_links"] = ["https://fincity.com/privacypolicy2",
-                                         "https://purvasparklingspring.com/"]
-        chosen = _ads_of_the_advertiser(
-            [ad], domain="purvasparklingspring.com", name="Purva Sparkling Springs")
-        self.assertEqual({a["page_id"] for a in chosen}, {"dev"})
-
-    def test_name_match_without_domain(self):
-        ads = [_ad(page_id="junk", page_name="Springs Salon")] * 3 \
-            + [_ad(page_id="own", page_name="Purva Sparkling Springs")]
-        chosen = _ads_of_the_advertiser(ads, domain="", name="Purva Sparkling Springs")
-        self.assertEqual({a["page_id"] for a in chosen}, {"own"})
-
-    def test_no_match_returns_nothing(self):
-        ads = [_ad(page_id="junk", page_name="Springs Salon")]
-        self.assertEqual(
-            _ads_of_the_advertiser(ads, domain="lodhagroup.com", name="Lodha Azur"),
-            [])
-
-
 class SearchPolicyTests(unittest.TestCase):
     def _source_with_pages(self, pages: list[dict]):
         source = ScrapeCreatorsSource()
@@ -165,7 +128,7 @@ class SearchPolicyTests(unittest.TestCase):
             {"searchResults": [_ad()], "cursor": ""},
         ])
         fetched = asyncio.run(source.fetch(
-            domain="", name="Purva Sparkling Springs", country="IN"))
+            name="Purva Sparkling Springs", country="IN"))
         self.assertEqual(len(self.calls), 1)
         self.assertEqual(self.calls[0]["country"], "IN")
         self.assertEqual(len(fetched.creatives), 1)
@@ -192,34 +155,33 @@ class SearchPolicyTests(unittest.TestCase):
                                "SCRAPECREATORS_API_KEY", "k"), \
              mock.patch.object(scrapecreators.httpx, "AsyncClient",
                                return_value=_Client()):
-            asyncio.run(ScrapeCreatorsSource().fetch(domain="", name="X"))
+            asyncio.run(ScrapeCreatorsSource().fetch(name="X"))
         self.assertNotIn("search_type", captured)
         self.assertEqual(captured.get("query"), "X")
 
-    def test_mention_tier_requires_a_brand_mention(self):
-        # No attributable page anywhere (all broker ads): only ads whose OWN
-        # text names the brand ship (capped, no page identity claimed). Ads
-        # that merely matched locality keywords are attribution mismatches
-        # and never enter the library (Rule 5, live 2026-09-10).
-        mentioning = [_ad(page_id=f"b{i}", page_name=f"Broker {i}")
-                      for i in range(scrapecreators.MENTION_ADS_CAP + 5)]
-        for ad in mentioning:
+    def test_keeps_every_ad_that_names_the_brand(self):
+        # Kailash 2026-09-29: whichever page ran it, an ad whose own text names
+        # the competitor is kept, and no website or page decides. Ads that only
+        # matched locality keywords never enter the library (Rule 5).
+        brokers = [_ad(page_id=f"b{i}", page_name=f"Broker {i}", ad_archive_id=f"b{i}")
+                   for i in range(20)]
+        for ad in brokers:
             ad["snapshot"]["body"] = {"text": "New launch: Nambiar Villas X!"}
-        unrelated = [_ad(page_id=f"u{i}", page_name=f"Other {i}")
+        own = _ad(page_id="own", page_name="Nambiar Villas X", ad_archive_id="own")
+        unrelated = [_ad(page_id=f"u{i}", page_name=f"Other {i}", ad_archive_id=f"u{i}")
                      for i in range(4)]
-        source = self._source_with_pages([
-            {"searchResults": unrelated + mentioning, "cursor": ""},
-        ])
-        fetched = asyncio.run(source.fetch(domain="", name="Nambiar Villas X"))
-        self.assertEqual(len(fetched.creatives), scrapecreators.MENTION_ADS_CAP)
-        self.assertEqual(fetched.logo_url, "")
-        with self.subTest("no ad names the brand -> nothing ships"):
-            source = self._source_with_pages([
-                {"searchResults": unrelated, "cursor": ""},
-            ])
-            fetched = asyncio.run(source.fetch(domain="",
-                                               name="Nambiar Villas X"))
-            self.assertEqual(fetched.creatives, [])
+        for label, ads, kept, logo in [
+            ("brokers and its own page", unrelated + brokers + [own], 21,
+             "https://cdn/logo.jpg"),
+            ("brokers only: no page logo", unrelated + brokers, 20, ""),
+            ("no ad names the brand", unrelated, 0, ""),
+        ]:
+            with self.subTest(label):
+                source = self._source_with_pages([{"searchResults": ads, "cursor": ""}])
+                fetched = asyncio.run(source.fetch(name="Nambiar Villas X"))
+                self.assertEqual(len(fetched.creatives), kept)
+                self.assertEqual(fetched.logo_url, logo)
+                self.assertEqual(fetched.search_hits, len(ads))
 
     def test_mentions_brand_rows(self):
         # Landing urls (live 2026-09-20) and distinctive tokens (live 2026-09-21).
@@ -296,7 +258,7 @@ class SearchPolicyTests(unittest.TestCase):
         ]:
             with self.subTest(label):
                 source = self._source_with_pages(pages)
-                fetched = asyncio.run(source.fetch(domain="", name="Purva Sparkling Springs"))
+                fetched = asyncio.run(source.fetch(name="Purva Sparkling Springs"))
                 self.assertEqual(len(self.calls), want_calls)
                 self.assertEqual([c["cursor"] for c in self.calls][:2], ["", "next"])
                 self.assertEqual(len(fetched.creatives), want_calls)
@@ -304,9 +266,9 @@ class SearchPolicyTests(unittest.TestCase):
     def test_missing_key_and_name_raise(self):
         with mock.patch.object(scrapecreators.settings, "SCRAPECREATORS_API_KEY", ""):
             with self.assertRaises(ScrapeCreatorsError):
-                asyncio.run(ScrapeCreatorsSource().fetch(domain="", name="X"))
+                asyncio.run(ScrapeCreatorsSource().fetch(name="X"))
         with self.assertRaises(ScrapeCreatorsError):
-            asyncio.run(ScrapeCreatorsSource().fetch(domain="d.com", name=""))
+            asyncio.run(ScrapeCreatorsSource().fetch(name=""))
 
 
 if __name__ == "__main__":

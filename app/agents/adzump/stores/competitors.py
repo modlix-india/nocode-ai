@@ -293,24 +293,22 @@ async def fill_competitor_profile(
     )
 
 
-# Move a saved competitor to a new website:
-#   reset_ads      its ads count as unfetched (the old rows stay until the next
-#                  fetch replaces them), so that fetch searches the new site
+# Move a saved competitor to a new website. Its ads stay: the ad search runs on
+# the name, never the website (Kailash 2026-09-29).
 #   keep_user_pin  a website the user pinned is left alone
 # False when nothing moved: another competitor owns that website, the pin held,
 # or there is no such row.
 async def set_competitor_website(
     client_code: str, product_id: int, competitor_id: int, url: str, url_source: str | None,
-    user_id: int = 0, *, reset_ads: bool, keep_user_pin: bool,
+    user_id: int = 0, *, keep_user_pin: bool,
 ) -> bool:
-    sql = ("UPDATE adzump_competitors SET creative_status=IF(%s, 'pending', creative_status), "
-           "url=%s, url_source=%s, updated_by=%s "
+    sql = ("UPDATE adzump_competitors SET url=%s, url_source=%s, updated_by=%s "
            "WHERE client_code=%s AND product_id=%s AND id=%s")
     if keep_user_pin:
         sql += " AND (url_source IS NULL OR url_source <> 'user')"
     try:
         return bool(await execute_query(sql, (
-            reset_ads, _website(url), url_source or None, user_id,
+            _website(url), url_source or None, user_id,
             client_code, product_id, competitor_id)))
     except pymysql.err.IntegrityError as e:
         logger.warning("set_competitor_website: %s already belongs to another "

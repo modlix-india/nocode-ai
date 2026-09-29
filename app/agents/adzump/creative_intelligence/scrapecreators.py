@@ -3,10 +3,9 @@
 Contract (https://docs.scrapecreators.com/v1/facebook/adLibrary/search/ads):
   - GET {base}/v1/facebook/adLibrary/search/ads - x-api-key auth; cursor paging;
     per-call credit metering (credits_charged/credits_remaining in the response).
-  - Keyword search over Meta's ad library. Unlike a company query it returns ads
-    from MANY pages, so this adapter picks the advertiser: the page whose ads
-    link to the competitor's domain, else the page whose name matches, else the
-    fetch is honestly empty - never another advertiser's creatives.
+  - Keyword search over Meta's ad library. It returns ads from MANY pages; every
+    ad whose own text names the competitor is kept, whichever page ran it
+    (Kailash 2026-09-29: no website or page decides whose ads count).
   - ``is_active``/``start_date``/``end_date`` are Meta's real values, not a
     crawl-lag heuristic.
 """
@@ -22,7 +21,6 @@ import httpx
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.agents.adzump._shared import host_of
 from app.agents.adzump.creative_intelligence.models import (
     Creative,
     MAX_CREATIVES_PER_COMPETITOR,
@@ -32,12 +30,6 @@ logger = logging.getLogger(__name__)
 
 SEARCH_PATH = "/v1/facebook/adLibrary/search/ads"
 PAGE_LIMIT = 3  # cursor pages per search; each page is one metered credit
-# When NO page can be attributed as the advertiser, broker/reseller ads that
-# mention the project still ship as a fallback tier (Kailash 2026-09-04:
-# same-project broker creative is useful inspiration; an official page often
-# doesn't exist for pre-launch projects). Tighter cap - these are mixed pages,
-# and each creative costs vision-essence tokens downstream.
-MENTION_ADS_CAP = 15
 # display_format -> our media_type; anything unknown falls back by asset shape.
 _DISPLAY_FORMAT_MEDIA = {
     "VIDEO": "video",
@@ -49,14 +41,14 @@ _DISPLAY_FORMAT_MEDIA = {
 
 
 class SourceFetch(BaseModel):
-    """One competitor's search result: the attributed creatives plus the
-    advertiser logo the batch resolved."""
+    """One competitor's search result: the creatives of every ad that names it,
+    plus its own page's logo when that page ran one of them."""
 
     creatives: list[Creative] = Field(default_factory=list)
     logo_url: str = ""
-    # Raw ads the vendor search returned BEFORE attribution/caps - the true
-    # "fetched" number. 0 creatives with search_hits=49 means the search found
-    # plenty and attribution dropped it all, not that the library was empty.
+    # Raw ads the vendor search returned BEFORE the brand-mention filter - the
+    # true "fetched" number. 0 creatives with search_hits=49 means the search
+    # found plenty and none named the brand, not that the library was empty.
     search_hits: int = 0
 
 
@@ -69,7 +61,7 @@ class ScrapeCreatorsSource:
     ScrapeCreatorsError on non-recoverable failures (auth, credits) so the
     library serves stale rather than storing an empty record."""
 
-    async def fetch(self, *, domain: str, name: str, country: str = "") -> SourceFetch:
+    async def fetch(self, *, name: str, country: str = "") -> SourceFetch:
         if not name:
             raise ScrapeCreatorsError(
                 "scrapecreators needs a brand name - the search is keyword-based."
@@ -77,43 +69,17 @@ class ScrapeCreatorsSource:
         # No search_type param - the API default matching casts the widest net
         # (Kailash 2026-09-04: exact_phrase-first missed word-order variants
         # and pre-launch projects known mostly through broker phrasing; the
-        # attribution + mention-tier stages below handle the extra noise).
+        # brand-mention filter below handles the extra noise).
         ads = await self._search_paged(name=name, country=country)
-        page_ads = _ads_of_the_advertiser(ads, domain=domain, name=name)
-        if ads and not page_ads:
-            logger.info(
-                "scrapecreators_no_advertiser_match: name=%r pages_seen=%s",
-                name,
-                sorted({str(a.get("page_name") or "?") for a in ads})[:8],
-            )
-        if page_ads:
-            first = page_ads[0]
-            snapshot = first.get("snapshot") or {}
-            creatives = [creative
-                         for a in page_ads[:MAX_CREATIVES_PER_COMPETITOR]
-                         for creative in _to_creatives(a)]
-            return SourceFetch(
-                creatives=creatives,
-                logo_url=snapshot.get("page_profile_picture_url") or "",
-                search_hits=len(ads),
-            )
-        # Mention tier: no attributable page - broker/reseller ads ABOUT the
-        # project, WITHOUT claiming a page identity (no logo).
-        # Attribution gate (Rule 5): the ad's own text must name the
-        # brand - a keyword search also returns ads for OTHER projects that
-        # merely share locality words, and shipping those mixes competitors'
-        # creatives (live 2026-09-10: an unrelated ad landed under Shriram).
         mentions = [a for a in ads if _mentions_brand(a, name)]
-        if ads and not mentions:
-            logger.info("scrapecreators_attribution_dropped: name=%r "
-                        "unattributed=%d - none name the brand", name, len(ads))
-        if mentions:
-            logger.info("scrapecreators_mention_tier: name=%r shipping %d of %d "
-                        "brand-mentioning ads", name,
-                        min(len(mentions), MENTION_ADS_CAP), len(mentions))
+        logger.info(
+            "scrapecreators_fetch: name=%r searched=%d kept=%d pages=%s",
+            name, len(ads), len(mentions),
+            sorted({str(a.get("page_name") or "?") for a in mentions})[:8],
+        )
         return SourceFetch(
-            creatives=[creative for a in mentions[:MENTION_ADS_CAP]
-                       for creative in _to_creatives(a)],
+            creatives=[creative for a in mentions for creative in _to_creatives(a)],
+            logo_url=_own_page_logo(mentions, name),
             search_hits=len(ads),
         )
 
@@ -176,56 +142,17 @@ class ScrapeCreatorsSource:
         return data
 
 
-# -- Advertiser selection -----------------------------------------------------
+# -- Logo -----------------------------------------------------------------------
 
-def _ads_of_the_advertiser(ads: list[dict], *, domain: str, name: str) -> list[dict]:
-    """A keyword search mixes advertisers; keep exactly one page's ads.
-
-    Selection order: the page whose ads link to the competitor's ``domain``
-    (catches parent-brand pages advertising the project microsite), else the
-    page whose name matches the competitor, else nothing - a wrong advertiser's
-    creatives must never enter the shared library."""
-    by_page: dict[str, list[dict]] = {}
+# The profile picture of the competitor's own page (a page whose name matches
+# the competitor's), "" when only other pages ran its ads.
+def _own_page_logo(ads: list[dict], name: str) -> str:
+    wanted = _compact(name)
     for ad in ads:
-        page_id = str(ad.get("page_id") or "")
-        if page_id:
-            by_page.setdefault(page_id, []).append(ad)
-    if not by_page:
-        return []
-
-    host = (domain or "").lower()
-
-    def links_to_domain(page_ads: list[dict]) -> bool:
-        if not host:
-            return False
-        for ad in page_ads:
-            snapshot = ad.get("snapshot") or {}
-            # Lead-gen ads carry link_url=fb.me; the real site rides in
-            # extra_links - scan both.
-            links = [snapshot.get("link_url") or ""]
-            links += [l for l in snapshot.get("extra_links") or [] if isinstance(l, str)]
-            for link in links:
-                link_host = host_of(link)
-                if link_host and host in link_host:
-                    return True
-        return False
-
-    name_compact = _compact(name)
-
-    def name_matches(page_ads: list[dict]) -> bool:
-        page_compact = _compact(page_ads[0].get("page_name") or "")
-        return bool(name_compact) and bool(page_compact) and (
-            name_compact in page_compact or page_compact in name_compact)
-
-    groups = sorted(by_page.values(), key=len, reverse=True)
-    chosen = (next((g for g in groups if links_to_domain(g)), None)
-              or next((g for g in groups if name_matches(g)), None))
-    logger.info(
-        "scrapecreators_fetch: name=%r domain=%s pages=%d matched=%d page=%r",
-        name, domain, len(by_page), len(chosen or []),
-        (chosen or [{}])[0].get("page_name"),
-    )
-    return chosen or []
+        page = _compact(ad.get("page_name") or "")
+        if wanted and page and (wanted in page or page in wanted):
+            return (ad.get("snapshot") or {}).get("page_profile_picture_url") or ""
+    return ""
 
 
 # -- Mapping: raw scrapecreators ad -> Creative --------------------------------
@@ -263,7 +190,7 @@ def _distinctive_tokens(name: str) -> list[str]:
 
 
 def _mentions_brand(raw: dict, name: str) -> bool:
-    """Attribution for the mention tier: ONE piece of the ad's own text (page
+    """Whether an ad is this competitor's: ONE piece of the ad's own text (page
     name, title, body, a card) or a landing url must carry EVERY distinctive
     token of the brand name - keyword search also returns ads for unrelated
     projects sharing locality words, and tokens scattered across pieces are
@@ -282,7 +209,7 @@ def _mentions_brand(raw: dict, name: str) -> bool:
     texts = [raw.get("page_name"), snapshot.get("title"),
              body.get("text") if isinstance(body, dict) else body,
              snapshot.get("link_url")]
-    texts += [l for l in snapshot.get("extra_links") or [] if isinstance(l, str)]
+    texts += [link for link in snapshot.get("extra_links") or [] if isinstance(link, str)]
     for card in snapshot.get("cards") or []:
         if isinstance(card, dict):
             texts += [card.get("title"), _card_text(card), card.get("link_url")]

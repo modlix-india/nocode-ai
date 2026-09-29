@@ -97,7 +97,8 @@ def competitor_identity(comp: CompetitorProfile) -> tuple[str, str]:
     entry - pre-launch projects often have no site) must still fetch and cache
     under ``name:<slug>`` (live 2026-09-08: link-less Nambiar was silently
     dropped from every fetch while the user asked for its ads 23 times). Once
-    a URL settles, the domain key takes over and the entry refetches fresh."""
+    a URL settles the row moves to it with its ads - no new search, since the
+    search runs on the name, never the website."""
     name = comp.name.strip()
     return (stores.competitors.competitor_key(comp.url or "")
             or stores.competitors.name_key(name)), name
@@ -170,15 +171,11 @@ async def _fetch_stage(
            else "forced" if force else ("stale" if record else "miss"))
     logger.info("creative_intelligence: fetching key=%s reason=%s names=%d",
                 key, why, len(to_search))
-    # Advertiser attribution matches ad links by HOST; a name-scoped key has
-    # none, so attribution then runs on name match alone.
-    search_domain = "" if key.startswith("name:") else host_of(key)
     fetched: SourceFetch | None = None
     searched_ok: list[str] = []
     for name in to_search:
         try:
-            got = await src.fetch(domain=search_domain, name=name,
-                                  country=_campaign_country(ctx))
+            got = await src.fetch(name=name, country=_campaign_country(ctx))
         except Exception as e:
             # ScrapeCreatorsError, transport errors, bad JSON - ANY source failure
             # for this name is logged; other names still search. All-fail
@@ -327,9 +324,8 @@ async def _process_stage(
         competitor.fetch_error = ""
         competitor.empty_reason = ""
     elif discovered == 0:
-        # searched > 0 here means the vendor search DID return ads and the
-        # source's attribution tier dropped every one (none belonged to or
-        # named the brand) - say so instead of implying the library was empty.
+        # searched > 0 here means the vendor search DID return ads and none
+        # named the brand - say so instead of implying the library was empty.
         competitor.fetch_status = "empty"
         if searched:
             competitor.empty_reason = "unattributed"
@@ -568,7 +564,7 @@ async def creatives_for_all(
     silent spinner. Same failure contract as ``on_resolved``.
 
     Returns ``{key: Competitor}`` for every competitor resolved. Skips entries
-    without a usable domain - the source query and our dedup key both need one."""
+    with neither a website nor a name - nothing to key the record on."""
     results: dict[str, Competitor] = {}
     skipped = 0
     tasks: list[asyncio.Task] = []

@@ -260,8 +260,8 @@ async def _apply_url_updates(
     """Pin user-provided URLs onto entries: 'Name | URL' (';'-separated for
     several). A verified URL is saved as the competitor's website first
     (url_source=user - nothing runs after a pin), then the entry follows; its
-    ads reset so the next fetch runs under the corrected identity. Returns
-    (acks, rejections), both user-facing."""
+    ads stay, since the ad search runs on the name. Returns (acks, rejections),
+    both user-facing."""
     from app.agents.adzump.services.product_service import pin_competitor_website
     acks: list[str] = []
     rejections: list[str] = []
@@ -291,8 +291,6 @@ async def _apply_url_updates(
             continue
         entry["url"] = verified_url
         entry["url_source"] = "user"
-        for stale in ("creatives", "totalCreatives", "activeCreatives"):
-            entry.pop(stale, None)
         logger.info("competitor_url_user_set: %r -> %s%s", entry_name,
                     verified_url, f" ({note})" if note else "")
         acks.append(f"{entry_name}: website updated to {verified_url}"

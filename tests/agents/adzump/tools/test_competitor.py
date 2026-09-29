@@ -161,7 +161,9 @@ class ApplyUrlUpdatesTests(unittest.TestCase):
                 _apply_url_updates(set_url, competitive, {}, {}))
         return acks, rejections
 
-    def test_pin_updates_entry_and_resets_creatives(self):
+    def test_pin_updates_entry_and_keeps_its_ads(self):
+        # Kailash 2026-09-29: the ad search runs on the name, so a new website
+        # never costs a new search (live 2026-09-28: Sobha Magnus searched twice).
         entry = {"name": "Nambiar Villas", "url": "https://clone.co.in",
                  "creatives": [{"creativeId": "a"}], "totalCreatives": 1,
                  "activeCreatives": 1}
@@ -170,8 +172,7 @@ class ApplyUrlUpdatesTests(unittest.TestCase):
         self.assertEqual(rejections, [])
         self.assertEqual(entry["url"], "https://ok.example/")
         self.assertEqual(entry["url_source"], "user")
-        for stale in ("creatives", "totalCreatives", "activeCreatives"):
-            self.assertNotIn(stale, entry)
+        self.assertEqual(entry["creatives"], [{"creativeId": "a"}])
 
     def test_rejected_pins_never_apply(self):
         rows = [

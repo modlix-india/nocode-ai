@@ -30,7 +30,6 @@ from app.agents.adzump._shared import (
     STORAGE_UPDATE as UPDATE,
     acting_user_id,
     extract_storage_records as _extract_records,
-    host_of,
     normalize_business_url,
     primary_screenshot_url,
     resolve_url,
@@ -584,9 +583,9 @@ async def save_competitors(
     return not_landed
 
 
-# A fresh lookup found a saved competitor on a new website: move the row there,
-# never over the user's pin, resetting its ads when the host changed. When
-# another competitor owns that website, the entry keeps its row's own.
+# A fresh lookup found a saved competitor on a new website: move the row there
+# with its ads, never over the user's pin. When another competitor owns that
+# website, the entry keeps its row's own.
 async def _adopt_website(
     client_code: str, product_id: int, row: dict, entry: dict, user_id: int,
 ) -> None:
@@ -595,14 +594,13 @@ async def _adopt_website(
         return
     moved = await stores.competitors.set_competitor_website(
         client_code, product_id, row["id"], website, entry.get("url_source") or None,
-        user_id, reset_ads=host_of(website) != host_of(row["url"] or ""),
-        keep_user_pin=True)
+        user_id, keep_user_pin=True)
     if not moved:
         entry["url"] = row["url"]
 
 
-# Save the user's website for a competitor; its ads reset so the next fetch
-# searches the new site. Returns "" on success, else the reason for the user.
+# Save the user's website for a competitor; its ads stay. Returns "" on
+# success, else the reason for the user.
 async def pin_competitor_website(
     session_ctx: dict, ctx: dict, entry: dict, url: str,
 ) -> str:
@@ -612,7 +610,7 @@ async def pin_competitor_website(
         return f"{name} isn't saved yet, so its website can't be pinned - try again."
     moved = await stores.competitors.set_competitor_website(
         ctx.get("client_code") or "", pid, entry["row_id"], url, "user",
-        acting_user_id(ctx), reset_ads=True, keep_user_pin=False)
+        acting_user_id(ctx), keep_user_pin=False)
     return "" if moved else f"{url} already belongs to another competitor in the list."
 
 

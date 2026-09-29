@@ -344,12 +344,9 @@ class SaveCompetitorsTests(unittest.IsolatedAsyncioTestCase):
              {"rows": [row]}, True, None, True, None),
             ("its row was removed since: nothing written", {"name": "Old", "row_id": 3},
              {"rows": [row]}, False, None, False, None),
-            ("new host: website moves, ads reset",
+            ("new website: the row moves there",
              {"name": "Old", "row_id": 2, "url": "https://new.com/a"},
-             {"rows": [row]}, True, None, True, {"reset_ads": True, "keep_user_pin": True}),
-            ("same host, new path: ads kept",
-             {"name": "Old", "row_id": 2, "url": "https://old.com/b"},
-             {"rows": [row]}, True, None, True, {"reset_ads": False, "keep_user_pin": True}),
+             {"rows": [row]}, True, None, True, {"keep_user_pin": True}),
             ("user pin holds", {"name": "Old", "row_id": 2, "url": "https://new.com/a"},
              {"rows": [{**row, "url_source": "user"}]}, True, None, True, None),
         ]
@@ -419,8 +416,8 @@ class RemoveAndPinTests(unittest.IsolatedAsyncioTestCase):
                 if written:
                     call = inspect.signature(_SET_WEBSITE).bind(
                         *m_site.await_args.args, **m_site.await_args.kwargs).arguments
-                    self.assertEqual((call["url_source"], call["reset_ads"], call["keep_user_pin"]),
-                                     ("user", True, False))
+                    self.assertEqual((call["url_source"], call["keep_user_pin"]),
+                                     ("user", False))
 
 
 class ProductWritesTests(unittest.IsolatedAsyncioTestCase):
