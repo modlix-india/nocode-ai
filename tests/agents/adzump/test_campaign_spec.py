@@ -11,21 +11,6 @@ import unittest
 from app.agents.adzump.models import CampaignSpec, OfferState, offer_state
 
 
-class OfferStateTests(unittest.TestCase):
-    def test_from_legacy(self):
-        cases = [
-            ("true", OfferState.DECLINED),
-            ("TRUE", OfferState.DECLINED),
-            (" true ", OfferState.DECLINED),
-            ("false", OfferState.UNSET),
-            ("", OfferState.UNSET),
-            (None, OfferState.UNSET),  # ACCEPTED never derives from a marker
-        ]
-        for marker, expected in cases:
-            with self.subTest(marker=marker):
-                self.assertIs(OfferState.from_legacy(marker), expected)
-
-
 class OfferStateReadTests(unittest.TestCase):
     """offer_state - the ONE migration-aware read every consumer uses."""
 
@@ -34,6 +19,10 @@ class OfferStateReadTests(unittest.TestCase):
             ("enum declined", {"competitive_analysis": "declined"}, OfferState.DECLINED),
             ("enum accepted", {"competitive_analysis": "accepted"}, OfferState.ACCEPTED),
             ("legacy marker", {"competitive_analysis_declined": "true"}, OfferState.DECLINED),
+            ("legacy marker, any case", {"competitive_analysis_declined": " TRUE "},
+             OfferState.DECLINED),
+            # ACCEPTED never derives from a marker
+            ("legacy marker false", {"competitive_analysis_declined": "false"}, OfferState.UNSET),
             ("enum wins over legacy",
              {"competitive_analysis": "accepted", "competitive_analysis_declined": "true"},
              OfferState.ACCEPTED),

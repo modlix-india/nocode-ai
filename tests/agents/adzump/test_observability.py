@@ -1,19 +1,16 @@
 """Turn decision record (rework slice 1c) - the manual-testing instrument.
 
 Locks the §8 schema facts that matter: repeat_ask fires iff the prescription
-re-asks the open rail's field; an untagged rail flags unmatched; prior_capture
-rides along so a repeat-ask after a STORED answer is distinguishable from
-ordinary repair.
+re-asks the open rail's field; an untagged rail flags unmatched; the record
+names the prescribed field. The record firing from build_turn_reminder is
+tested in test_agent.py (ReminderRecordTests).
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import unittest
 
-from app.agents.adzump.agent import AdzumpAgent
-from app.agents.adzump.observability import log_turn_decision, prescription_field
-from tests.agents.adzump._fixtures import SAAS, elicitation, make_session
+from app.agents.adzump.observability import log_turn_decision
 
 
 def _emit(**kw) -> dict:
@@ -26,99 +23,30 @@ def _emit(**kw) -> dict:
     return json.loads(logs.output[0].split("turn_decision ", 1)[1])
 
 
-class PrescriptionFieldTests(unittest.TestCase):
-    def test_table(self):
-        cases = [
-            (["duration - use the present_options tool ..."], "duration"),
-            (["competitive analysis - offer it ONCE ...", "duration - ..."],
-             "competitive_analysis"),
-            (["review & publish - TWO separate steps ..."], None),
-            ([], None),
-        ]
-        for missing, expected in cases:
-            with self.subTest(missing=missing[:1]):
-                self.assertEqual(prescription_field(missing), expected)
-
-
 class TurnDecisionRecordTests(unittest.TestCase):
-    def test_repeat_ask_flags(self):
-        cases = [  # (name, missing-head, rail_field, untagged, repeat, unmatched)
-            ("re-asks the open rail's field", "duration - ...", "duration", False,
-             True, False),
-            ("different field is not a repeat", "budget - ...", "duration", False,
-             False, False),
-            ("untagged rail is suspicious", "duration - ...", None, True,
-             False, True),
-            ("review prescribes nothing", "review & publish - ...", "duration", False,
-             False, False),
+    def test_rows(self):
+        # (name, missing, rail field, untagged rail, repeat, unmatched, prescription)
+        cases = [
+            ("re-asks the open rail's field", ["duration - ..."], "duration", False,
+             True, False, "duration"),
+            ("different field is not a repeat", ["budget - ..."], "duration", False,
+             False, False, "budget"),
+            ("untagged rail is suspicious", ["duration - ..."], None, True,
+             False, True, "duration"),
+            ("an offer's head names its field",
+             ["competitive analysis - offer it ONCE ...", "duration - ..."], None, False,
+             False, False, "competitive_analysis"),
+            ("review prescribes nothing", ["review & publish - ..."], "duration", False,
+             False, False, None),
+            ("nothing missing", [], None, False, False, False, None),
         ]
-        for name, head, rail_field, untagged, repeat, unmatched in cases:
+        for name, missing, rail_field, untagged, repeat, unmatched, field in cases:
             with self.subTest(name):
-                record = _emit(missing=[head], open_rail_field=rail_field,
+                record = _emit(missing=missing, open_rail_field=rail_field,
                                open_rail_untagged=untagged)
                 self.assertEqual(record["repeat_ask"], repeat)
                 self.assertEqual(record["repeat_ask_unmatched"], unmatched)
-
-
-class ReminderIntegrationTests(unittest.TestCase):
-    """The record actually fires from build_turn_reminder with real capture
-    flow: a chip click lands as a layer-1 capture, and prior_capture rotates."""
-
-    def _reminder(self, s, turn=1):
-        agent = AdzumpAgent.get_instance()
-        with self.assertLogs("app.agents.adzump.observability", "INFO") as logs:
-            asyncio.run(agent.build_turn_reminder(s, turn))
-        return json.loads(logs.output[0].split("turn_decision ", 1)[1])
-
-    def test_capture_flows_into_record_and_prior_rotates(self):
-        s = make_session(
-            last_user="30 days", product=SAAS,
-            spec={"platform": "Google Ads", "competitive_analysis": "declined"},
-            pending_elicitation=elicitation(
-                "duration", {"30 days": "30 days", "60 days": "60 days"}),
-        )
-        record = self._reminder(s)
-        self.assertEqual(record["captures"], [
-            {"layer": 1, "field": "duration", "value": "30 days",
-             "verdict": "stored"}])
-        self.assertIn("capture_ack", record["steers"])
-        # The real wiring computes all three offer verdicts each turn.
-        self.assertEqual(record["offers"]["competitive_analysis"], "declined")
-        self.assertEqual(record["offers"]["competitor_creatives"], "declined")
-        self.assertEqual(record["offers"]["instagram"], "open")
-        self.assertFalse(record["repeat_ask"])          # duration landed → budget next
-        self.assertEqual(record["prescription"], "budget")
-        self.assertEqual(s.context["_prior_capture"],
-                         {"field": "duration", "verdict": "stored"})
-        # Next user message with no capture: the record carries the prior,
-        # then rotates it to None.
-        s.messages = [{"role": "user", "content": "what does budget mean?"}]
-        record2 = self._reminder(s)
-        self.assertEqual(record2["prior_capture"],
-                         {"field": "duration", "verdict": "stored"})
-        self.assertEqual(record2["captures"], [])
-        self.assertIsNone(s.context["_prior_capture"])
-
-    def test_an_account_chip_is_saved_on_the_product_and_the_model_told(self):
-        from unittest import mock
-        rows = [  # (case, product save outcome, note in the reminder)
-            ("saved", True, "Saved on the product too"),
-            ("save failed", False, "saving it on the product for future campaigns failed"),
-        ]
-        for case, saved, note in rows:
-            with self.subTest(case):
-                s = make_session(
-                    last_user="Main ad account", product=SAAS,
-                    spec={"platform": "Meta", "parent_account": "B1"},
-                    pending_elicitation=elicitation("account", {"Main ad account": "A1"}),
-                    account_names={"B1": "AdZump Dummy", "A1": "Main ad account"})
-                with mock.patch("app.agents.adzump.services.product_service.save_product_fields",
-                                new=mock.AsyncMock(return_value=saved)) as m_save, \
-                     mock.patch.object(AdzumpAgent, "build_tool_context",
-                                       return_value={"client_code": "GRMEL"}):
-                    reminder = asyncio.run(AdzumpAgent.get_instance().build_turn_reminder(s, 1))
-                self.assertIn(note, reminder)
-                self.assertEqual(list(m_save.await_args.args[2]), ["ad_accounts.meta"])
+                self.assertEqual(record["prescription"], field)
 
 
 if __name__ == "__main__":

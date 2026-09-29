@@ -64,22 +64,18 @@ class ProductRoundTripTests(unittest.TestCase):
 
 
 class CheckProductTests(unittest.TestCase):
-    """check_product - the warn-only runtime boundary check."""
+    """check_product - the warn-only runtime boundary check never raises."""
 
-    def test_valid_product_logs_nothing(self):
-        with mock.patch("app.agents.adzump.models.product.logger") as log:
-            check_product({"product_name": "X"}, where="test")
-        log.warning.assert_not_called()
-
-    def test_unknown_keys_warn_but_never_raise(self):
-        with mock.patch("app.agents.adzump.models.product.logger") as log:
-            check_product({"product_name": "X", "brand_new_key": 1}, where="test")
-        self.assertIn("product_schema_unknown_keys", log.warning.call_args.args[0])
-
-    def test_wrong_shape_warns_but_never_raises(self):
-        with mock.patch("app.agents.adzump.models.product.logger") as log:
-            check_product({"pages": "not-a-dict"}, where="test")
-        self.assertIn("product_schema_drift", log.warning.call_args.args[0])
+    def test_rows(self):
+        for label, data, warns in [
+            ("a valid product", {"product_name": "X"}, False),
+            ("an unknown key", {"product_name": "X", "brand_new_key": 1}, True),
+            ("a wrong shape", {"pages": "not-a-dict"}, True),
+        ]:
+            with self.subTest(label), mock.patch(
+                    "app.agents.adzump.models.product.logger") as log:
+                check_product(data, where="test")
+                self.assertEqual(log.warning.called, warns)
 
 
 if __name__ == "__main__":

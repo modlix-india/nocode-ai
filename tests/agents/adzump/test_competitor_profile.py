@@ -65,28 +65,23 @@ class CreativesTriStateTests(unittest.TestCase):
     """craft.py renders: no key = unfetched (badge-less), [] = "No ads found",
     populated = badge + carousel. The model must preserve all three."""
 
-    def test_unfetched_omits_the_triad(self):
-        stored = CompetitorProfile.from_stored({"name": "X"}).to_stored()
-        for key in ("creatives", "totalCreatives", "activeCreatives"):
-            self.assertNotIn(key, stored)
-
-    def test_fetched_empty_keeps_the_key(self):
-        stored = CompetitorProfile.from_stored(
-            {"name": "X", "creatives": [], "totalCreatives": 0,
-             "activeCreatives": 0}).to_stored()
-        self.assertEqual(stored["creatives"], [])
-        self.assertEqual(stored["totalCreatives"], 0)
-
-    def test_attach_round_trips_by_alias(self):
-        profile = CompetitorProfile.from_stored({"name": "X"})
-        profile.creatives = [{"creativeId": "1"}]
-        profile.total_creatives = 33
-        profile.active_creatives = 12
-        stored = profile.to_stored()
-        self.assertEqual(stored["totalCreatives"], 33)
-        self.assertEqual(stored["activeCreatives"], 12)
-        again = CompetitorProfile.from_stored(stored)
-        self.assertEqual(again.total_creatives, 33)
+    def test_rows(self):
+        for label, stored_in, expected in [
+            ("unfetched: no key", {"name": "X"}, {}),
+            ("fetched, none found", {"name": "X", "creatives": [], "totalCreatives": 0,
+                                     "activeCreatives": 0},
+             {"creatives": [], "totalCreatives": 0, "activeCreatives": 0}),
+            ("fetched ads round-trip by alias",
+             {"name": "X", "creatives": [{"creativeId": "1"}], "totalCreatives": 33,
+              "activeCreatives": 12},
+             {"creatives": [{"creativeId": "1"}], "totalCreatives": 33, "activeCreatives": 12}),
+        ]:
+            with self.subTest(label):
+                stored = CompetitorProfile.from_stored(stored_in).to_stored()
+                triad = {k: stored[k] for k in ("creatives", "totalCreatives", "activeCreatives")
+                         if k in stored}
+                self.assertEqual(triad, expected)
+                self.assertEqual(CompetitorProfile.from_stored(stored).to_stored(), stored)
 
 
 class AdPreviewTests(unittest.TestCase):

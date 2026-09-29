@@ -76,6 +76,8 @@ class TraceabilityTests(unittest.TestCase):
             ("competitor_creatives", "declined", "let's move on"),
             ("competitor_creatives", "declined", "don't fetch their ads"),
             ("competitor_creatives", "declined", "No"),
+            ("instagram", "declined", "Continue with Facebook only"),  # F3 chip text
+            ("instagram", "declined", "skip insta"),
         ]:
             with self.subTest(field=field, msg=msg):
                 self.assertTrue(_field_traceable(field, value, msg, SC))
@@ -97,6 +99,7 @@ class TraceabilityTests(unittest.TestCase):
             ("competitive_analysis", "unset", "no"),          # only accepted/declined store
             ("competitor_creatives", "declined", "show me their ads"),  # asked for them
             ("competitor_creatives", "declined", "Yes"),
+            ("instagram", "declined", "yes link instagram"),
         ]:
             with self.subTest(field=field, value=value, msg=msg):
                 self.assertFalse(_field_traceable(field, value, msg, SC))

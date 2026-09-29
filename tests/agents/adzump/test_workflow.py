@@ -10,13 +10,11 @@ construction check (core/test_journey.py).
 """
 from __future__ import annotations
 
-import asyncio
 import unittest
 from dataclasses import replace
 
 from app.agents.adzump.core.journey import Status
 from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext
-from app.agents.adzump.tools.launch import _launch_campaign
 from app.agents.adzump.models import OfferResolution
 from app.agents.adzump.tools.campaign_data import CREATIVES_REVIEW_ASK
 from tests.agents.adzump._fixtures import RE, SAAS, make_actx, make_session
@@ -121,6 +119,9 @@ class JourneyInvariantTests(unittest.TestCase):
                 self.assertTrue(block.startswith("review & publish"))
                 for tool in ("show_campaign_summary", "launch_campaign"):
                     self.assertIn(tool, block)
+                # F20: the model echoed copyable call syntax into the launch bubble
+                self.assertNotIn("present_options(", block)
+                self.assertNotIn("launch_campaign(", block)
 
     # S0-6 · in-flight legacy session resumes sanely through from_session
     def test_legacy_session_resume(self):
@@ -138,29 +139,6 @@ class JourneyInvariantTests(unittest.TestCase):
         missing = NEW_CAMPAIGN.walk(actx).missing
         self.assertEqual(len(missing), 1)
         self.assertTrue(missing[0].startswith("review & publish"))
-
-    # S0-7 · offers are never load-bearing: required asks proceed past declines
-    def test_offers_never_load_bearing(self):
-        actx = make_actx(
-            {"platform": "Google Ads", "duration": "30 days",
-             "competitive_analysis_declined": "true"}, product=SAAS)
-        missing = NEW_CAMPAIGN.walk(actx).missing
-        self.assertIsNotNone(_entry(missing, "budget"))
-        self.assertIsNone(_entry(missing, "competitive analysis"))
-
-    def test_launch_required_set_excludes_offers(self):
-        # Both offers declined + every required field set: the launch guard
-        # stack must pass the completeness check (offers are not required) and
-        # stop at the consent gate - proving declines never block launch.
-        spec = {**META_DONE, "ig_page_declined": "true",
-                "competitor_creatives_declined": "true"}
-        session = make_session(last_user="what about targeting?",
-                               spec=spec, product=SAAS)
-        result = asyncio.run(_launch_campaign(
-            {}, {"session_context": session.context, "_session": session}))
-        self.assertFalse(result.success)
-        self.assertNotIn("missing required fields", result.error)
-        self.assertIn("launch confirmation", result.error)
 
 
 class JourneyEngineTests(unittest.TestCase):

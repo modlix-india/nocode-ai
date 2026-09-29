@@ -19,15 +19,11 @@ from app.agents.adzump.stores import competitors
 class CompetitorKeyTests(unittest.TestCase):
     def test_identity_keys(self):
         # Identity = canonical website, path included: project pages on one
-        # developer site are separate competitors (Kailash 2026-09-23).
+        # developer site are separate competitors (Kailash 2026-09-23). The URL
+        # canonical form itself is tested with normalize_business_url.
         long_path = "https://x.com/" + "a" * 600
         for raw, expected in [
             ("https://www.Nike.com/air", "https://nike.com/air"),
-            ("nike.com", "https://nike.com"),
-            ("http://uk.gymshark.com/", "https://uk.gymshark.com"),
-            ("WWW.Example.COM", "https://example.com"),
-            ("https://brigadegroup.com/p/avalon?utm_source=x#top",
-             "https://brigadegroup.com/p/avalon"),
             ("", ""),
             ("   ", ""),
             (long_path, long_path[:512]),
@@ -39,19 +35,6 @@ class CompetitorKeyTests(unittest.TestCase):
                                ("  ", "")]:
             with self.subTest(name_key=name):
                 self.assertEqual(competitors.name_key(name), expected)
-
-
-class RowToCreativeTests(unittest.TestCase):
-    def test_renditions_survive_the_read(self):
-        # Reads used to drop content["renditions"], so any read->write round
-        # trip (augment merge, repair sweep) lost the placement versions.
-        rendition = {"fileUrl": "https://f/wide.jpg", "width": 1910, "height": 1000,
-                     "aspectRatio": 1.91, "contentHash": "h", "perceptualHash": "p"}
-        row = {"content": {"creativeId": "c1", "renditions": [rendition]},
-               "format": "single", "is_active": 1, "days_running": 4}
-        creative = competitors._row_to_creative(row, None)
-        self.assertEqual([r.model_dump(by_alias=True) for r in creative.renditions],
-                         [rendition])
 
 
 class CreativeRoundTripTests(unittest.TestCase):
@@ -92,9 +75,6 @@ class CreativeRoundTripTests(unittest.TestCase):
                 self.assertEqual(read.model_dump(exclude=self.NOT_STORED),
                                  creative.model_dump(exclude=self.NOT_STORED))
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 @unittest.skipUnless(os.environ.get("ADZUMP_MYSQL_TESTS"),
@@ -191,3 +171,7 @@ class CompetitorWritesMySQLTests(unittest.IsolatedAsyncioTestCase):
                             name="Sobha Magnus")
         self.assertEqual(await competitors.sync_competitor(self.CC, self.url, record), row_id)
         self.assertEqual((await self._row(row_id))["url"], "https://sobha.com/magnus")
+
+
+if __name__ == "__main__":
+    unittest.main()

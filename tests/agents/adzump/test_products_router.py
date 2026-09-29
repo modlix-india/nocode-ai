@@ -55,7 +55,11 @@ class ProductsRouterTests(unittest.TestCase):
             with self.subTest(f"{method} {path}"), mock.patch(
                     f"{STORES}.{fn}", new=mock.AsyncMock(return_value=returns)) as store:
                 response = getattr(_client(), method)(path)
-                self.assertLess(response.status_code, 300, response.text)
+                # a delete answers 204 with no body; a read answers 200
+                self.assertEqual(response.status_code, 204 if method == "delete" else 200,
+                                 response.text)
+                if method == "delete":
+                    self.assertEqual(response.content, b"")
                 store.assert_awaited_once_with(*args)
 
     def test_unknown_product_is_404(self):
@@ -68,12 +72,6 @@ class ProductsRouterTests(unittest.TestCase):
             with self.subTest(f"{method} {path}"), mock.patch(
                     f"{STORES}.{fn}", new=mock.AsyncMock(return_value=miss)):
                 self.assertEqual(getattr(_client(), method)(path).status_code, 404)
-
-    def test_delete_returns_no_content(self):
-        with mock.patch(f"{STORES}.products.delete_product",
-                        new=mock.AsyncMock(return_value=True)):
-            response = _client().delete("/products/7")
-        self.assertEqual((response.status_code, response.content), (204, b""))
 
     def test_listings_serialize_rows(self):
         product = {"id": 7, "url": "https://a.com", "name": "A", "category": None,

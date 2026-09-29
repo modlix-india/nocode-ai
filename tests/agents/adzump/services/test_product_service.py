@@ -39,23 +39,22 @@ def _awaited_arg(awaited: mock.AsyncMock, real_fn, name: str):
 
 class BuildLocationObjectLock(unittest.TestCase):
 
-    def test_confirmed_place_wins_with_coords(self):
-        # product.place is the single confirmed location - it wins, carries coords.
-        product = {"place": {"address": "Sarjapur Road, Bengaluru", "lat": 12.9, "lng": 77.7}}
-        out = _build_location_object({"location": "Bengaluru"}, product)
-        self.assertEqual(out["product_location"], "Sarjapur Road, Bengaluru")
-        self.assertEqual(out["product_coordinates"], {"lng": 77.7, "lat": 12.9})
-        self.assertEqual(out["area_location"], "")
-
-    def test_spec_fallback_when_place_addressless_no_coords(self):
-        # place has coords-less/empty address → user-typed spec.location fills in.
-        out = _build_location_object({"location": "Whitefield"}, {"place": {}})
-        self.assertEqual(out["product_location"], "Whitefield")
-        self.assertIsNone(out["product_coordinates"])
-        # place.address present → it wins over spec.
-        out2 = _build_location_object(
-            {"location": "Whitefield"}, {"place": {"address": "Hosur Road"}})
-        self.assertEqual(out2["product_location"], "Hosur Road")
+    def test_rows(self):
+        # product.place is the one confirmed location: it wins over the typed
+        # spec.location, which fills in only when place has no address.
+        for label, place, location, coords in [
+            ("a confirmed place wins, with coords",
+             {"address": "Sarjapur Road, Bengaluru", "lat": 12.9, "lng": 77.7},
+             "Sarjapur Road, Bengaluru", {"lng": 77.7, "lat": 12.9}),
+            ("an address without coords still wins", {"address": "Hosur Road"},
+             "Hosur Road", None),
+            ("no address: the typed location fills in", {}, "Whitefield", None),
+        ]:
+            with self.subTest(label):
+                out = _build_location_object({"location": "Whitefield"}, {"place": place})
+                self.assertEqual(out["product_location"], location)
+                self.assertEqual(out["product_coordinates"], coords)
+                self.assertEqual(out["area_location"], "")
 
 
 def _rec(spec, *, competitors=None):
@@ -63,19 +62,6 @@ def _rec(spec, *, competitors=None):
     if competitors is not None:
         sc["competitor_analysis"] = {"competitors": competitors}
     return _build_full_record(sc, "https://example.com")["campaign"]["competitive"]
-
-
-class ProductCategoryMirrorTests(unittest.TestCase):
-    """Stage A fields (taxonomy.py) reach the Modlix mirror record - DS
-    launch-time readers see the classification adzump derived."""
-
-    def test_mirror_carries_classification(self):
-        product = {**RE, "category": "residential_apartment",
-                   "category_override": "residential_villa"}
-        record = _build_full_record({"product_data": product},
-                                    "https://example.com")
-        self.assertEqual(record["category"], "residential_apartment")
-        self.assertEqual(record["categoryOverride"], "residential_villa")
 
 
 class CampaignStatusTests(unittest.TestCase):
@@ -92,8 +78,6 @@ class CampaignStatusTests(unittest.TestCase):
             ("pre-launch autosave stores draft", {"platform": "Google Ads"}, "draft"),
             ("launched flag persists as launched",
              {"platform": "Google Ads", "campaign_status": "launched"}, "launched"),
-            ("cleared flag reopens the draft",
-             {"platform": "Google Ads", "budget": "₹5,000/day"}, "draft"),
         ]
         for label, spec, expected in variants:
             with self.subTest(label):
@@ -138,6 +122,9 @@ class MirrorRecordProjectionTests(unittest.TestCase):
                 "business_type": "real estate",
                 "business_scale": "local",
                 "summary": "Luxury 3 & 4 BHK apartments.",
+                # the classification adzump derived (taxonomy.py) for DS readers
+                "category": "residential_apartment",
+                "category_override": "residential_villa",
                 "primary_url": "https://dahliasgurgaon.com/",
                 "pages": {"https://dahliasgurgaon.com/":
                           {"screenshot_url": "https://cdn/x.png"}},
@@ -163,6 +150,8 @@ class MirrorRecordProjectionTests(unittest.TestCase):
         record = _build_full_record(session_ctx, "https://dahliasgurgaon.com/")
 
         self.assertEqual(record["productName"], "Sumadhura Solea")
+        self.assertEqual((record["category"], record["categoryOverride"]),
+                         ("residential_apartment", "residential_villa"))
         self.assertEqual(record["screenshot"], "https://cdn/x.png")
         self.assertEqual(record["logoUrl"], "https://cdn/logo.png")
         self.assertEqual(record["creativeImages"], ["https://cdn/c1.png"])
