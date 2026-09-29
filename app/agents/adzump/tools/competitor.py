@@ -223,9 +223,9 @@ def _same_project(name_a: str, name_b: str) -> bool:
 
 def _refresh_entry(existing: dict, fresh: dict) -> None:
     """Fold a re-looked-up competitor into its existing entry: fill empty
-    fields, adopt a newly resolved URL (never over a user pin), and reset the
-    creative triad only when the identity host actually changed (the library
-    keys on it)."""
+    fields and adopt a newly resolved URL (never over a user pin). Its ads
+    stay - the ad search runs on the name, never the website (Kailash
+    2026-09-29)."""
     for field in ("business_type", "location", "pricing", "key_usps",
                   "weakness", "why_competitor"):
         if fresh.get(field) and not existing.get(field):
@@ -234,9 +234,6 @@ def _refresh_entry(existing: dict, fresh: dict) -> None:
         return
     fresh_url = fresh.get("url")
     if fresh_url and fresh_url != existing.get("url"):
-        if host_of(fresh_url) != host_of(existing.get("url") or ""):
-            for stale in ("creatives", "totalCreatives", "activeCreatives"):
-                existing.pop(stale, None)
         existing["url"] = fresh_url
 
 

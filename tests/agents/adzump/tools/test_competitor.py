@@ -242,18 +242,18 @@ class RefreshEntryTests(unittest.TestCase):
                 for key, value in expected.items():
                     self.assertEqual(existing.get(key), value)
 
-    def test_host_change_resets_creatives_same_host_keeps(self):
+    def test_a_new_website_keeps_the_ads(self):
+        # The ad search runs on the name: a new site, even a new host, never
+        # drops the entry's ads (Kailash 2026-09-29).
         from app.agents.adzump.tools.competitor import _refresh_entry
-        changed = {"name": "N", "url": "https://old.example/",
-                   "creatives": [{"creativeId": "a"}], "totalCreatives": 1,
-                   "activeCreatives": 1}
-        _refresh_entry(changed, {"name": "N", "url": "https://new.example/"})
-        self.assertNotIn("creatives", changed)
-        same_host = {"name": "N", "url": "https://site.example/",
-                     "creatives": [{"creativeId": "a"}]}
-        _refresh_entry(same_host, {"name": "N", "url": "https://site.example/page"})
-        self.assertIn("creatives", same_host)
-        self.assertEqual(same_host["url"], "https://site.example/page")
+        for label, new_url in [("new host", "https://new.example/"),
+                               ("same host", "https://old.example/page")]:
+            with self.subTest(label):
+                entry = {"name": "N", "url": "https://old.example/",
+                         "creatives": [{"creativeId": "a"}], "totalCreatives": 1}
+                _refresh_entry(entry, {"name": "N", "url": new_url})
+                self.assertEqual(entry["url"], new_url)
+                self.assertEqual(entry["creatives"], [{"creativeId": "a"}])
 
 
 class AnalyzeReentrancyAndMergeTests(unittest.TestCase):
