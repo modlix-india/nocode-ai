@@ -341,10 +341,10 @@ async def _fetch_meta_fb_pages(params: dict, context: dict) -> ToolResult:
             data={"page": page, "auto_selected": True},
             summary=(
                 # v3 · F3 - store the page and STOP. Don't auto-chain into the IG
-                # fetch; the next-action step offers Instagram (now optional).
+                # fetch; the next-action step checks for a linked account first.
                 f"Only one Facebook page: {_format_account(page)}. Store via "
                 f"`set_campaign_spec(fb_page='{page['id']}')`. Instagram is optional - "
-                f"the next step offers it."
+                f"don't ask about it yet; the next step checks whether one is linked."
             ),
         )
 

@@ -23,6 +23,22 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+# The Instagram question waits for the linked-account check: its result says
+# whether an account is linked and gives the exact options (live 2026-09-28:
+# an early "Add Instagram / Facebook only" ask was followed by a second one).
+_IG_CHECK_FIRST = (
+    "Don't ask about Instagram yet - first call "
+    "`fetch_meta_ig_accounts(page_id=<stored fb_page>)`. Its result says whether "
+    "an Instagram account is linked and gives the exact present_options call."
+)
+
+
+# True when this ask is about Instagram and the linked-account check hasn't run.
+def _instagram_ask_too_early(field: str | None, session_ctx: dict) -> bool:
+    asked = LEGACY_MARKER_TO_FIELD.get(field or "", field)
+    return asked in ("instagram", "ig_page") and session_ctx.get("ig_accounts") is None
+
+
 def _norm_q(s: str) -> str:
     """Normalize a question for the v4 · F9 de-dup compare: lowercase, collapse
     whitespace, strip trailing punctuation. Lets "How long should it run?" match
@@ -115,6 +131,9 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
     session_ctx = parent_session.context if parent_session else context.get("session_context")
     if session_ctx is None:
         return ToolResult(success=False, error="No session context available.")
+    if _instagram_ask_too_early(field, session_ctx):
+        return ToolResult(success=False, error=_IG_CHECK_FIRST,
+                          display_error="Checking for a linked Instagram account first…")
     session_ctx["_pending_suggestions"] = suggestions
     # Per-field ask counter: every field-tagged ask that goes on
     # screen bumps its count. Consumers: the creatives resolved predicate

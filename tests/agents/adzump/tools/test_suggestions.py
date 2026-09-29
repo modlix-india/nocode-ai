@@ -104,6 +104,32 @@ class PresentOptionsTagTests(unittest.TestCase):
                     asyncio.run(_present_options(dict(ask), {"session_context": session_ctx}))
                 self.assertEqual(session_ctx.get("_field_asks"), expected)
 
+    def test_instagram_ask_waits_for_the_linked_account_check(self):
+        # live 2026-09-28: the model stored the Facebook page and asked "Add
+        # Instagram / Facebook only" before checking; the check then found none
+        # linked and the user was asked a second time.
+        ask = {"question": "Add Instagram?",
+               "options": [{"label": "Add Instagram", "value": "Add", "answer": None},
+                           {"label": "Facebook only", "value": "declined",
+                            "answer": "declined"}],
+               "field": "instagram"}
+        for name, field, session_ctx, allowed in [
+            ("refused before the check", "instagram", {}, False),
+            ("old field name refused too", "ig_page_declined", {}, False),
+            ("account pick refused too", "ig_page", {}, False),
+            ("allowed once none were found", "instagram", {"ig_accounts": []}, True),
+            ("allowed once accounts were found", "ig_page", {"ig_accounts": ["1"]}, True),
+            ("other fields unaffected", "competitor_creatives", {}, True),
+        ]:
+            with self.subTest(name):
+                res = asyncio.run(_present_options(
+                    {**ask, "field": field}, {"session_context": session_ctx}))
+                self.assertEqual(res.success, allowed)
+                if not allowed:
+                    self.assertIn("fetch_meta_ig_accounts", res.error)
+                    self.assertNotIn("_pending_suggestions", session_ctx)
+                    self.assertNotIn("_field_asks", session_ctx)
+
     def test_field_tagged_option_must_declare_answer(self):
         # S1-1 · every chip on a field-tagged ask says what it writes; a
         # missing "answer" key is the silent-fall-through bug class. An
