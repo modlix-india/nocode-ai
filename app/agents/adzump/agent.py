@@ -114,13 +114,12 @@ class AdzumpAgent(BaseAgent):
         _hydrate_location_from_product_data(session.context)
         actx = AdzumpContext.from_session(session)
         last_user = _last_user_text({"_session": session})
-        prose_declined = self._record_prose_decline(session, actx, last_user, turn)
-        if prose_declined and not ack:
+        prose_declined = not ack and self._record_prose_decline(session, actx, last_user, turn)
+        if prose_declined:
             ack = ("## You just recorded the user's answer\n"
                    "They declined competitive analysis; it is stored - never offer it "
                    "again. Acknowledge briefly in your own words, then take the next "
                    "action.")
-        if prose_declined:
             actx = AdzumpContext.from_session(session)  # the spec just changed
         uploads = self._uploaded_assets_section(session)
         resume = self._resume_elicitation_section(session, turn)
@@ -257,20 +256,16 @@ class AdzumpAgent(BaseAgent):
     # plain text (no chip row, so _capture_tagged_answer can't see it) -
     # otherwise the offer is asked again every turn. Only when all hold:
     #   - a Google campaign, and the offer is still unanswered
-    #   - no chip question for it is open
+    #   - no question of any kind is open: a "no" then answers that question
+    #     (live: a "No" to the ad-account question saved an analysis decline)
     #   - a clear decline ("no thanks", not "no competitors named yet")
     #   - the first model call of the reply
     # Returns True if it saved.
     def _record_prose_decline(
         self, session: BaseSession, actx: AdzumpContext, last_user: str, turn: int,
     ) -> bool:
-        if turn != 1 or not last_user:
+        if turn != 1 or not last_user or session.context.get("_pending_elicitation"):
             return False
-        pe = session.context.get("_pending_elicitation")
-        if pe and pe.get("field") in (
-            "competitive_analysis", "competitive_analysis_declined"
-        ):
-            return False                                     # tagged-capture owns it
         if not (actx.is_google
                 and not actx.competitor_analysis_attempted
                 and offer_state(actx.spec, "competitive_analysis")

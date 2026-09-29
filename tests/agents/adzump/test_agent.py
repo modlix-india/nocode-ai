@@ -176,6 +176,38 @@ class InstagramOptionalTests(unittest.TestCase):
 
 
 # ── PR2 / F17b · tagged-answer capture ──────────────────────────────────────
+class ProseDeclineTests(unittest.TestCase):
+    """A typed "no" is saved as declining competitor analysis only when that
+    offer was asked in plain text - never when another question is open, where
+    the "no" answers that question (a "No" to the ad-account question was
+    saved as an analysis decline)."""
+
+    def test_rows(self):
+        google = {"platform": "Google Ads"}
+        for label, spec, pe, user, recorded in [
+            ("a typed no to the offer asked in plain text", google, None, "no thanks", True),
+            ("a no to another open question", google,
+             elicitation("account", {"4461972633": "4461972633"}), "No", False),
+            ("a no to an open map or other widget", google,
+             {"tool": "confirm_location", "expects": "single"}, "no", False),
+            ("the offer's own chip question: tagged capture's", google,
+             elicitation("competitive_analysis", {"Yes": "accepted", "No": "declined"}),
+             "no thanks", False),
+            ("an unclear reply stays with the model", google, None,
+             "no competitors named yet", False),
+            ("a Meta campaign has no analysis offer", {"platform": "Meta"}, None,
+             "no thanks", False),
+        ]:
+            with self.subTest(label):
+                s = make_session(last_user=user, spec=dict(spec), pending_elicitation=pe)
+                actx = AdzumpContext.from_session(s)
+                saved = AdzumpAgent._record_prose_decline(None, s, actx, user, 1)
+                self.assertEqual(saved, recorded)
+                self.assertEqual(
+                    s.context["campaign_spec"].get("competitive_analysis") == "declined",
+                    recorded)
+
+
 class TaggedCaptureTests(unittest.TestCase):
     """Chip answers and tight typed values store with provenance and consume
     the elicitation; ambiguity falls through to the model (F17b: an ambiguous
