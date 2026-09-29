@@ -1,6 +1,6 @@
 """AdzumpAgent: the chat agent that builds an ad campaign through conversation.
 
-    run()                    refresh the product and competitors, then the shared tool loop
+    run()                    the shared tool loop, with this reply's event stream at hand
     build_turn_reminder()    before every model call: capture the user's answer,
                              snapshot the chat, render ORCHESTRATOR_CONTEXT
     get_pending_suggestions()  the quick-reply chips under the reply
@@ -83,32 +83,9 @@ class AdzumpAgent(BaseAgent):
     ) -> None:
         self._current_stream = event_stream
         try:
-            await self._refresh_from_storage(session, event_stream)
             await super().run(user_message, session, event_stream, image_blocks, model_override)
         finally:
             self._current_stream = None
-
-    # Before the model runs: re-read the product from its saved row - another
-    # chat on this product may have changed its place, target areas or ad
-    # accounts since the last reply - and repaint the panel only if it changed.
-    # The competitor list is not re-read: a chat that has it keeps its own
-    # (Kailash 2026-09-29). On a database error the chat's own copy serves.
-    async def _refresh_from_storage(
-        self, session: BaseSession, event_stream: AgentEventStream,
-    ) -> None:
-        from app.agents.adzump.services.product_service import refresh_product
-        from app.agents.adzump.tools.craft import rerender_craft
-        ctx = session.context
-        tool_ctx = {**self.build_tool_context(session), "event_stream": event_stream}
-        try:
-            changed = await refresh_product(ctx, tool_ctx)
-        except Exception as e:
-            logger.warning("storage_refresh_skipped: %s: %s",
-                           type(e).__name__, str(e)[:200])
-            return
-        if changed:
-            await rerender_craft(ctx, tool_ctx, ctx.get("product_data") or {},
-                                 (ctx.get("campaign_spec") or {}).get("platform") or "")
 
     # ── BaseAgent hooks, in the order the loop calls them ────────────────────
 

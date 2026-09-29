@@ -509,30 +509,22 @@ class LoopCompleteTests(unittest.IsolatedAsyncioTestCase):
             await agent._on_loop_complete(session, [])
         self.assertEqual(order, ["autosave", "save_context"])
 
-    async def test_product_refreshes_before_the_model_and_repaints_on_change(self):
-        rows = [("changed", True, 1), ("unchanged", False, 0),
-                ("refresh read failed", RuntimeError("db down"), 0)]
-        for label, outcome, repaints in rows:
-            with self.subTest(label):
-                order: list[str] = []
-
-                async def refresh(*_):
-                    order.append("refresh")
-                    if isinstance(outcome, Exception):
-                        raise outcome
-                    return outcome
-                session = mock.Mock(context={}, session_id="s1")
-                agent = AdzumpAgent.__new__(AdzumpAgent)
-                with mock.patch("app.agents.adzump.services.product_service.refresh_product",
-                                new=refresh), \
-                     mock.patch("app.agents.adzump.tools.craft.rerender_craft",
-                                new=mock.AsyncMock()) as m_paint, \
-                     mock.patch.object(AdzumpAgent, "build_tool_context", return_value={}), \
-                     mock.patch("app.core.agent.BaseAgent.run",
-                                new=mock.AsyncMock(side_effect=lambda *a, **k: order.append("model"))):
-                    await agent.run("hi", session, object())
-                self.assertEqual(order, ["refresh", "model"])
-                self.assertEqual(m_paint.await_count, repaints)
+    async def test_a_message_reads_nothing_before_the_model(self):
+        # Kailash 2026-09-29: a chat that has its product and competitors keeps
+        # its own copy; nothing is re-read from the database per message.
+        session = mock.Mock(context={"product_data": {"product_name": "Springs"},
+                                     "competitor_analysis": {"competitors": [{"name": "Sobha"}]}},
+                            session_id="s1")
+        agent = AdzumpAgent.__new__(AdzumpAgent)
+        with mock.patch("app.agents.adzump.stores.products.get_product",
+                        new=mock.AsyncMock()) as m_product, \
+             mock.patch("app.agents.adzump.stores.competitors.list_product_competitors",
+                        new=mock.AsyncMock()) as m_list, \
+             mock.patch("app.core.agent.BaseAgent.run", new=mock.AsyncMock()) as m_model:
+            await agent.run("hi", session, object())
+        m_model.assert_awaited_once()
+        m_product.assert_not_awaited()
+        m_list.assert_not_awaited()
 
 
 if __name__ == "__main__":

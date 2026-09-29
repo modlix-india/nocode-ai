@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from pydantic import ValidationError
 from typing import Any  # noqa: F401  (used in type hints below)
 
 from app.agents.adzump.platform import (
@@ -156,21 +155,6 @@ async def save_place(session_ctx: dict, ctx: dict) -> None:
         logger.warning("place_unsaved: %s: %s", type(e).__name__, str(e)[:200])
 
 
-# Start a turn from the product's row: another chat on this product may have
-# changed its place, target areas or ad accounts since this chat's last reply.
-# Returns True when the chat's copy changed.
-async def refresh_product(session_ctx: dict, ctx: dict) -> bool:
-    if not session_ctx.get("product_data"):
-        return False
-    url = normalize_business_url(resolve_url(session_ctx))
-    stored = await stores.products.get_product(ctx.get("client_code") or "", url) if url else None
-    if stored is None:
-        return False
-    before = _product_view(session_ctx["product_data"])
-    _replace_product_copy(session_ctx, stored)
-    return _product_view(session_ctx["product_data"]) != before
-
-
 # The chat's product as the typed row, with the Summary Agent's display profile
 # (kept in product_profile) folded in.
 def _persisted_product(session_ctx: dict) -> Product:
@@ -187,15 +171,6 @@ def _replace_product_copy(session_ctx: dict, product: Product) -> None:
     copy = session_ctx.setdefault("product_data", {})
     copy.clear()
     copy.update(product.model_dump())
-
-
-# A product dict in its stored shape, so a copy and a fresh read compare equal
-# when only their dict shape differs.
-def _product_view(product_data: dict) -> dict | None:
-    try:
-        return Product.model_validate(product_data).model_dump(mode="json")
-    except ValidationError:
-        return None
 
 
 async def _mirror_modlix_record(record: dict, url: str, ctx: dict) -> str | None:

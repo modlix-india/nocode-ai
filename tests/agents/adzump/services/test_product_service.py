@@ -422,7 +422,7 @@ class RemoveAndPinTests(unittest.IsolatedAsyncioTestCase):
 
 class ProductWritesTests(unittest.IsolatedAsyncioTestCase):
     """Each product change writes only its own fields; analysis creates the
-    row; every message starts from the row."""
+    row."""
 
     SESSION = {"product_profile": {"url": "https://springs.com", "summary": "Display profile"}}
     CTX = {"client_code": "GRMEL", "auth": types.SimpleNamespace(user_id=7)}
@@ -461,28 +461,6 @@ class ProductWritesTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(session["product_data"][key], value)
                 if pid and not error:
                     self.assertEqual(update.await_args.args[2], fields)
-
-    async def test_refresh_product(self):
-        stored = Product(product_name="Springs", target_areas=[{"name": "Hebbal"}])
-        rows = [  # (case, chat copy, stored row, changed)
-            ("another chat added an area", {"product_name": "Springs"}, stored, True),
-            ("same product, other dict shape", stored.model_dump(mode="json"), stored, False),
-            ("no row: the copy stays", {"product_name": "Springs"}, None, False),
-        ]
-        for case, copy, row, changed in rows:
-            with self.subTest(case):
-                session = {**self.SESSION, "product_data": dict(copy)}
-                same_dict = session["product_data"]
-                with mock.patch("app.agents.adzump.stores.products.get_product",
-                                new=mock.AsyncMock(return_value=row)):
-                    self.assertEqual(await product_service.refresh_product(session, self.CTX), changed)
-                self.assertIs(session["product_data"], same_dict)  # sub-agents share it
-                if row is not None:
-                    self.assertEqual(session["product_data"]["target_areas"][0]["name"], "Hebbal")
-        with mock.patch("app.agents.adzump.stores.products.get_product",
-                        new=mock.AsyncMock()) as m_get:
-            self.assertFalse(await product_service.refresh_product({}, self.CTX))
-        m_get.assert_not_awaited()
 
     async def test_analysis_creates_the_row_once(self):
         stored = Product(product_name="Springs (saved)", profile_summary="Display profile")

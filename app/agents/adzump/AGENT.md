@@ -214,9 +214,9 @@ All rails live in `agent.py`; the widgets they capture from are emitted by
   own fields (`save_product_fields`: place, target areas, one platform's ad
   accounts, assets, classification). A chip answer that changes the product
   is saved before the model runs, and the capture note tells the model
-  whether it landed. Every message starts from the saved product row
-  (`AdzumpAgent._refresh_from_storage`); a chat that has the competitor list
-  keeps its own. The every-turn
+  whether it landed. A chat reads the product and its competitors from the
+  database only when it doesn't have them yet; after that it keeps its own copy
+  and nothing is re-read per message (Kailash 2026-09-29). The every-turn
   autosave writes only this chat's campaign draft; `campaign.status` mirrors
   the launch flag, never asserts it.
 
