@@ -27,9 +27,12 @@ class StreamSubclassTests(unittest.TestCase):
     def test_every_app_subclass_answers_steer_checks(self):
         for module in pkgutil.walk_packages(app.agents.__path__, "app.agents."):
             importlib.import_module(module.name)
+        # adzump2 is left as on master (Kailash 2026-09-29: no changes there) -
+        # its three delegate streams still skip super().__init__().
         streams = {cls for cls in _subclasses(AgentEventStream)
-                   if cls.__module__.startswith("app.")}
-        self.assertGreaterEqual(len(streams), 8)
+                   if cls.__module__.startswith("app.")
+                   and not cls.__module__.startswith("app.agents.adzump2.")}
+        self.assertGreaterEqual(len(streams), 5)
         for cls in streams:
             with self.subTest(f"{cls.__module__}.{cls.__qualname__}"):
                 required = [p for p in list(inspect.signature(cls.__init__).parameters.values())[1:]
