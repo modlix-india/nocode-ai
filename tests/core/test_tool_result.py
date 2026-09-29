@@ -11,6 +11,37 @@ import unittest
 from app.core.tools.base import ToolResult
 
 
+class ToDisplayTextTests(unittest.TestCase):
+    """to_display_text - what the USER's tool row shows. A failure shows the
+    real error, as it always has, unless the tool sets `display_error` because
+    its `error` is model-steering text (gate refusals, "call X NOW")."""
+
+    def test_table(self):
+        cases = [
+            ("success shows summary",
+             ToolResult(success=True, summary="Fetched 5 ads."), "", "Fetched 5 ads."),
+            ("success without summary falls to the model content",
+             ToolResult(success=True), "raw model text", "raw model text"),
+            ("failure shows the real error (AppBuilder, LeadZump)",
+             ToolResult(success=False, error="Component not found: hero"),
+             "model text", "Component not found: hero"),
+            ("display_error replaces model-steering error text",
+             ToolResult(success=False, error="Consent gate: call present_options NOW",
+                        display_error="Waiting for your go-ahead."),
+             "", "Waiting for your go-ahead."),
+        ]
+        for name, result, model_content, expected in cases:
+            with self.subTest(case=name):
+                self.assertEqual(result.to_display_text(model_content), expected)
+
+    def test_model_still_gets_the_full_error(self):
+        # display routing must not weaken the model's steering channel
+        r = ToolResult(success=False, error="Consent gate: ask via present_options",
+                       display_error="Waiting for your go-ahead.")
+        self.assertEqual(r.to_tool_result_content(),
+                         "Error: Consent gate: ask via present_options")
+
+
 class ToModelContentTests(unittest.TestCase):
 
     def test_assistant_default_returns_summary(self):
@@ -21,11 +52,6 @@ class ToModelContentTests(unittest.TestCase):
     def test_assistant_no_summary_falls_to_data_json(self):
         r = ToolResult(success=True, data={"k": 1})
         self.assertIn('"k": 1', r.to_tool_result_content())
-
-    def test_both_model_sees_the_summary(self):
-        # competitors: the model reasons over the list, so it gets the prose too.
-        r = ToolResult(success=True, summary="Found 2: Sobha, Prestige.", audience="both")
-        self.assertEqual(r.to_tool_result_content(), "Found 2: Sobha, Prestige.")
 
     def test_user_model_gets_model_summary_NOT_user_prose(self):
         # the whole point: model is blind to the user copy → it can't double it.

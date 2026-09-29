@@ -9,7 +9,7 @@ Mirror `app/`. The test for `app/agents/adzump/tools/campaign_data.py` lives at
 `tests/agents/adzump/tools/test_campaign_data.py` — one file per unit, found by
 path.
 
-- ✅ `test_campaign_data.py`, `test_answer_parse.py`, `test_agent_loop.py`
+- ✅ `test_campaign_data.py`, `test_asset_manage.py`, `test_agent_loop.py`
 - ❌ `test_v3_fixes.py`, `test_v6_fixes.py`, `test_f27_*.py` (a bug number is not a code unit)
 
 A regression for bug F27 goes in the test file for **the unit it touches**, as a
@@ -35,10 +35,10 @@ A name should mean something to someone with zero memory of the fix.
 ## 3. Use the shared fixtures — don't re-roll scaffolding
 
 `tests/agents/adzump/_fixtures.py` is the one place for sessions, the
-`set_campaign_spec` context pair, `CampaignContext`, `RE`/`SAAS`, and `FakeStream`.
+`set_campaign_spec` context pair, `AdzumpContext`, `RE`/`SAAS`, and `FakeStream`.
 
 ```python
-from tests.agents.adzump._fixtures import make_session, spec_context, make_cctx, RE, SAAS
+from tests.agents.adzump._fixtures import make_session, spec_context, make_actx, RE, SAAS
 
 ctx, sc = spec_context({"duration": "30 days"}, last_user="no wait, make it 60")
 r = asyncio.run(_set_campaign_spec({"duration": "60 days"}, ctx))
@@ -71,17 +71,23 @@ Prefer the smallest real seam over poking privates. Avoid:
 
 ## Running
 
-`unittest` only (pytest is **not** installed — do not add it):
+`pytest` (pinned in requirements.txt). It runs both styles in the suite:
+`unittest.TestCase` classes and the plain pytest functions most AppBuilder
+tests use. `unittest discover` finds only the first kind and silently skips
+the rest (about 2/3 of the suite).
 
 ```
-cd nocode-ai && ./venv/bin/python -m unittest discover -s tests -p "test_*.py"
+cd nocode-ai && ./venv/bin/python -m pytest tests -q
 ```
 
 Or a focused set (see CLAUDE.md for the AdPilot loop):
 
 ```
-./venv/bin/python -m unittest tests.agents.adzump.tools.test_campaign_data -v
+./venv/bin/python -m pytest tests/agents/adzump/tools/test_campaign_data.py -q
 ```
+
+New tests: `unittest.TestCase` + table-driven `subTest` (the adzump style), so
+the file also runs on its own with `python -m unittest`.
 
 ## Layout (target)
 
@@ -96,11 +102,12 @@ tests/
       _fixtures.py              # shared scaffolding (NOT a test)
       tools/
         test_campaign_data.py   # _field_traceable, _set_campaign_spec, clear_competitor_decline …
-        test_answer_parse.py    # parse_typed_answer, field_candidates
         test_suggestions.py     # present_options, _advance_chip, get_pending_suggestions
         test_competitor.py
-        test_business_storage.py
-      test_agent.py             # AdzumpAgent: _capture_tagged_answer, _record_prose_decline, _next_action
+      services/
+        test_product_service.py # save_campaign, hydrate_from_storage, record builders
+      test_answer_capture.py    # field_candidates + _field_traceable + Custom two-turn path
+      test_agent.py             # AdzumpAgent: _capture_tagged_answer, _record_prose_decline, the journey engine
       agents/{vision,product}/  # sub-agents
     appbuilder/                 # currently MISSING — add coverage
 evals/                          # model-judged behavior (not a merge gate)

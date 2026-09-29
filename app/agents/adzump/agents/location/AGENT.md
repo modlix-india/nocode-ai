@@ -146,19 +146,19 @@ data: {"id": "tc_2", "tool": "geocode_recommendations",
 event: agent_finished
 data: {"agent_id": "location_agent", "status": "success"}
 
-event: tool_result                      # outer tool's ToolResult (audience="both")
+event: tool_result                      # outer tool's ToolResult (to the orchestrator)
 data: {"id": "tc_1", "tool": "manage_targeting_locations",
        "success": true,
        "summary": "Targeted 4 cities across India: Bengaluru, Mumbai, ..."}
 
-event: text                             # auto-emitted from audience="both"
-data: {"text": "Targeted 4 cities across India: Bengaluru, Mumbai, ..."}
+event: text                             # the orchestrator's own reply
+data: {"text": "Done - you're now targeting 4 cities: Bengaluru, Mumbai, ..."}
 
 event: done
 data: {"session_id": "abc-123", "usage": {...}}
 ```
 
-For an `add`, `tc_2` is `add_location` with `{"name": "Juhu"}` and the closing text reads like "Added Juhu to targeting - 5 areas total." (`delete` likewise with `delete_location`/`{"index": 2}`). The sub-loop's own `text` events are dropped by the passthrough stream - the model's final summary reaches chat once, via the outer ToolResult's `audience="both"`.
+For an `add`, `tc_2` is `add_location` with `{"name": "Juhu"}` and the closing text reads like "Added Juhu to targeting - 5 areas total." (`delete` likewise with `delete_location`/`{"index": 2}`). The sub-loop's own `text` events are dropped by the passthrough stream - its final summary goes back to the orchestrator in the ToolResult, and the orchestrator writes the one chat reply.
 
 ---
 
@@ -200,7 +200,7 @@ LocationAgent.handle(user_message, context)
    │  ┌─ tool: geocode_recommendations ──────────────────────────┐
    │  │  1. Geocode the picked {name, type}                       │
    │  │  2. platform_mapping.map_target_areas()                  │
-   │  │  3. save_campaign() + rerender_craft()                   │
+   │  │  3. save_product_fields() + rerender_craft()             │
    │  └─────────────────────────────────────────────────────────┘
    │
    │  ┌─ LLM summary turn ───────────────────────────────────────┐
@@ -209,7 +209,7 @@ LocationAgent.handle(user_message, context)
    │  └─────────────────────────────────────────────────────────┘
    │
    ▼
-build_run_result → ToolResult(success=True, data={...}, audience="both", ...)
+build_run_result → ToolResult(success=True, data={...}, model_summary, ...)
 ```
 
 ### Local / real-estate campaign
@@ -232,12 +232,12 @@ LocationAgent.handle(user_message, context)
    │  │  execute parses params → AddLocation (pydantic boundary) │
    │  │  1. Append area to product.target_areas                  │
    │  │  2. platform_mapping.map_target_areas()                  │
-   │  │  3. save_campaign() + rerender_craft()                   │
+   │  │  3. save_product_fields() + rerender_craft()             │
    │  └─────────────────────────────────────────────────────────┘
    │
    │  LLM summary turn: "Added Juhu - 5 areas total."
    ▼
-build_run_result → ToolResult(summary="Added Juhu - 5 areas total.", audience="both", ...)
+build_run_result → ToolResult(summary="Added Juhu - 5 areas total.", model_summary, ...)
 ```
 
 Same shape for `delete` (the model maps "the second one" / "remove Bangalore" to a 1-based `index` using the list in its prompt; the tool pops and re-finalizes).
@@ -286,7 +286,7 @@ The pre-refactor code called `provider.create_completion(...)` directly from a s
 ### One run, every action
 
 0. **Preamble** (deterministic, no LLM): guards (empty message, auth), resolve + geocode the business pin so the radial-scan tool has coordinates.
-1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `campaign_spec`, `account_names`, etc.). Tools write through to the parent. Message history stays isolated.
+1. **Sub-session** - `BaseSession(agent_name="location_agent")` with shared context refs (`product_data`, `campaign_spec`, etc.). Tools write through to the parent. Message history stays isolated.
 2. **Wrapped event stream** - `_LocationPassthroughEventStream` forwards `tool_*` / `craft` / `data` / `agent_*` / `thinking`, drops `text` / `done` / `error`.
 3. **Run** - `self.run(build_run_prompt(...), sub_session, wrapped_stream)`; the model picks ONE of the four tools.
 4. **Verify + extract** - success is judged by the `_geo_finalized` marker `finalize_targets` stamps on the sub-context. A run where no mutation landed returns a structured error (carrying the model's final text), not success.
@@ -295,11 +295,9 @@ The pre-refactor code called `provider.create_completion(...)` directly from a s
 
 ## The user-facing acknowledgement contract
 
-Every action's user-visible text comes from ONE place: the model writes a 1-2 sentence summary on its final turn. It is captured post-hoc via `BaseAgent._stream_turn` into the sub-session's messages; `build_run_result` re-reads it via `sub_session.get_messages()` and sets `ToolResult.summary = final_text` with `audience="both"`. The orchestrator's framework sees the audience and emits it as chat text.
+The sub-agent never writes to the chat. It writes a 1-2 sentence summary on its final turn, captured post-hoc via `BaseAgent._stream_turn` into the sub-session's messages; `build_run_result` re-reads it via `sub_session.get_messages()` and returns it (`summary` for the tool card, `model_summary` for the orchestrator). The orchestrator writes the one chat reply from it.
 
-**Why explicit:** without the `audience` field, the `summary` string lands only in the tool card and in the `tool_result` block sent to the orchestrator's LLM - **never as an SSE text event** - leaving the chat holding only a tool card with no closing sentence (the historic dead-end bug). The sub-loop's own `text` events are dropped by the passthrough stream, so the summary reaches chat exactly once.
-
-**Sibling consumers:** `manage_assets` uses `audience="user"` (`tools/asset_manage.py`); `analyze_competitors` uses `audience="both"` (`tools/competitor.py`).
+**Why not post it directly:** it used to go out as its own chat line (`audience="both"`), and the orchestrator then wrote its own reply beside it, so every change was said twice (2026-09-25). Only a result that ends the turn with a question to the user may post itself (`audience="user"`, e.g. `manage_assets` asking about an unclear image).
 
 ---
 
@@ -387,7 +385,7 @@ Invariants:
 | Google Maps (geocode/reverse-geocode) | business pin, radial scan, area coords | `adapters/google/maps.py` |
 | Google Ads `suggest_geo_targets` | geo-target-constant resolution | `adapters/google/client.py` |
 | Meta Marketing `/search` adgeolocation | Meta key/type resolution | `adapters/meta/client.py` |
-| AISuggestedData | persistence + session-restart hydration | `services/business_storage.py` |
+| adzump MySQL (`db.py`) | persistence + session-restart hydration | `services/product_service.py` |
 | LLM provider - default `LOCATION_PROVIDER="deepseek"` | the whole LocationAgent loop | `services/llm_provider.py` |
 | LLM provider (Anthropic / OpenAI) | optional switch via the constant | `services/llm_provider.py` |
 
@@ -417,7 +415,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
 - **`platform_mapping.py` is a utility, not a tool.** Both tools call it; `add`/`delete` call it. The LLM never invokes it directly.
 - **No `GeoTargetingService`.** All three actions live on the agent. Minimum service files.
 - **Sub-session isolation.** The agent's reasoning is not the user's chat. Separate `BaseSession`, separate token record, separate audit trail.
-- **User-facing acknowledgement uses `audience="user"`, not a prompt-only rule.** Prompt-only rules were tried (commit `87cc5a4`, "capture-ack steer") and broke under model drift. The `audience=` mechanism is the deterministic fix.
+- **The orchestrator owns the chat reply.** Sub-agent and tool results reach only it; posting them beside its reply doubled every message (2026-09-25). If a run ever ends silent again, fix the orchestrator's reminder, not by posting the sub-agent's text.
 - **`services/geo/` was dissolved, not stubbed.** All in-repo importers re-pointed in the same change; its survivors (`search.py` + the UI-helper route, now `search_router.py`) moved into this package - the location agent owns geo search - and the route is folded into the adzump router so main.py mounts one router.
 
 ---
@@ -445,7 +443,7 @@ Run: `python -m unittest discover -s tests/agents/adzump`.
    - On Meta, "Bengaluru" maps to something like `meta.key = "23424848"` with `meta.type = "city"`.
    - On Google Ads, "Bengaluru" maps to `google.resourceName = "geoTargetConstants/1026181"`.
 
-   Those IDs ride nested on each `product_data.target_areas` entry (`area.meta` / `area.google`) and are projected into the stored record as `campaign.googleMappedLocations` / `metaMappedLocations`. On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`next_action.py`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
+   Those IDs ride nested on each `product_data.target_areas` entry (`area.meta` / `area.google`) and are projected into the stored record as `campaign.googleMappedLocations` / `metaMappedLocations`. On the next session, the orchestrator's gate `CampaignContext.has_mapped_geo_targets` (`workflow.py`) checks: *"do we have these IDs cached?"* - if yes, the orchestrator skips re-mapping and reuses the cached IDs as-is.
 
    **The risk.** Meta and Google periodically reorganise their geo catalogs. They merge cities, split districts, drop legacy IDs, renumber regions. When they do:
    - An ID that used to mean "Bengaluru" might now point to "Mysuru" (silent mis-targeting).

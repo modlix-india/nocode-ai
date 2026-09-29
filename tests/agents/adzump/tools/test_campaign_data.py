@@ -10,11 +10,10 @@ import asyncio
 import unittest
 
 from app.agents.adzump.tools.campaign_data import (
-    _apply_field, _clear_dependents, _set_campaign_spec,
+    _apply_field, _set_campaign_spec,
     clear_competitor_decline, is_clear_decline_reply, is_decline, is_real_estate,
 )
-from app.agents.adzump.services.business_storage import _build_full_record
-from tests.agents.adzump._fixtures import RE, spec_context
+from tests.agents.adzump._fixtures import RE, make_session, spec_context
 
 
 class IsDeclineTests(unittest.TestCase):
@@ -37,38 +36,18 @@ class IsDeclineTests(unittest.TestCase):
 
 class InventionRetryLoopTests(unittest.TestCase):
     # regression: F12 - decline→invent values→retry-with-fresh-values evaded the v5 breaker
-    def test_invented_fields_after_decline_store_nothing_and_steer_ask(self):
+    def test_invented_values_store_nothing_and_the_breaker_fires(self):
         ctx, sc = spec_context({}, "No, skip competitor analysis for now")
-        r = asyncio.run(_set_campaign_spec({"duration": "30 days", "budget": "₹5,000/day"}, ctx))
-        self.assertFalse(r.success)
-        self.assertNotIn("duration", sc["campaign_spec"])   # nothing invented stored
-        self.assertNotIn("budget", sc["campaign_spec"])
-        self.assertIn("ask", (r.error or "").lower())       # steer = ASK, not retry
-
-    def test_breaker_fires_on_field_set_despite_differing_values(self):
-        ctx, sc = spec_context({}, "no, skip competitors")
         invented = [("30 days", "₹5,000/day"), ("60 days", "₹6,000/day"),
                     ("45 days", "₹8,000/day")]
-        last = None
-        for dur, bud in invented:
-            last = asyncio.run(_set_campaign_spec({"duration": dur, "budget": bud}, ctx))
-            self.assertFalse(last.success)
-        self.assertIn("STOP", last.error or "")  # fires on 3rd despite different values
-
-    def test_kept_noop_emits_no_progress(self):  # F15: paraphrase of a stored field
-        full = ("302, Blk 9, Cityville Valmark, off Bannerghatta Rd, "
-                "Bengaluru, Karnataka 560076, India")
-        ctx, sc = spec_context({"location": full}, "continue")
-        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
-        self.assertTrue(r.success)
-        self.assertTrue(isinstance(r.data, dict) and r.data.get("no_progress"))
-
-    def test_legit_varied_correction_does_not_trip_breaker(self):
-        ctx, sc = spec_context({}, "make it 30 days")
-        r = asyncio.run(_set_campaign_spec({"duration": "30 days"}, ctx))
-        self.assertTrue(r.success)
-        self.assertEqual(sc["campaign_spec"]["duration"], "30 days")
-        self.assertIsNone(ctx["session_context"].get("_spec_reject_streak"))
+        for i, (dur, bud) in enumerate(invented):
+            r = asyncio.run(_set_campaign_spec({"duration": dur, "budget": bud}, ctx))
+            self.assertFalse(r.success)
+            self.assertNotIn("duration", sc["campaign_spec"])   # nothing invented stored
+            self.assertNotIn("budget", sc["campaign_spec"])
+            if i == 0:
+                self.assertIn("ask", (r.error or "").lower())   # steer = ASK, not retry
+        self.assertIn("STOP", r.error or "")  # fires on 3rd despite different values
 
 
 # ── F2 · dependency-clear cascade ─────────────────────────────────────────
@@ -129,16 +108,41 @@ class DependencyCascadeTests(unittest.TestCase):
     def test_fb_page_change_clears_ig(self):
         sc = _ctx({"fb_page": "p1", "ig_page": "i1", "ig_page_declined": "true"},
                   account_names={"p1": "", "p2": "", "i1": ""})
-        sc["_ig_offered"] = True
+        sc["ig_accounts"] = ["i1"]
+        sc["_field_asks"] = {"instagram": 1, "competitor_creatives": 1}
         _apply_field("fb_page", "p2", "p2", sc, 2)
         self.assertNotIn("ig_page", sc["campaign_spec"])
         self.assertNotIn("ig_page_declined", sc["campaign_spec"])
-        self.assertNotIn("_ig_offered", sc)                          # F3 marker cleared
+        self.assertNotIn("ig_accounts", sc)                # F3 fetched list cleared
+        self.assertEqual(sc["_field_asks"], {"competitor_creatives": 1})
 
-    def test_clear_dependents_returns_names(self):
-        sc = _ctx({"platform": "Meta", "account": "A"}, account_names={})
-        cleared = _clear_dependents("platform", sc, frozenset())
-        self.assertIn("account", cleared)
+    def test_platform_change_resets_enum_offers(self):
+        # Offers reset to UNSET (key popped) on a platform switch - a Google
+        # decline must not silently carry into the Meta flow - and their ask
+        # counts go with them.
+        sc = _ctx({"platform": "Google Ads", "competitive_analysis": "accepted",
+                   "competitor_creatives": "declined", "instagram": "declined"})
+        sc["_field_asks"] = {"competitor_creatives": 2}
+        _apply_field("platform", "Meta", "Meta", sc, 2)
+        for offer in ("competitive_analysis", "competitor_creatives", "instagram"):
+            self.assertNotIn(offer, sc["campaign_spec"])
+        self.assertNotIn("_field_asks", sc)
+
+    def test_location_change_clears_target_areas(self):
+        # S1-9/R11 - a corrected city must never launch on the old polygons.
+        sc = _ctx({"platform": "Google Ads", "location": "Pune"})
+        sc["product_data"] = {"business_type": "real estate",
+                              "target_areas": [{"name": "Pune", "google": {"id": 1}}]}
+        stored, info = _apply_field("location", "Mumbai", "make it Mumbai", sc, 3)
+        self.assertTrue(stored)
+        self.assertNotIn("target_areas", sc["product_data"])
+        self.assertIn("target_areas", info)
+        # First-set never cascades: a fresh confirm keeps existing targets.
+        sc2 = _ctx({})
+        sc2["product_data"] = {"target_areas": [{"name": "Pune"}]}
+        _apply_field("location", "Pune", "Pune", sc2, 1)
+        self.assertIn("target_areas", sc2["product_data"])
+
 
 
 # ── v5 · set_campaign_spec retry-loop fixes ────────────────────────────────
@@ -161,12 +165,7 @@ class SpecRetryBreakerTests(unittest.TestCase):
         self.assertIn("re-send", (r.model_summary or ""))
         self.assertNotIn("kept", (r.summary or ""))         # user/card never sees the steer
         self.assertEqual(sc["campaign_spec"]["location"], FULL_ADDR)
-
-    def test_empty_field_untraceable_still_rejected(self):
-        ctx, sc = spec_context({}, "continue")
-        r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
-        self.assertFalse(r.success)
-        self.assertNotIn("location", sc["campaign_spec"])
+        self.assertTrue(isinstance(r.data, dict) and r.data.get("no_progress"))  # F15
 
     def test_third_identical_rejection_escalates_to_stop(self):
         ctx, sc = spec_context({}, "continue")
@@ -174,6 +173,7 @@ class SpecRetryBreakerTests(unittest.TestCase):
             r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
             self.assertFalse(r.success)
             self.assertNotIn("STOP", r.error or "")
+            self.assertNotIn("location", sc["campaign_spec"])  # an empty field stays empty
         r = asyncio.run(_set_campaign_spec({"location": "Bengaluru"}, ctx))
         self.assertFalse(r.success)
         self.assertIn("STOP", r.error or "")
@@ -190,10 +190,15 @@ class SpecRetryBreakerTests(unittest.TestCase):
         self.assertNotIn("STOP", r.error or "")
 
     def test_ig_page_rejection_hints_declined_key(self):
-        ctx, sc = spec_context({}, "continue")
-        r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
-        self.assertFalse(r.success)
-        self.assertIn("ig_page_declined", r.error or "")
+        # With ig_page already stored the Facebook-only hint must still surface
+        # (the kept-noop would have swallowed it before the narrowing).
+        for label, spec in [("nothing stored", {}), ("ig_page stored", {"ig_page": "12345"})]:
+            with self.subTest(label):
+                ctx, sc = spec_context(dict(spec), "continue")
+                r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
+                self.assertFalse(r.success)
+                self.assertIn('instagram="declined"', r.error or "")
+                self.assertEqual(sc["campaign_spec"].get("ig_page"), spec.get("ig_page"))
 
     def test_stored_account_field_unknown_id_still_rejected(self):
         # Kiran (v5 review): the kept-noop must NOT swallow account fields -
@@ -204,15 +209,6 @@ class SpecRetryBreakerTests(unittest.TestCase):
         self.assertFalse(r.success)
         self.assertIn("fetch", r.error or "")
         self.assertEqual(sc["campaign_spec"]["account"], "act_111")
-
-    def test_stored_ig_page_unknown_value_keeps_hint(self):
-        # With ig_page already stored, the ig_page_declined hint must still
-        # surface (kept-noop would have swallowed it before the narrowing).
-        ctx, sc = spec_context({"ig_page": "12345"}, "continue")
-        r = asyncio.run(_set_campaign_spec({"ig_page": "true"}, ctx))
-        self.assertFalse(r.success)
-        self.assertIn("ig_page_declined", r.error or "")
-        self.assertEqual(sc["campaign_spec"]["ig_page"], "12345")
 
 
 # ── F17c · the breaker blind spot: partial that stores nothing ─────────────
@@ -230,16 +226,6 @@ class NoProgressFloorTests(unittest.TestCase):
         self.assertTrue(r.success)                                  # partial = success
         self.assertTrue(isinstance(r.data, dict) and r.data.get("no_progress"))
         self.assertNotIn("duration", sc["campaign_spec"])           # "true" not stored
-
-    def test_partial_that_stores_something_is_not_no_progress(self):
-        # boundary: a real store + a rejected invent is genuine progress → no flag,
-        # so a legit correction bundled with a stray field never trips the breaker.
-        ctx, sc = spec_context({}, "make it 30 days")
-        r = asyncio.run(_set_campaign_spec(
-            {"duration": "30 days", "budget": "true"}, ctx))
-        self.assertTrue(r.success)
-        self.assertEqual(sc["campaign_spec"]["duration"], "30 days")
-        self.assertFalse(isinstance(r.data, dict) and r.data.get("no_progress"))
 
 
 # ── validator rejections must NOT leak into the user-facing summary ──
@@ -262,6 +248,8 @@ class ValidatorLeakContainmentTests(unittest.TestCase):
         self.assertTrue(r.success)
         self.assertEqual(sc["campaign_spec"]["duration"], "30 days")
         self.assertNotIn("budget", sc["campaign_spec"])          # rejected, not stored
+        # A real store beside a rejected invent is progress: never trips the breaker.
+        self.assertFalse(isinstance(r.data, dict) and r.data.get("no_progress"))
         self._assert_clean(r.summary)                            # user/card: clean
         self.assertIn("rejected", r.to_tool_result_content().lower())  # model: still steered
 
@@ -282,7 +270,9 @@ class BleedContainmentTests(unittest.TestCase):
             "budget": "true", "account": "true",
         }, ctx))
         self.assertTrue(r.success)
-        self.assertEqual(sc["campaign_spec"].get("competitive_analysis_declined"), "true")
+        # Legacy write canonicalizes to the enum at the _apply_field seam.
+        self.assertEqual(sc["campaign_spec"].get("competitive_analysis"), "declined")
+        self.assertNotIn("competitive_analysis_declined", sc["campaign_spec"])
         for f in ("duration", "budget", "account"):
             self.assertNotIn(f, sc["campaign_spec"])               # bleed contained
 
@@ -293,46 +283,348 @@ class ClearDeclineReplyTableTests(unittest.TestCase):
         clear = ["no", "n", "no thanks", "no thanks, skip it", "skip it",
                  "No, skip competitor analysis", "not now", "maybe later", "no need"]
         ambiguous = ["no competitors named yet", "not now, first tell me about the audience",
-                     "no, make it Meta", "what about competitors?", "no — which ones?",
-                     "skip — but tell me how it works"]
+                     "no, make it Meta", "what about competitors?", "no - which ones?",
+                     "skip - but tell me how it works",
+                     "👍", "🤔", "👍 sounds good", "   "]  # an emoji is not a decline
         for text, expected in [(t, True) for t in clear] + \
                               [(t, False) for t in ambiguous]:
             with self.subTest(text=text):
                 self.assertEqual(bool(is_clear_decline_reply(text)), expected)
 
 
+class ClearAffirmativeReplyTableTests(unittest.TestCase):
+    """The shared yes-core behind the launch + competitor-creatives gates."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import is_clear_affirmative_reply
+        cases = [
+            ("yes", True), ("YES", True), ("yes, show me", True),
+            ("go ahead", True), ("sure, do it", True), ("okay", True),
+            ("", False),
+            ("yesterday we discussed eyes", False),   # word boundary
+            ("what budget did we pick?", False),      # question, no go-ahead
+            ("no thanks", False),                     # clear decline wins
+            ("not now, maybe later", False),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(is_clear_affirmative_reply(text), expected)
+
+
+class CreativesOfferResolutionTests(unittest.TestCase):
+    """The ONE typed verdict behind the creatives step's offer gate, the review
+    gate, and the turn record - resolution WITH its reason (slice 4)."""
+
+    def test_table(self):
+        from app.agents.adzump.models import OfferResolution as R
+        from app.agents.adzump.tools.campaign_data import (
+            creatives_offer_resolution,
+        )
+        rival = {"name": "R", "url": "https://r.com"}
+        cases = [
+            ("declined", {"competitor_creatives_declined": "true"}, {}, R.DECLINED),
+            ("declined (enum)", {"competitor_creatives": "declined"}, {}, R.DECLINED),
+            ("analysis itself declined",
+             {"competitive_analysis_declined": "true"}, {}, R.DECLINED),
+            ("analysis itself declined (enum)",
+             {"competitive_analysis": "declined"}, {}, R.DECLINED),
+            ("accepted alone is NOT resolved (fetch still owed)",
+             {"competitor_creatives": "accepted"},
+             {"competitor_analysis": {"competitors": [
+                 {"name": "R", "url": "https://r.com"}]}}, R.OPEN),
+            ("fetch completed, zero ads (fetched-empty covers)", {},
+             {"competitor_analysis": {"competitors": [
+                 {**rival, "creatives": []}]}}, R.FULFILLED),
+            ("creatives attached", {},
+             {"competitor_analysis": {"competitors": [
+                 {**rival, "creatives": [{"creativeId": "1"}]}]}}, R.FULFILLED),
+            # Coverage, not a one-shot latch: a competitor added AFTER the
+            # fetch re-opens the offer (live 2026-09-11: post-fetch adds were
+            # railroaded straight to the duration question).
+            ("competitor added after the fetch re-opens", {},
+             {"competitor_analysis": {"competitors": [
+                 {**rival, "creatives": []},
+                 {"name": "Newcomer", "url": "https://new.com"}]}}, R.OPEN),
+            ("moot: analysis ran, no named rivals", {},
+             {"competitor_analysis": {"competitors": [{"url": "https://x.com"}]}},
+             R.MOOT),
+            ("unresolved: rivals found, no consent yet", {},
+             {"competitor_analysis": {"competitors": [dict(rival)]}}, R.OPEN),
+            ("exhausted: asked twice, never answered", {},
+             {"_field_asks": {"competitor_creatives": 2},
+              "competitor_analysis": {"competitors": [dict(rival)]}}, R.EXHAUSTED),
+            ("asked once is NOT exhausted", {},
+             {"_field_asks": {"competitor_creatives": 1},
+              "competitor_analysis": {"competitors": [dict(rival)]}}, R.OPEN),
+            ("unresolved: no analysis yet", {}, {}, R.OPEN),
+        ]
+        for name, spec, session_ctx, expected in cases:
+            with self.subTest(case=name):
+                self.assertIs(
+                    creatives_offer_resolution(spec, session_ctx), expected)
+
+
 # ── F26 · clear_competitor_decline + durable-record consistency ────────────
+class AdAccountsReuseTests(unittest.TestCase):
+    """Account picks are the business's: every pick is remembered on the product
+    per platform, and choosing that platform again reuses them - budget and
+    duration are asked fresh (Kailash 2026-09-23)."""
+
+    META_NAMES = {"B1": "AdZump Dummy", "A1": "Main ad account", "P1": "Misty Shores"}
+
+    def _write(self, ctx, field, value, user, batch=frozenset()):
+        from app.agents.adzump.tools.campaign_data import _apply_field
+        return _apply_field(field, value, user, ctx, 1, batch)
+
+    def test_picks_are_remembered_per_platform(self):
+        ctx = {"campaign_spec": {"platform": "Meta"}, "account_names": dict(self.META_NAMES)}
+        for field, acct in (("parent_account", "B1"), ("account", "A1"), ("fb_page", "P1")):
+            stored, _ = self._write(ctx, field, acct, acct)
+            self.assertTrue(stored, field)
+        self._write(ctx, "instagram", "declined", "skip instagram")
+        saved = ctx["product_data"]["ad_accounts"]["meta"]
+        self.assertEqual((saved["parent_account"], saved["account"], saved["fb_page"]),
+                         ("B1", "A1", "P1"))
+        self.assertEqual(saved["names"], self.META_NAMES)
+        self.assertEqual(saved["instagram"], "declined")
+
+    def test_platform_choice_reuses_saved_picks(self):
+        saved = {"meta": {"parent_account": "B1", "account": "A1", "fb_page": "P1",
+                          "instagram": "declined", "names": self.META_NAMES}}
+        rows = [  # (case, platform, batch, expected spec account, reused note?)
+            ("same platform reuses", "Meta", frozenset(), "A1", True),
+            ("other platform reuses nothing", "Google Ads", frozenset(), None, False),
+            ("a pick in the same write wins", "Meta", frozenset({"account"}), None, True),
+        ]
+        for case, platform, batch, account, noted in rows:
+            with self.subTest(case):
+                ctx = {"campaign_spec": {}, "product_data": {"ad_accounts": saved}}
+                stored, info = self._write(ctx, "platform", platform, platform, batch)
+                spec = ctx["campaign_spec"]
+                self.assertTrue(stored)
+                self.assertEqual(spec.get("account"), account)
+                self.assertEqual("reused saved accounts" in info, noted)
+                if platform == "Meta":
+                    self.assertEqual(spec["parent_account"], "B1")
+                    self.assertEqual(spec["instagram"], "declined")
+                    self.assertEqual(ctx["account_names"]["B1"], "AdZump Dummy")
+
+
+class ProductChangesTests(unittest.TestCase):
+    """A spec answer that changes the product (a location, an account) is
+    saved on the product row as just those fields, and the model is told."""
+
+    def test_product_changes_for(self):
+        from app.agents.adzump.tools.campaign_data import product_changes_for
+        meta = {"account": "A1"}
+        ctx = {"campaign_spec": {"platform": "Meta"},
+               "product_data": {"place": {"address": "Hebbal"}, "ad_accounts": {"meta": meta}}}
+        rows = [  # (case, field, changes)
+            ("location: place and the cleared areas", "location",
+             {"place": {"address": "Hebbal"}, "target_areas": []}),
+            ("an account: that platform's accounts", "account", {"ad_accounts.meta": meta}),
+            ("instagram decline", "instagram", {"ad_accounts.meta": meta}),
+            ("legacy instagram marker", "ig_page_declined", {"ad_accounts.meta": meta}),
+            ("budget: nothing on the product", "budget", {}),
+        ]
+        for case, field, changes in rows:
+            with self.subTest(case):
+                self.assertEqual(product_changes_for(field, ctx), changes)
+        no_platform = {"campaign_spec": {}, "product_data": ctx["product_data"]}
+        self.assertEqual(product_changes_for("account", no_platform), {})
+
+    def test_save_product_changes_tells_the_model(self):
+        from unittest import mock
+        from app.agents.adzump.tools.campaign_data import save_product_changes
+        ctx = {"campaign_spec": {"platform": "Meta"},
+               "product_data": {"ad_accounts": {"meta": {"account": "A1"}}}}
+        rows = [  # (case, fields, save outcome, note contains)
+            ("saved", ["account"], True, "Saved on the product"),
+            ("no product row", ["account"], False, "failed"),
+            ("database error", ["account"], RuntimeError("down"), "failed"),
+            ("nothing on the product", ["budget"], True, None),
+        ]
+        for case, fields, outcome, note in rows:
+            with self.subTest(case):
+                save = mock.AsyncMock(side_effect=outcome if isinstance(outcome, Exception)
+                                      else None, return_value=outcome)
+                with mock.patch("app.agents.adzump.services.product_service.save_product_fields",
+                                new=save):
+                    result = asyncio.run(save_product_changes(fields, ctx, {}))
+                if note is None:
+                    self.assertEqual(result, "")
+                    save.assert_not_awaited()
+                else:
+                    self.assertIn(note, result)
+                    self.assertEqual(save.await_args.args[2], {"ad_accounts.meta": {"account": "A1"}})
+
+
+class StoreConfirmedLocationTests(unittest.TestCase):
+    """A pin confirmed where the backend put it keeps the detected address; a
+    moved pin takes the map's street address (live 2026-09-23: an untouched
+    pin renamed "Near ITPB (Whitefield)" to a street nobody picked)."""
+
+    DETECTED = "Near ITPB (Whitefield), Bangalore"
+    MAP_ADDRESS = "Pattandur Agrahara ECC Rd, Whitefield"
+
+    def _confirm(self, proposal, lat, lng, value=None):
+        import json
+        from app.agents.adzump.tools.campaign_data import _store_confirmed_location
+        session_ctx = {"product_data": {"product_name": "Misty Shores", "place": {}},
+                       "_pending_location_confirm": proposal}
+        reply = json.dumps({"type": "location_update", "lat": lat, "lng": lng,
+                            "address": self.MAP_ADDRESS})
+        _store_confirmed_location(session_ctx, value or self.MAP_ADDRESS, reply)
+        return session_ctx
+
+    def test_table(self):
+        sent = {"address": self.DETECTED, "lat": 12.97, "lng": 77.73}
+        rows = [  # (case, proposal, pin lat, pin lng, expected address)
+            ("untouched pin keeps detected", sent, 12.97, 77.73, self.DETECTED),
+            ("moved pin takes the map address", sent, 12.99, 77.70, self.MAP_ADDRESS),
+            ("no sent coords: map address", {"address": self.DETECTED}, 12.97, 77.73,
+             self.MAP_ADDRESS),
+            ("legacy string proposal: map address", self.DETECTED, 12.97, 77.73,
+             self.MAP_ADDRESS),
+        ]
+        for case, proposal, lat, lng, expected in rows:
+            with self.subTest(case):
+                ctx = self._confirm(proposal, lat, lng)
+                place = ctx["product_data"]["place"]
+                self.assertEqual(place["address"], expected)
+                self.assertEqual((place["lat"], place["lng"]), (lat, lng))
+                self.assertEqual(ctx["campaign_spec"]["location"], expected)
+                self.assertNotIn("_pending_location_confirm", ctx)
+
+
+class WantsCompetitorCreativesTests(unittest.TestCase):
+    """The ONE consent predicate behind fetch_competitor_creatives' hard gate
+    and the creatives step's said-yes prescription - they must never disagree."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import wants_competitor_creatives
+        cases = [
+            ("Yes", True), ("yes, go ahead", True), ("sure", True),
+            ("show me their ads", True), ("let's see the creatives", True),
+            ("fetch their ads please", True),
+            ("", False),
+            ("no thanks", False),                           # clear decline wins
+            ("what will this cost me?", False),             # question, no consent
+            ("show me the budget options", False),          # verb without ad noun
+            ("don't fetch their ads", False),               # negation voids the verb
+            ("skip fetching their ads for now", False),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(wants_competitor_creatives(text), expected)
+
+
+class LastUserTextTests(unittest.TestCase):
+    """What the HUMAN last typed - role="user" tool_result carriers are skipped."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import _last_user_text
+
+        tool_result_msg = {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "t1", "content": "found 5"}]}
+        assistant_msg = {"role": "assistant", "content": [
+            {"type": "tool_use", "id": "t1", "name": "analyze_competitors", "input": {}}]}
+
+        cases = [
+            ("plain string", [{"role": "user", "content": "Yes"}], "Yes"),
+            ("text blocks", [{"role": "user", "content": [
+                {"type": "text", "text": "show me"}, {"type": "text", "text": "their ads"}]}],
+             "show me their ads"),
+            ("skips tool_result carrier back to the human",
+             [{"role": "user", "content": "Yes"}, assistant_msg, tool_result_msg], "Yes"),
+            ("skips several tool_result carriers",
+             [{"role": "user", "content": "Yes"}, assistant_msg, tool_result_msg,
+              assistant_msg, tool_result_msg], "Yes"),
+            ("tool results only - no human text yet", [tool_result_msg], ""),
+            ("image-only message IS the latest human message",
+             [{"role": "user", "content": "Yes"},
+              {"role": "user", "content": [{"type": "image", "source": {}}]}], ""),
+            ("no messages", [], ""),
+        ]
+        for name, messages, expected in cases:
+            with self.subTest(case=name):
+                session = make_session()
+                session.messages = messages
+                self.assertEqual(_last_user_text({"_session": session}), expected)
+
+
+class PendingCreativesFetchSteerTests(unittest.TestCase):
+    """analyze_competitors results carry the fetch reminder while a consented
+    creative fetch is still owed - live 2026-07-29: the model burned the Yes
+    on a pre-analysis fetch attempt, then never fetched after analyzing."""
+
+    def test_table(self):
+        from app.agents.adzump.tools.campaign_data import (
+            CREATIVES_REVIEW_ASK, pending_creatives_fetch_steer,
+        )
+
+        def ctx(*, platform="Meta", accepted=False, fetched=False, last_user="Yes",
+                messages=None):
+            spec = {"platform": platform}
+            if accepted:
+                spec["competitor_creatives"] = "accepted"
+            extra = {}
+            if fetched:  # covered = every named competitor carries a result
+                extra["competitor_analysis"] = {"competitors": [
+                    {"name": "R", "url": "https://r.com", "creatives": []}]}
+            session = make_session(last_user=last_user, spec=spec, **extra)
+            if messages is not None:
+                session.messages = messages
+            return {"session_context": session.context, "_session": session}
+
+        # The shape the steer was written for: analyze_competitors just ran,
+        # so its tool_result (a role="user" message) sits after the human Yes.
+        mid_turn = [
+            {"role": "user", "content": "Yes"},
+            {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "t1", "name": "analyze_competitors",
+                 "input": {}}]},
+            {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "t1", "content": "found 5"}]},
+        ]
+
+        cases = [
+            ("owed: fresh yes + unfetched", ctx(), True),
+            ("owed: stored ACCEPTED survives a digression",
+             ctx(accepted=True, last_user="what about targeting?"), True),
+            ("owed mid-turn, after analyze's tool_result", ctx(messages=mid_turn), True),
+            ("google flow", ctx(platform="Google Ads"), False),
+            ("already fetched (resolved)", ctx(fetched=True), False),
+            ("reply is not consent, nothing stored", ctx(last_user="30 days"), False),
+        ]
+        for name, context, owed in cases:
+            with self.subTest(case=name):
+                steer = pending_creatives_fetch_steer(context)
+                self.assertEqual(bool(steer), owed)
+                if owed:  # the review ask the step prescribes, never a fetch-now
+                    self.assertIn(CREATIVES_REVIEW_ASK, steer)
+
+
 class ClearHelperTests(unittest.TestCase):
-    def test_pops_flag_and_provenance(self):
-        sc = {"campaign_spec": {"platform": "Google Ads",
-                                "competitive_analysis_declined": "true"},
-              "_spec_set_at": {"competitive_analysis_declined": 3, "platform": 1}}
-        self.assertTrue(clear_competitor_decline(sc))
-        self.assertNotIn("competitive_analysis_declined", sc["campaign_spec"])
-        self.assertNotIn("competitive_analysis_declined", sc["_spec_set_at"])
-        self.assertIn("platform", sc["campaign_spec"])            # untouched
-        self.assertIn("platform", sc["_spec_set_at"])
+    """F26: once competitors exist, a prior decline is void - cleared with its
+    provenance, under either field name; an accepted offer stands."""
 
-    def test_idempotent_and_missing_dicts_safe(self):
-        sc = {"campaign_spec": {"platform": "Google Ads"}, "_spec_set_at": {}}
-        self.assertFalse(clear_competitor_decline(sc))            # flag absent → noop
-        self.assertEqual(sc["campaign_spec"], {"platform": "Google Ads"})
-        self.assertFalse(clear_competitor_decline({}))            # no crash
-
-
-class PostClearConsistencyTests(unittest.TestCase):
-    def test_clear_then_record_is_consistent(self):
-        # simulate the tool path: contradiction state → clear → build record.
-        sc = {"product_data": dict(RE),
-              "campaign_spec": {"platform": "Google Ads",
-                                "competitive_analysis_declined": "true"},
-              "_spec_set_at": {"competitive_analysis_declined": 4},
-              "competitor_analysis": {"competitors": [{"name": "Prestige"}]}}
-        self.assertTrue(clear_competitor_decline(sc))
-        c = _build_full_record(sc, "https://example.com")["campaign"]["competitive"]
-        self.assertTrue(c["attempted"])
-        self.assertFalse(c["declined"])
-        self.assertNotIn("competitive_analysis_declined", sc["campaign_spec"])
+    def test_rows(self):
+        google = {"platform": "Google Ads"}
+        for label, extra, popped in [
+            ("the enum decline", {"competitive_analysis": "declined"}, True),
+            ("the legacy flag", {"competitive_analysis_declined": "true"}, True),
+            ("an accepted offer stands", {"competitive_analysis": "accepted"}, False),
+            ("nothing to clear", {}, False),
+        ]:
+            with self.subTest(label):
+                sc = {"campaign_spec": {**google, **extra},
+                      "_spec_set_at": {"platform": 1, **{k: 3 for k in extra}}}
+                self.assertEqual(clear_competitor_decline(sc), popped)
+                kept = google if popped else {**google, **extra}
+                self.assertEqual(sc["campaign_spec"], kept)
+                self.assertEqual(set(sc["_spec_set_at"]), set(kept))  # provenance in lockstep
+        self.assertFalse(clear_competitor_decline({}))            # missing dicts: no crash
 
 
 class IsRealEstateTests(unittest.TestCase):

@@ -25,8 +25,8 @@ async def _emit_asset_receipts(
         return
     assets = product_data.get("assets") or {}
     logos = assets.get("logos") or []
-    logo_urls = [l.get("url") for l in logos if l.get("url")]
-    logo_displays = [l.get("display") or {} for l in logos]
+    logo_urls = [logo.get("url") for logo in logos if logo.get("url")]
+    logo_displays = [logo.get("display") or {} for logo in logos]
     images = assets.get("images") or []
     image_urls = [i.get("url") for i in images if i.get("url")]
     image_displays = [i.get("display") or {} for i in images]

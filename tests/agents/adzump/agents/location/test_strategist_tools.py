@@ -21,7 +21,9 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-_ECHO = lambda areas, c, **kw: areas  # finalize stub: return what it was given
+# finalize stub: return what it was given
+def _ECHO(areas, c, **kw):
+    return areas
 
 
 class DiscoverNeighborhoodsToolTests(unittest.TestCase):

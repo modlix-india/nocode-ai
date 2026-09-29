@@ -372,7 +372,7 @@ async def _diff_via_claude(src_b64: str, build_b64: str) -> tuple[list[dict[str,
         return None, f"import error: {e}"
     if not getattr(settings, "ANTHROPIC_API_KEY", ""):
         return None, "ANTHROPIC_API_KEY not set in settings"
-    model = getattr(settings, "CLAUDE_SONNET", "claude-sonnet-4-6")
+    model = settings.CLAUDE_SONNET
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         msg = await asyncio.to_thread(

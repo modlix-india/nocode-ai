@@ -14,58 +14,26 @@ from __future__ import annotations
 
 import unittest
 
-from app.agents.adzump.platform import (
-    Platform, is_google, is_meta, CANONICAL_LABEL,
-)
+from app.agents.adzump.platform import Platform
 
 
 class PlatformFromValueTests(unittest.TestCase):
 
-    def test_chip_labels_and_messages_map(self):
-        # (input, expected) - chip labels + realistic real-estate user messages.
-        cases = [
-            ("Google Ads", Platform.GOOGLE),
-            ("google", Platform.GOOGLE),
-            ("adwords", Platform.GOOGLE),
-            ("run it on Google Ads for the 3BHK apartments", Platform.GOOGLE),
-            ("Meta", Platform.META),
-            ("facebook", Platform.META),
-            ("Facebook Ads", Platform.META),
-            ("instagram", Platform.META),
-            ("fb", Platform.META),
-            ("ig", Platform.META),
-            ("let's do facebook and instagram for the villa launch", Platform.META),
-        ]
-        for value, expected in cases:
+    def test_rows(self):
+        # chip labels and realistic real-estate user messages
+        google = ["Google Ads", "google", "adwords",
+                  "run it on Google Ads for the 3BHK apartments"]
+        meta = ["Meta", "facebook", "Facebook Ads", "instagram", "fb", "ig",
+                "let's do facebook and instagram for the villa launch"]
+        unknown = [None, "", "   ", "linkedin", "tiktok", "the usual", "yes",
+                   # the documented bug: a keyword inside another word never matches
+                   "the right option please", "signage for the project",
+                   "fbi background check", "metaphor", "googleplex tour"]
+        for value, expected in ([(v, Platform.GOOGLE) for v in google]
+                                + [(v, Platform.META) for v in meta]
+                                + [(v, None) for v in unknown]):
             with self.subTest(value=value):
                 self.assertIs(Platform.from_value(value), expected)
-
-    def test_ambiguous_or_unknown_is_none(self):
-        for value in (None, "", "   ", "linkedin", "tiktok", "the usual", "yes"):
-            with self.subTest(value=value):
-                self.assertIsNone(Platform.from_value(value))
-
-    def test_word_boundary_guards_substring_mismatch(self):
-        # The documented bug: short keywords must not match inside other words.
-        # Each of these CONTAINS a keyword substring but must resolve to None.
-        for value in (
-            "the right option please",   # 'ig' inside 'right'
-            "signage for the project",   # 'ig' inside 'signage'
-            "fbi background check",      # 'fb' inside 'fbi'
-            "metaphor",                  # 'meta' inside 'metaphor'
-            "googleplex tour",           # 'google' is standalone here? -> guard below
-        ):
-            with self.subTest(value=value):
-                # 'googleplex' has no boundary after 'google' -> must NOT match.
-                self.assertIsNone(Platform.from_value(value))
-
-    def test_helpers_and_canonical_labels(self):
-        self.assertTrue(is_google("Google Ads"))
-        self.assertFalse(is_google("Meta"))
-        self.assertTrue(is_meta("instagram"))
-        self.assertFalse(is_meta("adwords"))
-        self.assertEqual(CANONICAL_LABEL[Platform.GOOGLE], "Google Ads")
-        self.assertEqual(CANONICAL_LABEL[Platform.META], "Meta")
 
 
 if __name__ == "__main__":

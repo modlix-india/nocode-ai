@@ -63,7 +63,9 @@ class _CraftBoundStream(AgentEventStream):
     """
 
     def __init__(self, parent: AgentEventStream, craft_id: str) -> None:
-        # Deliberately do NOT call super().__init__(): we only delegate.
+        # Base state first: un-overridden members (drain_steers, emit_complete,
+        # ...) read it; the local queue is never consumed - overrides delegate.
+        super().__init__()
         self._parent = parent
         self._craft_id = craft_id
 

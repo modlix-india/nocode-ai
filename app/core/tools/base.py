@@ -79,15 +79,18 @@ class ToolResult:
     summary: str = ""
     error: str = ""
     # Who `summary` is for (MCP annotations.audience). The run loop routes by it:
-    #   "assistant" (default) — model only (tool_result content). Today's tools.
-    #   "user"  — posted to chat for the user; the MODEL gets only model_summary
-    #             (or data), never the user prose → it can't paraphrase-double it.
-    #   "both"  — model sees summary AND it's posted to chat (e.g. competitors,
-    #             whose list the model reasons over later). LLM writes a lead-in.
-    audience: Literal["assistant", "user", "both"] = "assistant"
+    #   "assistant" (default) - model only; the model writes the user's reply.
+    #   "user"  - posted to chat as-is; the MODEL gets only model_summary (or
+    #             data). Only for what the model can't say itself: a display
+    #             card, or an ask that ends the turn at this tool.
+    audience: Literal["assistant", "user"] = "assistant"
     # Terse model-facing note for audience="user" — what the model sees instead
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""
+    # User-facing one-liner for FAILURES (model_summary's mirror image), for a
+    # tool whose `error` is model-steering text (gate refusals, "call X NOW"
+    # prescriptions). Unset, the user's row shows `error` as it always has.
+    display_error: str = ""
 
     # Per-result cap on the content sent to the LLM; falls back to
     # DEFAULT_MAX_RESULT_CHARS. Raise it for reads whose whole job is to hand the
@@ -100,6 +103,16 @@ class ToolResult:
     # Default cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.
     DEFAULT_MAX_RESULT_CHARS: ClassVar[int] = 4000
+
+    def to_display_text(self, model_content: str = "") -> str:
+        """What the USER's tool row shows (SSE event + persisted turn).
+
+        The summary, else the error, else the model content the caller passes.
+        A failure shows `display_error` instead when the tool sets one, so an
+        error written to steer the model never reaches the user."""
+        if not self.success and self.display_error:
+            return self.display_error
+        return self.summary or self.error or model_content
 
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM.
