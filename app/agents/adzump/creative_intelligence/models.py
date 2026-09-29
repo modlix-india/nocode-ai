@@ -209,7 +209,7 @@ class Creative(BaseModel):
     # Verified-asset facts (stamped by verify.py during ingest so the UI can
     # reserve the right box before the media loads and badge video duration).
     # Zero/empty means the creative predates verification (repaired by the
-    # Rule-9 sweep, scripts/sweep_creative_library.py).
+    # Rule-9 sweep, creative_intelligence/sweep.py).
     width: int = 0
     height: int = 0
     aspect_ratio: float = Field(default=0.0, alias="aspectRatio")

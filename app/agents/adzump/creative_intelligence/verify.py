@@ -4,8 +4,8 @@ A creative's ``fileUrl`` is only trustworthy if the EXACT public path the
 browser will use returns renderable bytes - a local file existing proves
 nothing (path/permission mistakes are exactly what breaks in the UI). Every
 write to CompetitorCreativeLibrary goes through ``verify_creative`` first;
-the Rule-9 repair sweep (scripts/sweep_creative_library.py) re-runs the same
-checks over the stored records.
+the Rule-9 repair sweep (sweep.py) re-runs the same checks over the stored
+records.
 
 Pass criteria (ALL must hold):
   - HTTP 200 after redirects; a redirect that lands on HTML is a FAIL

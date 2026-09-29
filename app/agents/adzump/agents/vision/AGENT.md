@@ -54,7 +54,7 @@ cross-agent extraction).
 
 | Constant | Value | Why |
 |---|---|---|
-| `VISION_MODEL_OVERRIDE` | `deepseek:deepseek-v4-flash-vision-exp` | 2026-09-11 bench (`scripts/bench_vision.py`, report in `logs/bench_vision_report.md`): gpt-4o-mini picked an ET-award laurel graphic as the hero image; deepseek grounded every pick, read the cobrand logo lockup, labeled all candidates with unused-reasons, ~20x cheaper vision input. Trade-off: ~2.7x slower on a 21-candidate site, on the user-visible scrape path |
+| `VISION_MODEL_OVERRIDE` | `deepseek:deepseek-v4-flash-vision-exp` | 2026-09-11 bench against gpt-4o-mini on real real-estate scrapes: gpt-4o-mini picked an ET-award laurel graphic as the hero image; deepseek grounded every pick, read the cobrand logo lockup, labeled all candidates with unused-reasons, ~20x cheaper vision input. Trade-off: ~2.7x slower on a 21-candidate site, on the user-visible scrape path |
 | `VISION_MAX_TOKENS` | `6000` | the reasoning stream shares the output budget - 2000 truncated mid-reasoning and the unfinished JSON parsed as EMPTY picks (a silent decline into the upload path) |
 | `VISION_MAX_TURNS` | `1` | single shot, no tools |
 

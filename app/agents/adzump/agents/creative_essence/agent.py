@@ -40,12 +40,12 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────
 #
-# DeepSeek vision after the 2026-09-10 bench (scripts/bench_essence.py, report
-# in logs/bench_essence_report.md): grounded hooks where gpt-4o-mini fabricated
+# DeepSeek vision after the 2026-09-10 bench against gpt-4o-mini on real
+# competitor creatives: grounded hooks where gpt-4o-mini fabricated
 # text not on the image, reads on-image prices/OCR verbatim, ~20x cheaper
 # vision input, and streams reasoning for the observability card. Trade-off:
 # ~4x slower per batch - acceptable for a background enrich. VisionAnalyst
-# followed after its own bench (2026-09-11, scripts/bench_vision.py).
+# followed after its own bench (2026-09-11).
 ESSENCE_PROVIDER = "deepseek"
 ESSENCE_MODEL_TIER = "deepseek-v4-flash-vision-exp"
 ESSENCE_MODEL_OVERRIDE = "deepseek:deepseek-v4-flash-vision-exp"

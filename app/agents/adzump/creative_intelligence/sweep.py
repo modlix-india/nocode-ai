@@ -6,8 +6,8 @@ from ``creatives[]`` with a diagnostic appended to ``dropped[]``; a competitor
 left with zero renderable creatives becomes fetchStatus "empty" (searched,
 none renderable) - never "ok" with an empty array.
 
-Run once after deploying the hardened ingest, then weekly:
-    python scripts/sweep_creative_library.py [--dry-run]
+Not scheduled yet: a weekly job would call ``sweep_library(ctx)`` (``dry_run``
+to report without writing).
 """
 
 from __future__ import annotations

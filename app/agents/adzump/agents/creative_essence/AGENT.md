@@ -60,7 +60,7 @@ the domain's seam - `creative_intelligence/enrich.py`.
 
 | Constant | Value | Why |
 |---|---|---|
-| `ESSENCE_MODEL_OVERRIDE` | `deepseek:deepseek-v4-flash-vision-exp` | 2026-09-10 bench (`scripts/bench_essence.py`, report in `logs/bench_essence_report.md`): grounded hooks where gpt-4o-mini fabricated text, reads on-image prices verbatim, ~20x cheaper vision input, streams reasoning. Trade-off: ~4x slower - fine for a background enrich |
+| `ESSENCE_MODEL_OVERRIDE` | `deepseek:deepseek-v4-flash-vision-exp` | 2026-09-10 bench against gpt-4o-mini on real competitor creatives: grounded hooks where gpt-4o-mini fabricated text, reads on-image prices verbatim, ~20x cheaper vision input, streams reasoning. Trade-off: ~4x slower - fine for a background enrich |
 | `ESSENCE_MAX_TOKENS` | `12000` | ~2k reasoning + ~700 per image measured; room to spare for 5 |
 | `MAX_IMAGES_PER_CALL` | `5` | DeepSeek's reasoning shares the output budget; 8-10 images truncated at 6000 |
 | `MAX_CONCURRENT_CALLS` | `3` | a 60-creative competitor must not fire 5 vision calls atop the other competitors' pipelines |

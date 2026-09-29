@@ -56,8 +56,8 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────
 #
-# DeepSeek vision after the 2026-09-11 bench (scripts/bench_vision.py, report
-# in logs/bench_vision_report.md): gpt-4o-mini picked an ET-award laurel
+# DeepSeek vision after the 2026-09-11 bench against gpt-4o-mini on real
+# real-estate scrapes: gpt-4o-mini picked an ET-award laurel
 # GRAPHIC as the hero image (not grounded in the pixels - same failure class
 # the essence bench caught); deepseek rejected it, read the cobrand logo
 # lockup correctly, labeled every candidate with unused-reasons, ~20x cheaper
