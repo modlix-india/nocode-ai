@@ -65,6 +65,8 @@ class CampaignContext:
     # escaped via "Custom"; we're now awaiting a typed value for it. Drives the
     # free-text prescription instead of re-rendering the same chips. Defaulted.
     awaiting_custom_field: str | None = None
+    lead_form_draft: dict | None = None
+    lead_form_published: bool = False
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "CampaignContext":
@@ -98,6 +100,8 @@ class CampaignContext:
             pending_location=pending_location,
             ig_offered=bool(ctx.get("_ig_offered")),
             awaiting_custom_field=awaiting_custom_field,
+            lead_form_draft=ctx.get("lead_form_draft") or None,
+            lead_form_published=bool(ctx.get("lead_form_published")),
         )
 
     @property
@@ -334,6 +338,48 @@ def _next_action(cctx: CampaignContext) -> list[str]:
                 )
 
     if not missing:
+        # ── Guided Lead Form Step (Meta only) ──────────────────────────────────
+        # After all campaign fields are collected, offer the lead form as an
+        # explicit campaign step — BEFORE the review & publish summary.
+        # This replaces the "hidden feature" ad-hoc trigger and eliminates the
+        # orchestrator conflict where it would jump straight to launch_campaign.
+        if cctx.is_meta:
+            # Case A: a draft is active and unfinished → hand off to the sub-agent.
+            # The orchestrator must NOT print the campaign review summary.
+            if cctx.lead_form_draft and not cctx.lead_form_published:
+                missing.append(
+                    "lead_form_active - A Meta Lead Form draft is currently being edited. "
+                    "Forward the user's exact message verbatim to "
+                    "`suggest_lead_form(user_message=<verbatim>)`. "
+                    "Do NOT present the campaign launch summary, ask 'Ready to launch?', "
+                    "or call any other tool. The lead form sub-agent owns this turn completely."
+                )
+                return missing
+
+            # Case B: form was published → proceed to campaign review (fall through).
+            # Case C: user already declined the lead form offer → proceed (fall through).
+            # Case D: offer has not been made yet → ask now.
+            if (
+                not cctx.lead_form_published
+                and "lead_form_offer_declined" not in cctx.spec
+            ):
+                missing.append(
+                    "lead_form_offer - Ask the user if they want to add a Meta Instant Lead Form "
+                    "to this campaign. Use the present_options tool "
+                    '(field "lead_form_offer_declined") with question: '
+                    '"Would you like to add a lead form to this campaign? '
+                    'Lead forms let people submit their details directly inside Facebook/Instagram." '
+                    'and chip choices: "Yes, add a lead form" / "No, skip it". '
+                    "• If they say YES (or 'yes, add a lead form') → call "
+                    "`suggest_lead_form(user_message='create lead form for this campaign')` "
+                    "immediately — do NOT call set_campaign_spec for it. "
+                    "• If they say NO (or 'no, skip it', 'skip', 'no lead form') → call "
+                    "`set_campaign_spec(lead_form_offer_declined='true')` to record the decision "
+                    "and proceed to the campaign summary. "
+                    "CALL the tool — never type the call into your reply."
+                )
+                return missing
+
         meta_extra = ""
         if cctx.is_meta:
             meta_extra = "\n  - **Facebook Page**: <copy verbatim from State, including '(ID: …)'>"

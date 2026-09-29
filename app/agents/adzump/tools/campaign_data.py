@@ -83,6 +83,7 @@ ALLOWED_FIELDS = {
     "ig_page",
     "competitive_analysis_declined",
     "ig_page_declined",  # v3 · F3 - Instagram is optional; "true" = Facebook-only
+    "lead_form_offer_declined",  # Guided lead form step - "true" = user skipped the lead form
 }
 
 # IDs from Google Ads / Meta - must be traceable to a fetch tool's output
@@ -117,6 +118,9 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
         "ig_page",
         "ig_page_declined",
         "competitive_analysis_declined",
+        # Switching platform clears the lead form offer decision so the
+        # guided step re-presents the offer for the new platform.
+        "lead_form_offer_declined",
     ),
     "parent_account": ("account", "fb_page", "ig_page", "ig_page_declined"),
     "fb_page": ("ig_page", "ig_page_declined"),
@@ -249,6 +253,20 @@ def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) 
     # "do it later"). Same shape as the competitor decline above.
     if field == "ig_page_declined":
         return v in ("true", "yes", "1") and is_ig_skip(lu)
+
+    # Guided lead form step - accept "true" when the user declines the lead form
+    # offer via chip ("No, skip it") or typed ("no lead form", "skip it", "skip",
+    # "no thanks", "no"). The chip value is stored verbatim by present_options.
+    if field == "lead_form_offer_declined":
+        _LEAD_FORM_SKIP_PHRASES = (
+            "no, skip", "no skip", "skip it", "skip lead", "no lead form",
+            "without form", "no form", "don't want", "dont want",
+        )
+        return v in ("true", "yes", "1") and (
+            is_decline(lu)
+            or any(p in lu for p in _LEAD_FORM_SKIP_PHRASES)
+            or lu in ("no", "n", "skip", "no thanks")
+        )
 
     if lu == v:
         return True
@@ -619,6 +637,14 @@ def _review_hint_if_complete(spec: dict, session_ctx: dict) -> str:
     # mandatory (Facebook-only is a valid campaign).
     if is_meta and not (
         spec.get("fb_page") and (spec.get("ig_page") or spec.get("ig_page_declined"))
+    ):
+        return ""
+
+    # Guided Lead Form Step: for Meta, the lead form offer must have been resolved
+    # (either user declined OR form was published) before the review summary fires.
+    if is_meta and not (
+        spec.get("lead_form_offer_declined")
+        or session_ctx.get("lead_form_published")
     ):
         return ""
 

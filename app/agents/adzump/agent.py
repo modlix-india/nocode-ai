@@ -299,11 +299,29 @@ class AdzumpAgent(BaseAgent):
         """v9 I-0 · when the user attached image(s) this turn, hand them to the
         Asset Manager via manage_assets (bytes are stashed on the session by the
         /chat handler). First action of the turn - otherwise the upload is lost
-        (it only lives in the pending stash)."""
+        (it only lives in the pending stash).
+
+        Exception: when a Lead Form draft is active, the image belongs to the
+        Lead Form agent (cover/background photo), not the general asset pipeline.
+        In that case skip manage_assets entirely and route to suggest_lead_form
+        so the sub-agent can upload the image to Meta in the same turn.
+        """
         pending = session.context.get("_pending_uploads")
         if not pending:
             return ""
         n = len(pending)
+
+        # Lead Form background upload — do NOT let manage_assets consume the bytes.
+        if session.context.get("lead_form_draft") and not session.context.get("lead_form_published"):
+            return (
+                f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
+                "A Lead Form draft is currently active. DO NOT call `manage_assets`. "
+                "The uploaded image is intended as the lead form background cover photo. "
+                "Pass the user's request directly to `suggest_lead_form` — the Lead Form "
+                "agent will handle the upload to Meta automatically. Do this before "
+                "anything else, then continue."
+            )
+
         return (
             f"## The user just uploaded {n} image{'s' if n != 1 else ''}\n"
             "FIRST, call `manage_assets` to hand the upload(s) to the Asset "
@@ -456,6 +474,15 @@ class AdzumpAgent(BaseAgent):
         appears - manage_targeting_locations won't fire because
         has_mapped_geo_targets is already True."""
         ctx = session.context
+
+        # Lead Form active guard: while a draft exists the lead form sub-agent
+        # owns the craft panel. Re-emitting the campaign panel here would
+        # overwrite the form preview the sub-agent just rendered. Skip this
+        # entirely; the campaign panel resumes on the first turn after the
+        # draft is cleared (published or discarded).
+        if ctx.get("lead_form_draft") and not ctx.get("lead_form_published"):
+            return
+
         from app.agents.adzump.services.business_storage import resolve_url
         cctx = CampaignContext.from_session(session)
         platform = cctx.spec.get("platform") or ""
