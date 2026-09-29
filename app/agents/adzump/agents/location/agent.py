@@ -33,6 +33,7 @@ from app.agents.adzump.agents.location.subagent_event_stream import (
     LocationPassthroughEventStream,
 )
 from app.agents.adzump._shared import build_ds_headers
+from app.agents.adzump.services.product_service import save_place
 from app.agents.adzump.agents.location.targeting_run import (
     build_run_prompt,
     build_run_result,
@@ -93,16 +94,17 @@ class LocationAgent(BaseAgent):
         auth = context.get("auth")
 
         # Geocodes on cache miss; stamps coords + country_code onto place.
+        place_before = dict(place)
         location_name = resolve_location_name(product, spec)
         coords = await resolve_coordinates(location_name, place)
         await resolve_country_geo_constant(
             place, (coords or {}).get("country") or "",
             context.get("client_code", ""), build_ds_headers(context),
         )
+        if place != place_before:
+            await save_place(parent_ctx, context)
 
-        sub_session = await build_sub_session(
-            parent_ctx, auth, chat_session_id=context.get("session_id", ""),
-        )
+        sub_session = await build_sub_session(parent_ctx, auth)
         country_code = place.get("country_code") or "IN"
 
         # Launcher owns both AgentCard ends: agent_started here, finished below.

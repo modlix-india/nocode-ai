@@ -12,9 +12,13 @@ from app.agents.adzump.models.product import check_product
 logger = logging.getLogger(__name__)
 
 
+# Spawn the Product Analyst to scrape + profile the website:
+#   already analyzed in this chat  save it (heals a failed first save), return it
+#   analyzed in another chat       serve the saved product, no scrape
+#   otherwise                      scrape + profile; the first analysis creates
+#                                  the product's row, and the copy starts from it
 async def _analyze_product(params: dict, context: dict) -> ToolResult:
-    """Spawn the Product Analyst agent to scrape + generate a product profile.
-    Thin bridge: cache check → spawn agent → persist → return."""
+    from app.agents.adzump.services.product_service import save_analyzed_product
 
     url = _normalize_url(params.get("url", ""))
     if not url:
@@ -32,6 +36,12 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
     existing_product = session_memory.get("product_data")
 
     if existing_product:
+        try:
+            await save_analyzed_product(session_memory, context)
+        except Exception as e:
+            logger.warning("analyze_product_save_failed: %s: %s", type(e).__name__, str(e)[:200])
+            return ToolResult(success=False, error=(
+                "The product is analyzed but couldn't be saved yet - try again."))
         name = existing_product.get("product_name", "product")
         return ToolResult(
             success=True,
@@ -53,10 +63,11 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
             raise RuntimeError("Agent produced no usable result")
 
         _merge_product_into_context(session_memory, analysis, url)
+        await save_analyzed_product(session_memory, context)
 
         # Emit the full craft panel (badge + key-values) immediately after analysis,
         # before geo-targeting runs. Map section is omitted because no target_areas yet.
-        craft_id = session_memory.get("craft_id") or session_memory.get("_craft_id", "")
+        craft_id = session_memory.get("craft_id") or ""
         if stream and craft_id:
             from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
             product_now = session_memory.get("product_data") or {}
@@ -88,7 +99,7 @@ async def _analyze_product(params: dict, context: dict) -> ToolResult:
         if elicited:
             # deferred elicit → break loop, yield turn. multi = uploads span msgs.
             # requirements ride elicit_payload → _pending_elicitation.payload;
-            # _asset_store decrements.
+            # asset_manage store_* decrements.
             result_data["elicited"] = True
             result_data["elicit_expects"] = "multi"
             if analysis.asset_requirements:
@@ -151,6 +162,7 @@ async def _run_product_agent(
         parent_tool_use_id=tool_use_id,
         auth=auth,
         parent_session_context=session_ctx,
+        fresh_scrape=True,
         user_message=f"Analyze this business website: {url}\n\n"
             f"SCOPE: Scrape the homepage ONCE and generate a product profile. "
             f"Do NOT scrape sub-pages - one scrape_url call only. "
@@ -168,7 +180,8 @@ def _merge_product_into_context(
     """Write analysis into session_memory:
     - product_data: merge not replace (keep runtime artifacts; JSON wins).
     - product_profile: url+title only (sub-agent owns .summary).
-    - competitor_analysis: set if any."""
+    The competitor list is never set here: analysis leaves it empty, and the
+    list lives in its saved rows."""
     product = dict(analysis.product or {})
     # The LLM emits `location` as a string (or {"location": str}); normalize it
     # into the nested `place` object here so session state has ONE shape.
@@ -188,8 +201,6 @@ def _merge_product_into_context(
     profile["title"] = product.get("product_name", "") or profile.get("title", "")
     if not profile.get("summary"):   # seed only if sub-agent didn't run (legacy bypass)
         profile["summary"] = product.get("summary", "")
-    if analysis.competitive and analysis.competitive.get("competitors"):
-        session_memory["competitor_analysis"] = analysis.competitive
 
 
 # ── Cross-session cache ──────────────────────────────────────────────────────
@@ -202,7 +213,7 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
     re-render the craft panel (same UI as a fresh scrape) and return the reuse
     ToolResult. Returns None on miss/error - caller falls through to a fresh scrape."""
     try:
-        from app.agents.adzump.services.business_storage import hydrate_from_storage
+        from app.agents.adzump.services.product_service import hydrate_from_storage
         from app.agents.adzump.tools.craft import emit_craft_panel as _emit_final_craft
         if not await hydrate_from_storage(url, session_memory, context):
             return None
@@ -225,19 +236,47 @@ async def _serve_from_storage(url: str, stream, context: dict, session_memory: d
             except Exception as e:
                 logger.warning("storage_hydrate_craft_failed: %s: %s",
                                type(e).__name__, str(e)[:200])
+        facts = _restored_facts(session_memory)
         return ToolResult(
             success=True,
             data={"product": product, "from_storage": True},
-            summary=(
-                f"Reused prior analysis for {name} from storage. "
-                f"Type: {product.get('business_type', '')}. "
-                f"Location: {product.get('location', '')}. "
-                "Tell the user we're picking up where things left off."
+            summary=f"Loaded the saved profile for {name}.",
+            model_summary=(
+                f"Restored from storage (the side panel already shows it): "
+                f"{'; '.join(facts)}. Platform, duration and budget are asked "
+                "fresh for this campaign; the saved accounts fill in once the "
+                "user picks their platform. Acknowledge the reuse in ONE short "
+                "sentence without listing it again, then do the next step."
             ),
         )
     except Exception as e:
         logger.warning("storage_hydrate_skipped: %s: %s", type(e).__name__, str(e)[:200])
         return None
+
+
+def _restored_facts(session_memory: dict) -> list[str]:
+    """What a resume brought back, for the model to acknowledge - read from the
+    hydrated session, so it can only name what the store actually held."""
+    product = session_memory.get("product_data") or {}
+    place = product.get("place") or {}
+    competitors = (session_memory.get("competitor_analysis") or {}).get("competitors") or []
+    facts = [f"product {product.get('product_name', '')} ({product.get('business_type', '')})"]
+    if place.get("address"):
+        confirmed = " - map-confirmed" if place.get("lat") is not None else ""
+        facts.append(f"location {place['address']}{confirmed}")
+    if competitors:
+        with_ads = sum(1 for c in competitors if c.get("creatives"))
+        facts.append(f"{len(competitors)} competitors ({with_ads} with ads fetched)")
+    if product.get("target_areas"):
+        facts.append(f"{len(product['target_areas'])} target areas")
+    for platform, accounts in (product.get("ad_accounts") or {}).items():
+        names = accounts.get("names") or {}
+        picked = [names.get(accounts.get(f)) or accounts.get(f)
+                  for f in ("parent_account", "account", "fb_page", "ig_page")
+                  if accounts.get(f)]
+        if picked:
+            facts.append(f"saved {platform} accounts: {', '.join(picked)}")
+    return facts
 
 
 async def _emit_asset_upload_prompt(stream, requirements, session_memory: dict, url: str) -> bool:

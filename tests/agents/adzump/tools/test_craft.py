@@ -1,0 +1,104 @@
+"""Unit: tools/craft.py - competitor cards + nested creatives.
+
+One collapsible per rival (NO comparison table): the header carries the
+clickable website link + "N ads" badge so a CLOSED card still shows both;
+the body holds detail key-values and, below them, the creatives as metric
+tiles + a horizontal carousel. One builder behind every panel render.
+"""
+from __future__ import annotations
+
+import unittest
+
+from app.agents.adzump.tools.craft import (
+    _RENDER_PER_COMPETITOR,
+    render_competitor_creatives,
+    render_competitors,
+)
+
+
+def _img(i):
+    return {"mediaType": "image", "fileUrl": f"img{i}.jpg", "headline": f"h{i}"}
+
+
+def _carousel_cards(children):
+    for block in children:
+        if block["type"] == "carousel":
+            return block["children"]
+    return []
+
+
+class CompetitorCardsTests(unittest.TestCase):
+    def test_cards_and_nested_creatives(self):
+        rival = {
+            "name": "Nike", "url": "https://nike.com", "location": "Bengaluru",
+            "weakness": "no villas", "key_usps": ["big", "fast"],
+            "creatives": [_img(1)], "totalCreatives": 4, "activeCreatives": 3,
+        }
+        with self.subTest("no table; header link + ads badge; creatives nested in card"):
+            blocks: list = []
+            render_competitors(blocks, {"competitors": [rival]})
+            self.assertFalse(any(b["type"] == "table" for b in blocks))
+            cards = [b for b in blocks if b["type"] == "collapsible"]
+            self.assertEqual(len(cards), 1)
+            self.assertEqual(cards[0]["summary"], "Nike")
+            self.assertEqual(cards[0]["summary_url"], "https://nike.com")
+            self.assertEqual(cards[0]["badge"], "4 ads")
+            children = cards[0]["children"]
+            kv = children[0]["items"]
+            self.assertIn(("Gap", "no villas"),
+                          [(i["key"], i["value"]) for i in kv])
+            self.assertEqual(len(_carousel_cards(children)), 1)
+        with self.subTest("no creatives fetched yet -> no badge, no carousel"):
+            blocks = []
+            bare = {k: v for k, v in rival.items()
+                    if k not in ("creatives", "totalCreatives", "activeCreatives")}
+            render_competitors(blocks, {"competitors": [bare]})
+            card = [b for b in blocks if b["type"] == "collapsible"][0]
+            self.assertNotIn("badge", card)
+            self.assertFalse(_carousel_cards(card["children"]))
+        with self.subTest("fetched but library had none -> explicit 'No ads found'"):
+            # only a FETCHED-empty competitor says so; an unfetched one claims nothing
+            blocks = []
+            empty = {**rival, "creatives": [], "totalCreatives": 0, "activeCreatives": 0}
+            render_competitors(blocks, {"competitors": [empty]})
+            card = [b for b in blocks if b["type"] == "collapsible"][0]
+            self.assertEqual(card["badge"], "No ads found")
+            self.assertFalse(_carousel_cards(card["children"]))
+        for name, creative, expected in [
+            ("image rehosted", {"mediaType": "image", "fileUrl": "f.jpg",
+                                "sourceAssetUrl": "v.jpg"}, "f.jpg"),
+            ("carousel poster rehosted", {"mediaType": "carousel", "posterUrl": "p.jpg",
+                                          "sourceAssetUrl": "v.jpg"}, "p.jpg"),
+            # vendor urls expire into error bodies (blank cards, 2026-09-10)
+            ("vendor url never renders",
+             {"mediaType": "carousel", "sourceAssetUrl": "v.jpg"}, None),
+            ("video poster", {"mediaType": "video", "posterUrl": "p.jpg",
+                              "posterSourceUrl": "vp.jpg"}, "p.jpg"),
+        ]:
+            with self.subTest(url_precedence=name):
+                children: list = []
+                render_competitor_creatives(children, [creative], 1, 1)
+                cards = _carousel_cards(children)
+                if expected is None:
+                    self.assertFalse(cards)
+                else:
+                    self.assertEqual(cards[0]["url"], expected)
+        with self.subTest("video click-through is the playable rehosted video"):
+            children = []
+            render_competitor_creatives(
+                children,
+                [{"mediaType": "video", "posterUrl": "p.jpg", "fileUrl": "v.mp4"}], 1, 1)
+            card = _carousel_cards(children)[0]
+            self.assertEqual((card["url"], card["thumb_url"]), ("v.mp4", "p.jpg"))
+        with self.subTest("payload cap; no-usable-image is a noop"):
+            children = []
+            render_competitor_creatives(children, [_img(i) for i in range(20)], 20, 4)
+            self.assertEqual(len(_carousel_cards(children)), _RENDER_PER_COMPETITOR)
+            children = []
+            render_competitor_creatives(
+                children, [{"mediaType": "image", "headline": "x"}], 5, 2)
+            self.assertEqual(children, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

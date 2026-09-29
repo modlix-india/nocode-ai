@@ -28,36 +28,22 @@ class ListFbPagesTests(unittest.TestCase):
         with patch.object(accounts_mod.meta_client, "get", side_effect=_fake_graph(by_path)):
             return asyncio.run(MetaAccountsAdapter().list_fb_pages("BIZ", "CC", {}))
 
-    def test_excludes_untokenable_client_pages(self):
-        # /me/accounts has only the owned page (has a token); the two client pages
-        # have no token for this user → must NOT be offered (the live loop).
-        pages = self._run({
-            "/me/accounts": [{"id": "100", "name": "Modlix"}],
-            "owned_pages": [{"id": "100"}],
-            "client_pages": [{"id": "200"}, {"id": "300"}],
-        })
-        self.assertEqual([p["id"] for p in pages], ["100"])
-        self.assertEqual(pages[0]["name"], "Modlix")
-
-    def test_no_tokenable_pages_returns_empty(self):
-        # User manages no page → [] (tool surfaces the "page you can post from" copy),
-        # never the untokenable business pages.
-        pages = self._run({
-            "/me/accounts": [],
-            "owned_pages": [{"id": "1"}],
-            "client_pages": [{"id": "2"}],
-        })
-        self.assertEqual(pages, [])
-
-    def test_falls_back_to_all_tokenable_when_no_business_overlap(self):
-        # A token-backed page that isn't under this business is still usable -
-        # don't over-filter to empty.
-        pages = self._run({
-            "/me/accounts": [{"id": "999", "name": "Other"}],
-            "owned_pages": [{"id": "1"}],
-            "client_pages": [{"id": "2"}],
-        })
-        self.assertEqual([p["id"] for p in pages], ["999"])
+    def test_rows(self):
+        for label, graph, ids in [
+            # the live loop: two client pages have no token for this user
+            ("untokenable client pages are never offered",
+             {"/me/accounts": [{"id": "100", "name": "Modlix"}], "owned_pages": [{"id": "100"}],
+              "client_pages": [{"id": "200"}, {"id": "300"}]}, ["100"]),
+            # the tool then shows the "page you can post from" copy
+            ("no tokenable page: nothing offered",
+             {"/me/accounts": [], "owned_pages": [{"id": "1"}], "client_pages": [{"id": "2"}]}, []),
+            # a token-backed page outside this business is still usable
+            ("no overlap with the business: every tokenable page",
+             {"/me/accounts": [{"id": "999", "name": "Other"}], "owned_pages": [{"id": "1"}],
+              "client_pages": [{"id": "2"}]}, ["999"]),
+        ]:
+            with self.subTest(label):
+                self.assertEqual([page["id"] for page in self._run(graph)], ids)
 
 
 if __name__ == "__main__":

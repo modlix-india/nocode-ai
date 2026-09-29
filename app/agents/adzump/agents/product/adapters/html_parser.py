@@ -151,10 +151,9 @@ def _collect_image_candidates(
         present. Silent dedup - caller checks `len(images) >= MAX_IMAGES`
         separately to decide when to stop iterating.
 
-        v9 (2026-05-22): SVG candidates dropped at the parser. The picker
-        can't use SVGs as ad creatives (need raster), and the safety-net
-        that historically used SVG filename + dimension heuristics was
-        retired. Parser yields raster-only candidates by contract.
+        SVG candidates are dropped at the parser - the picker can't use
+        SVGs as ad creatives (need raster). Parser yields raster-only
+        candidates by contract.
         """
         if not img or img.src in seen_srcs:
             return

@@ -1,5 +1,5 @@
 """Unit: core BaseAgent run-loop — _with_tail_reminder (replace-not-append,
-tail-placed) + audience routing in _run_tool_block (user/both → emit + persist)."""
+tail-placed) + audience routing in _run_tool_block (user → emit + persist)."""
 from __future__ import annotations
 
 import types
@@ -60,9 +60,9 @@ class WithTailReminderTests(unittest.TestCase):
 
 
 class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
-    """_run_tool_block posts the summary to chat (emit + persist) iff audience
-    targets the user. Replaces relay_summary; NO de-dup — the tool-text contract
-    keeps the model to a lead-in, a rare verbatim echo is accepted."""
+    """_run_tool_block posts the summary to chat (emit + persist) iff
+    audience="user"; every other result reaches only the model, which writes
+    the reply (a tool posting beside it said everything twice)."""
 
     async def _run(self, result: ToolResult, streamed: str = ""):
         class _A(BaseAgent):
@@ -82,15 +82,13 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
                 texts.append(ev.data["text"])
         return texts, parts
 
+    # Summaries are framed as their own paragraph ("\n\n…\n\n"): the persisted
+    # parts are "".join'd stream deltas and the UI concatenates text events, so
+    # an unframed summary glues onto prose ("…Pride EuphoraFetched creatives…").
     async def test_user_emits_and_persists_the_summary(self):
         texts, parts = await self._run(ToolResult(success=True, summary="Saved.", audience="user"))
-        self.assertEqual(texts, ["Saved."])
-        self.assertEqual(parts, ["Saved."])     # persisted → survives refresh
-
-    async def test_both_also_emits(self):
-        texts, parts = await self._run(ToolResult(success=True, summary="Found 2.", audience="both"))
-        self.assertEqual(texts, ["Found 2."])
-        self.assertEqual(parts, ["Found 2."])
+        self.assertEqual(texts, ["\n\nSaved.\n\n"])
+        self.assertEqual(parts, ["\n\nSaved.\n\n"])     # persisted → survives refresh
 
     async def test_assistant_default_does_not_post_to_chat(self):
         texts, parts = await self._run(ToolResult(success=True, summary="internal note"))
@@ -106,12 +104,42 @@ class AudienceRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(texts, [])
 
     async def test_posts_even_when_model_already_echoed_it(self):
-        # no de-dup: posts regardless of what the model streamed (both + user).
-        for aud in ("both", "user"):
-            texts, _ = await self._run(
-                ToolResult(success=True, summary="Found 2 competitors: Sobha, Prestige.", audience=aud),
-                streamed="Sure — Found 2 competitors: Sobha, Prestige. Continue?")
-            self.assertEqual(texts, ["Found 2 competitors: Sobha, Prestige."], aud)
+        # no de-dup: posts regardless of what the model streamed.
+        texts, _ = await self._run(
+            ToolResult(success=True, summary="Saved your logo.", audience="user"),
+            streamed="Sure - Saved your logo. Continue?")
+        self.assertEqual(texts, ["\n\nSaved your logo.\n\n"])
+
+
+class DeferredElicitationBreakTests(unittest.TestCase):
+    """A FAILED elicitation is not an elicitation: the loop must continue so
+    the model reads the tool's corrective error and re-calls in the same turn
+    (live 2026-09-04: refused present_options + break = silent dead-end loop)."""
+
+    def _entry(self, **overrides) -> dict:
+        entry = {"tool": "present_options", "success": True,
+                 "kind": "elicitation", "elicit_mode": "deferred",
+                 "elicited": False}
+        entry.update(overrides)
+        return entry
+
+    def test_rows(self):
+        rows = [
+            ("successful static elicitation breaks", self._entry(), True),
+            ("FAILED elicitation never breaks",
+             self._entry(success=False), False),
+            ("successful runtime signal breaks",
+             self._entry(kind="tool", elicited=True), True),
+            ("failed runtime signal never breaks",
+             self._entry(kind="tool", elicited=True, success=False), False),
+            ("blocking elicitation excluded",
+             self._entry(elicit_mode="blocking"), False),
+            ("plain tool never breaks", self._entry(kind="tool"), False),
+        ]
+        for label, entry, expected in rows:
+            with self.subTest(label):
+                self.assertIs(
+                    BaseAgent._is_deferred_elicitation(entry), expected)
 
 
 if __name__ == "__main__":

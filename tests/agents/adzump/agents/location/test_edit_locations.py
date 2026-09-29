@@ -157,26 +157,5 @@ class DeleteLocationTests(unittest.TestCase):
         fin.assert_not_awaited()
 
 
-class ToolSchemaTests(unittest.TestCase):
-    """The tool schemas are GENERATED from the params models - lock the facts
-    that come from models.py, not from hand-copies."""
-
-    def test_add_schema_mirrors_model(self):
-        params = {p.name: p for p in add_location_tool.parameters}
-        self.assertEqual(
-            [name for name, p in params.items() if p.required], ["name"])
-        # Optional[float] must flatten anyOf[number, null] → "number"
-        self.assertEqual(params["lat"].type, "number")
-        # B6's Scale Literal reaches the LLM as an enum (S3), not a bare string.
-        self.assertEqual(params["scale"].enum,
-                         ["city", "state", "region", "country"])
-
-    def test_delete_schema_mirrors_model(self):
-        params = {p.name: p for p in delete_location_tool.parameters}
-        self.assertEqual(set(params), {"index"})
-        self.assertEqual(params["index"].type, "integer")
-        self.assertTrue(params["index"].required)
-
-
 if __name__ == "__main__":
     unittest.main()

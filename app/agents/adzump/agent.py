@@ -1,18 +1,13 @@
-"""AdzumpAgent - conversational agent for ad-campaign construction.
+"""AdzumpAgent: the chat agent that builds an ad campaign through conversation.
 
-Core design: keep the BaseAgent + tool loop, put every ounce of steering
-into the **dynamic context**. Each turn renders:
+    run()                    the shared tool loop, with this reply's event stream at hand
+    build_turn_reminder()    before every model call: capture the user's answer,
+                             snapshot the chat, render ORCHESTRATOR_CONTEXT
+    get_pending_suggestions()  the quick-reply chips under the reply
+    _on_loop_complete()      after each reply: autosave, map targets, show the map
 
-1. ``## State`` - what's collected, with provenance ("just set" / "set N turns ago").
-2. ``## User just said`` - last user message verbatim.
-3. ``## What's still missing`` - ordered list from ``_next_action``.
-4. ``## How to respond`` - 6-case priority rule for the LLM.
-
-The static system prompt carries persona + non-negotiable rules only. The
-workflow tree (``_next_action`` over a typed ``CampaignContext``) lives in
-``next_action.py``; the section renderers live in ``prompt_sections.py``.
-This module keeps the BaseAgent overrides and the turn-start capture rails
-(tagged answers, prose declines, elicitation resume).
+The fixed system prompt is context.py. The per-turn reminder is rendered by
+core/dynamic_context.py from the NEW_CAMPAIGN journey in workflow.py.
 """
 
 from __future__ import annotations
@@ -22,29 +17,23 @@ from typing import Any
 
 from app.core.agent import BaseAgent
 from app.core.session import BaseSession
+from app.core.streaming import AgentEventStream
 from app.agents.adzump.context import build_adzump_context
-from app.agents.adzump.next_action import (
-    CampaignContext,
-    _is_custom_reply,
-    _next_action,
-)
+from app.agents.adzump.workflow import ORCHESTRATOR_CONTEXT, AdzumpContext
+from app.agents.adzump.models import OfferState, offer_state
+from app.agents.adzump.observability import log_turn_decision
 from app.agents.adzump.platform import is_mapped_for
-from app.agents.adzump.prompt_sections import (
-    _how_to_respond_section,
-    _missing_section,
-    _state_section,
-    _user_said_section,
-)
 from app.agents.adzump.tools.campaign_data import (
-    _ACCOUNT_LIKE_FIELDS,
     _apply_field,
     _current_turn,
     _last_user_text,
-    _normalize_id,
+    analysis_offer_resolution,
+    instagram_offer_resolution,
     is_clear_decline_reply,
+    product_changes_for,
+    save_product_changes,
 )
-from app.agents.adzump._shared import primary_screenshot_url
-from app.agents.adzump.answer_parse import parse_typed_answer, currency_for
+from app.agents.adzump._shared import primary_screenshot_url, resolve_url
 from app.agents.adzump.tools.registry import ALL_TOOLS
 from app.agents.adzump.tools.suggestions import infer_suggestions
 from app.config import settings
@@ -52,66 +41,27 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
-
-def _hydrate_location_from_product_data(ctx: dict) -> None:
-    """Restore campaign_spec.location from product_data.place on returning
-    sessions, so the agent doesn't re-ask for a location already confirmed.
-
-    Only runs when spec.location is unset but product_data.location exists. For
-    local businesses, requires that geo-targets were already resolved (otherwise
-    we must go through confirm_location again).
-    """
-    from app.agents.adzump.agents.location.models import is_local_business
-
-    spec = ctx.setdefault("campaign_spec", {})
-    if spec.get("location"):
-        return
-    product = ctx.get("product_data") or {}
-    place = product.get("place") or {}
-    if not place.get("address"):
-        return
-
-    scale = (product.get("business_scale") or "national").lower().strip()
-    # Resolved for ANY platform counts - the handle rides nested on each area.
-    has_resolved_targets = any(
-        a.get("google") or a.get("meta") for a in product.get("target_areas") or []
-    )
-    if is_local_business(scale) and not has_resolved_targets:
-        return
-
-    spec["location"] = place["address"]
-    logger.info(
-        "hydrated_location_from_product_data: location=%s", place["address"]
-    )
-
-
 class AdzumpAgent(BaseAgent):
-    """Chat agent that manages ad campaigns through conversation."""
+    """Chat agent that builds ad campaigns through conversation."""
 
     _instance: "AdzumpAgent | None" = None
 
-    # v9 I-1 · data-backed (two present_options stacked live 2026-05-30). When
-    # the LLM batches a deferred elicitation with other tools, run them serially
-    # and early-exit after the first elicitation so a second widget can't stack.
+    # When the model batches a question widget with other tools, run them one by
+    # one and stop after the first question, so two widgets never stack.
     force_serial_on_elicitation = True
 
-    # ── construction ──
-
     def __init__(self) -> None:
-        # _current_stream is stashed per-run so _on_loop_complete can emit
-        # without needing event_stream in session.context (which is persisted
-        # and can't hold live coroutine objects).
-        self._current_stream = None
-        context = build_adzump_context()
-        provider = getattr(settings, "ADZUMP_PROVIDER", settings.LLM_PROVIDER)
+        # The live event stream of the current run, for _on_loop_complete (a
+        # coroutine-backed stream can't ride the persisted session.context).
+        self._current_stream: AgentEventStream | None = None
         super().__init__(
             name="adzump",
             tools=ALL_TOOLS,
-            context_builder=context,
+            context_builder=build_adzump_context(),
             model_tier=settings.AGENT_MODEL_TIER,
             max_turns=settings.MAX_AGENT_TURNS,
             max_tokens=settings.AGENT_MAX_TOKENS,
-            provider=provider,
+            provider=getattr(settings, "ADZUMP_PROVIDER", settings.LLM_PROVIDER),
         )
 
     @classmethod
@@ -121,20 +71,104 @@ class AdzumpAgent(BaseAgent):
             logger.info("AdzumpAgent created with %d tools", len(ALL_TOOLS))
         return cls._instance
 
-    # ── prompt-section builders (private) ──
+    # ── Entry point: one user message ────────────────────────────────────────
 
+    async def run(
+        self,
+        user_message: str,
+        session: BaseSession,
+        event_stream: AgentEventStream,
+        image_blocks: list[dict[str, Any]] | None = None,
+        model_override: str | None = None,
+    ) -> None:
+        self._current_stream = event_stream
+        try:
+            await super().run(user_message, session, event_stream, image_blocks, model_override)
+        finally:
+            self._current_stream = None
+
+    # ── BaseAgent hooks, in the order the loop calls them ────────────────────
+
+    async def build_dynamic_context(self, session: BaseSession) -> str:
+        return ""  # adzump's context is fully per-turn: see build_turn_reminder
+
+    # Called before every model call. In order:
+    #   1. note the open question the user's message arrived into (for the log)
+    #   2. capture a chip answer / a typed decline in code, before the snapshot,
+    #      so the answered step is already done in this reminder; an answer that
+    #      changes the product (an ad account) is saved on it now, and the note
+    #      tells the model whether that worked
+    #   3. snapshot the chat (AdzumpContext) and render ORCHESTRATOR_CONTEXT,
+    #      with this turn's one-off notes (answer ack, uploads, resume) on top
+    #   4. write the turn decision record
+    async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
+        rail = session.context.get("_pending_elicitation") or {}
+        open_rail_field, open_rail_untagged = rail.get("field"), bool(rail) and not rail.get("field")
+        ack = self._capture_tagged_answer(session, turn)
+        captured = session.context.get("_captured_this_turn") or ""
+        if ack and product_changes_for(captured, session.context):
+            saved_note = await save_product_changes(
+                [captured], session.context, self.build_tool_context(session))
+            ack = f"{ack}\n{saved_note}"
+
+        _hydrate_location_from_product_data(session.context)
+        actx = AdzumpContext.from_session(session)
+        last_user = _last_user_text({"_session": session})
+        prose_declined = not ack and self._record_prose_decline(session, actx, last_user, turn)
+        if prose_declined:
+            ack = ("## You just recorded the user's answer\n"
+                   "They declined competitive analysis; it is stored - never offer it "
+                   "again. Acknowledge briefly in your own words, then take the next "
+                   "action.")
+            actx = AdzumpContext.from_session(session)  # the spec just changed
+        uploads = self._uploaded_assets_section(session)
+        resume = self._resume_elicitation_section(session, turn)
+        reminder, progress = ORCHESTRATOR_CONTEXT.render(
+            actx, last_user=last_user, agentic_turn=turn, set_at=actx.set_at,
+            session_turn=actx.current_turn, steers=(ack, uploads, resume))
+
+        # prior_capture rotates on agentic turn 1 (captures only happen there),
+        # so the record pairs a repeat-ask with what landed the turn before.
+        captures = session.context.pop("_turn_captures", [])
+        prior_capture = session.context.get("_prior_capture")
+        if turn == 1:
+            session.context["_prior_capture"] = (
+                {"field": captures[-1]["field"], "verdict": captures[-1]["verdict"]}
+                if captures else None
+            )
+        log_turn_decision(
+            session_id=str(getattr(session, "session_id", "")),
+            turn=actx.current_turn,
+            agentic_turn=turn,
+            missing=list(progress.missing),
+            steers=[name for name, fired in (
+                ("capture_ack", bool(ack)),
+                ("prose_decline", prose_declined),
+                ("uploaded_assets", bool(uploads)),
+                ("resume_elicitation", bool(resume)),
+            ) if fired],
+            captures=captures,
+            prior_capture=prior_capture,
+            open_rail_field=open_rail_field,
+            open_rail_untagged=open_rail_untagged,
+            offers={
+                "competitive_analysis": analysis_offer_resolution(
+                    actx.spec, actx.competitor_analysis_attempted).value,
+                "competitor_creatives": actx.competitor_creatives_resolution.value,
+                "instagram": instagram_offer_resolution(actx.spec).value,
+            },
+        )
+        return reminder
+
+    # Saves the user's answer to a chip question in code, before the model runs,
+    # so a forgotten set_campaign_spec can't lose it:
+    #   exact chip value     -> saved (same checks as a model write)
+    #   clear typed decline  -> saved as declined
+    #   anything else        -> left for the model (_resume_elicitation_section)
+    # Returns a note telling the model it's saved, or "". Only on the first model
+    # call of a reply (agentic turn 1), when the answer just arrived - not the
+    # session turn, which a resumed chat restores to its last value.
     def _capture_tagged_answer(self, session: BaseSession, turn: int = 1) -> str:
-        """PR2 · store the user's reply to a tagged ``present_options`` directly,
-        before the LLM runs - so a forgotten ``set_campaign_spec`` follow-up
-        can't drop the answer (the Bug-B family). Returns a one-line
-        acknowledgement steer on a successful capture, else "".
-
-        Gated to agentic ``turn == 1`` (the reply only just arrived) - NOT
-        ``session._turn_count`` (restored to the max turn on resume). Match by
-        exact option value (chips), else a conservative typed parser
-        (duration/budget/platform). Ambiguous answers (Custom / "Yes" /
-        off-topic / unparseable) leave ``_pending_elicitation`` intact and fall
-        through to the LLM (then ``_resume_elicitation_section`` steers it)."""
         if turn != 1:
             return ""
         pe = session.context.get("_pending_elicitation")
@@ -145,44 +179,36 @@ class AdzumpAgent(BaseAgent):
         last_user = _last_user_text({"_session": session})
         if not last_user:
             return ""
-        value = answers.get(last_user)  # (a) exact chip match
-        if value is None and field in ("duration", "budget", "platform"):
-            value = parse_typed_answer(
-                field, last_user, currency_for(session.context)
-            )  # (b) typed
-        if value is None and field == "competitive_analysis_declined" \
-                and is_clear_decline_reply(last_user):
-            value = "true"  # (c) F17 · typed clear decline
-        if value is None:
-            # v4 · F10 - the user picked the "Custom" escape on a duration/budget
-            # chip ask. Don't pop the elicitation: keep it OPEN (mark it) so their
-            # NEXT typed reply is captured by the typed-parser above, and steer a
-            # free-text ask instead of re-rendering the same chips (the live loop,
-            # bug #11). The mark also drives _next_action (awaiting_custom_field)
-            # and tells _resume_elicitation_section not to pop.
-            if (
-                field in ("duration", "budget")
-                and _is_custom_reply(last_user)
-                and not pe.get("awaiting_custom")
+        value = answers.get(last_user)  # exact chip match
+        picked = value is not None
+        if value is None and is_clear_decline_reply(last_user):
+            # A typed clear decline. Legacy field names ride an old rail;
+            # _apply_field canonicalizes their "true" to the enum.
+            if field in ("competitive_analysis", "competitor_creatives"):
+                value = OfferState.DECLINED.value
+            elif field in (
+                "competitive_analysis_declined", "competitor_creatives_declined"
             ):
-                pe["awaiting_custom"] = True
-                logger.info(
-                    "tagged_capture: custom escape for field=%s - awaiting typed value",
-                    field,
-                )
-                return (
-                    "## The user chose a custom value\n"
-                    f"They want to enter their own {field}. Ask them in ONE short line "
-                    f'to TYPE it (e.g. "45 days" / "₹7,500/day") - do NOT call '
-                    f"present_options or show chips. Their typed reply is captured automatically."
-                )
-            return ""  # Yes / off-topic / unparseable → LLM
+                value = "true"
+        if value is None:
+            # No chip match, no clear decline: the model owns the reply.
+            # Logged so no-matches are countable.
+            logger.info(
+                "tagged_capture: layer2_fallthrough field=%s user_said=%r",
+                field, last_user[:80],
+            )
+            return ""
         stored, info = _apply_field(
             field,
             value,
             last_user,
             session.context,
             _current_turn({"_session": session}),
+            picked=picked,
+        )
+        session.context.setdefault("_turn_captures", []).append(
+            {"layer": 1, "field": field, "value": str(value),
+             "verdict": "stored" if stored else "rejected"}
         )
         if not stored:
             logger.info(
@@ -194,112 +220,76 @@ class AdzumpAgent(BaseAgent):
             )
             return ""
         session.context.pop("_pending_elicitation", None)
-        # v3 · F4 - one-run marker: a tagged answer was captured this turn. Read
-        # (and cleared) by get_pending_suggestions to suppress the untagged
-        # infer_suggestions fallback when the LLM asks the next question as prose
-        # (its chips would carry no field tag → silent drop → re-ask). Lives in
-        # session.context but is popped on read, so it never leaks to next turn.
+        # One-reply marker, popped by get_pending_suggestions: if the model then
+        # asks the next question as prose, no untagged fallback chips (a click
+        # on them wouldn't be captured, so the question would repeat).
         session.context["_captured_this_turn"] = field
+        # What the user clicked, in their words: a chip sends its label as its
+        # value, except accounts, whose names the fetch stored.
+        label = (session.context.get("account_names") or {}).get(str(value)) or last_user
         logger.info(
             "tagged_capture: stored field=%s value=%r user_said=%r",
             field,
             value,
             last_user[:80],
         )
+        # The write's side effects (saved accounts reused, stale ones cleared)
+        # must reach the model, or a platform click silently picks the ad
+        # account the money goes through.
+        side_effects = (
+            f"The write also did: {info}. Name any reused accounts in your "
+            "acknowledgement so the user knows where the campaign will run. "
+            if info != field else ""
+        )
         return (
             "## You just captured the user's answer\n"
-            f"Their last message set **{field} = {value}**. It is already stored - "
-            "do NOT call set_campaign_spec for it. Acknowledge it in one short "
-            "phrase, then CALL the next tool from the missing-list (a fetch tool or "
-            "present_options) - do NOT write the next question as plain text, and "
-            "NEVER end your turn without making that tool call (a live run stalled "
-            "on a dead-end turn that acknowledged and stopped)."
+            f"Their last message picked **{label}** ({field} = {value}). It is already "
+            f"stored - do NOT call set_campaign_spec for it. {side_effects}Acknowledge "
+            "their choice briefly, in your own words and only once in this reply, "
+            "then CALL the next tool from the missing-list (a "
+            "fetch tool or present_options) - do NOT write the next question as "
+            "plain text, and NEVER end your turn without making that tool call (a "
+            "live run stalled on a dead-end turn that acknowledged and stopped)."
         )
 
+    # Saves "no" to the competitor-analysis offer when the model asked it as
+    # plain text (no chip row, so _capture_tagged_answer can't see it) -
+    # otherwise the offer is asked again every turn. Only when all hold:
+    #   - a Google campaign, and the offer is still unanswered
+    #   - no question of any kind is open: a "no" then answers that question
+    #     (live: a "No" to the ad-account question saved an analysis decline)
+    #   - a clear decline ("no thanks", not "no competitors named yet")
+    #   - the first model call of the reply
+    # Returns True if it saved.
     def _record_prose_decline(
-        self, session: BaseSession, cctx: "CampaignContext", last_user: str, turn: int,
+        self, session: BaseSession, actx: AdzumpContext, last_user: str, turn: int,
     ) -> bool:
-        """F18 · the competitor offer is non-deterministically asked as PROSE (no
-        tagged ``present_options``), so a typed decline has no elicitation for
-        ``_capture_tagged_answer`` to match - and the model often just advances
-        without recording it, leaving ``competitive_analysis_declined`` unset and
-        the prescription re-firing every turn. Record it in code at turn-start,
-        with a NARROW guard (Kiran): only the competitor-offer state, only a
-        clear-decline reply (``is_clear_decline_reply`` excludes ambiguous "no…"
-        like "no competitors named yet" / "not now, first tell me about X"), and
-        never when a competitor elicitation is already pending (tagged-capture
-        owns that). Gated agentic ``turn == 1``. Returns True iff it stored."""
-        if turn != 1 or not last_user:
+        if turn != 1 or not last_user or session.context.get("_pending_elicitation"):
             return False
-        pe = session.context.get("_pending_elicitation")
-        if pe and pe.get("field") == "competitive_analysis_declined":
-            return False                                     # tagged-capture owns it
-        if not (cctx.is_google
-                and not cctx.competitor_analysis_attempted
-                and "competitive_analysis_declined" not in cctx.spec):
+        if not (actx.is_google
+                and not actx.competitor_analysis_attempted
+                and offer_state(actx.spec, "competitive_analysis")
+                is OfferState.UNSET):
             return False
         if not is_clear_decline_reply(last_user):
             return False                                     # ambiguous → let the LLM judge
         stored, _ = _apply_field(
-            "competitive_analysis_declined", "true", last_user,
+            "competitive_analysis", OfferState.DECLINED.value, last_user,
             session.context, _current_turn({"_session": session}),
         )
         if stored:
-            logger.info("prose_decline_recorded: competitive_analysis_declined=true user_said=%r",
+            session.context.setdefault("_turn_captures", []).append(
+                {"layer": 1, "field": "competitive_analysis",
+                 "value": OfferState.DECLINED.value, "verdict": "stored"}
+            )
+            logger.info("prose_decline_recorded: competitive_analysis=declined user_said=%r",
                         last_user[:80])
         return bool(stored)
 
-    def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
-        """v8 Plan B WS2 · when the previous turn ended on a deferred
-        elicitation, tell the LLM it is resuming so it does NOT re-ask or
-        paraphrase the question (Bug B). Read from session.context, which
-        survives restore - message history drops tool blocks (session.py).
-
-        Single-reply elicitations (location, options) are one-shot: emit the
-        reminder, then clear the flag. Multi-reply elicitations (asset uploads)
-        persist - the run loop closes them when the LLM moves on.
-
-        Gated to agentic ``turn == 1``: the resume hint steers how the model
-        reads the just-arrived reply, which only applies on the first turn of
-        the run. On later turns return "" WITHOUT popping, so the one-shot flag
-        survives (Approach B re-runs this builder every agentic turn - without
-        the gate the pop would fire on turn 1 and the hint would vanish on
-        turn 2+ of the SAME run, and the flag would be lost)."""
-        if turn != 1:
-            return ""
-        pe = session.context.get("_pending_elicitation")
-        if not pe:
-            return ""
-        if pe.get("expects") == "multi":
-            return (
-                "## Resuming - upload request is still open\n"
-                "Last turn you asked the user to upload assets. They may send "
-                "several messages (one per file) or say they're done. Do NOT "
-                "restate the upload request unless they ask what's still needed, "
-                "and do NOT assume it's closed until they signal completion or "
-                "you judge the captured assets sufficient."
-            )
-        # v4 · F10 - awaiting a typed custom value: keep the elicitation OPEN
-        # (do NOT pop) so the next typed reply is captured by the typed-parser.
-        # _capture_tagged_answer already emitted the free-text steer this turn.
-        if pe.get("awaiting_custom"):
-            return ""
-        # single: one-shot - clear after emitting so it fires for exactly this turn
-        session.context.pop("_pending_elicitation", None)
-        tool = pe.get("tool", "the previous step")
-        return (
-            "## Resuming after a question\n"
-            f"Last turn you asked the user a question (via {tool}); the widget is "
-            "already on screen. Their current message IS the reply. Do NOT restate "
-            "or paraphrase the question, and do NOT call another tool with the "
-            "previous tool's result as input - read their answer and pick the next action."
-        )
-
+    # When the user attached images: a note making manage_assets the first
+    # action. The images exist only in the stash the /chat route wrote, so
+    # skipping it loses them.
     def _uploaded_assets_section(self, session: BaseSession) -> str:
-        """v9 I-0 · when the user attached image(s) this turn, hand them to the
-        Asset Manager via manage_assets (bytes are stashed on the session by the
-        /chat handler). First action of the turn - otherwise the upload is lost
-        (it only lives in the pending stash)."""
         pending = session.context.get("_pending_uploads")
         if not pending:
             return ""
@@ -313,114 +303,153 @@ class AdzumpAgent(BaseAgent):
             "continue."
         )
 
-    # ── static leaf helpers - migrations ──
-
-    @staticmethod
-    def _migrate_legacy_keys(ctx: dict) -> None:
-        """Rename ``campaign_data`` → ``campaign_spec`` for pre-rename sessions.
-
-        Lazy migration. O(1). Existing sessions survive the rename transparently.
-        """
-        if "campaign_data" in ctx and "campaign_spec" not in ctx:
-            ctx["campaign_spec"] = ctx.pop("campaign_data")
-
-    @staticmethod
-    def _migrate_campaign_ids(session_ctx: dict) -> None:
-        """Canonicalize account/page ids (strip dashes/whitespace) on read.
-
-        Lazy migration for sessions that stored dashed or fullwidth-digit IDs
-        before the write-side normalizer shipped. Idempotent.
-        """
-        spec = session_ctx.get("campaign_spec") or {}
-        for field_name in _ACCOUNT_LIKE_FIELDS:
-            v = spec.get(field_name)
-            if isinstance(v, str):
-                canonical = _normalize_id(v)
-                if canonical != v:
-                    spec[field_name] = canonical
-
-    # ── public surface - BaseAgent override hooks (last, per Kiran's BaseAgent) ──
-
-    async def run(self, user_message, session, event_stream, image_blocks=None, model_override=None):
-        """Stash event_stream so _on_loop_complete can emit without session.context."""
-        self._current_stream = event_stream
-        try:
-            await super().run(user_message, session, event_stream, image_blocks, model_override)
-        finally:
-            self._current_stream = None
-
-    async def build_dynamic_context(self, session: BaseSession) -> str:
-        return (
-            ""  # adzump context is fully per-turn - see build_turn_reminder (Layer 2)
-        )
-
-    async def build_turn_reminder(self, session: BaseSession, turn: int) -> str:
-        self._migrate_legacy_keys(session.context)
-        self._migrate_campaign_ids(session.context)
-        # PR2 · capture the user's tagged answer into campaign_spec BEFORE the
-        # snapshot, so the just-answered field drops out of the missing-list
-        # this turn. AFTER the migrations (its setdefault would otherwise strand
-        # a legacy rename); gated to agentic turn==1 internally.
-        ack = self._capture_tagged_answer(session, turn)
-
-        _hydrate_location_from_product_data(session.context)
-        cctx = CampaignContext.from_session(session)
-        last_user = _last_user_text({"_session": session})
-        # F18 · when the competitor offer was asked as PROSE (not a tagged
-        # present_options), a clear typed decline has no capture rail - record it
-        # in code at turn-start so competitive_analysis_declined doesn't persist
-        # in `missing` forever. Re-derive cctx since the spec changed.
-        if self._record_prose_decline(session, cctx, last_user, turn):
-            cctx = CampaignContext.from_session(session)
-        missing = _next_action(cctx)
-        logger.info(
-            "next_action: turn=%d agentic=%d missing=%s user_said=%r",
-            cctx.current_turn,
-            turn,
-            missing,
-            last_user[:80],
-        )
-        reminder = "\n".join(
-            filter(
-                None,
-                [
-                    ack,
-                    self._uploaded_assets_section(session),
-                    self._resume_elicitation_section(session, turn),
-                    _state_section(cctx),
-                    _user_said_section(last_user),
-                    _how_to_respond_section(),
-                    _missing_section(missing),
-                ],
+    # When the last reply ended on a question: a note telling the model this
+    # message IS the answer, so it doesn't ask again.
+    #   question already answered -> dropped, no note
+    #   upload request            -> note; stays open until the model moves on
+    #   chip question             -> note with the chip values; cleared
+    #   any other question        -> short note; cleared
+    # Only on the first model call of a reply; later calls return "" and keep
+    # the question, since this runs before every model call.
+    def _resume_elicitation_section(self, session: BaseSession, turn: int = 1) -> str:
+        if turn != 1:
+            return ""
+        pe = session.context.get("_pending_elicitation")
+        if not pe:
+            return ""
+        # Already answered: drop it silently.
+        pe_field = pe.get("field")
+        if pe_field and (session.context.get("campaign_spec") or {}).get(pe_field):
+            session.context.pop("_pending_elicitation", None)
+            return ""
+        if pe.get("expects") == "multi":
+            return (
+                "## Resuming - upload request is still open\n"
+                "Last turn you asked the user to upload assets. They may send "
+                "several messages (one per file) or say they're done. Do NOT "
+                "restate the upload request unless they ask what's still needed, "
+                "and do NOT assume it's closed until they signal completion or "
+                "you judge the captured assets sufficient."
             )
+        session.context.pop("_pending_elicitation", None)  # single: one-shot
+        tool = pe.get("tool", "the previous step")
+        if pe_field and pe.get("answers"):
+            # A typed reply to a chip question is the model's to land: pick the
+            # canonical value and write it.
+            canonical = ", ".join(f'"{v}"' for v in dict(pe["answers"]).values())
+            return (
+                "## Resuming after a question\n"
+                f"Last turn you asked the user to pick **{pe_field}** (chips are "
+                f"already on screen; canonical values: {canonical}). Their current "
+                "message IS the reply - do NOT restate or paraphrase the question.\n"
+                f"- It clearly selects an option (typed variant, \"60 days please\") "
+                f"→ call `set_campaign_spec({pe_field}=<canonical value>)` NOW; for "
+                "duration/budget a clearly stated non-preset value counts too "
+                '(normalize it, e.g. "45 days" / "₹7,500/day").\n'
+                "- It is about a DIFFERENT field or a question → it selects NOTHING "
+                "here; handle it, then re-render the SAME chips via present_options "
+                'with a short "pick one below" - do not guess.\n'
+                "- Never store a value the user didn't state."
+            )
+        return (
+            "## Resuming after a question\n"
+            f"Last turn you asked the user a question (via {tool}); the widget is "
+            "already on screen. Their current message IS the reply. Do NOT restate "
+            "or paraphrase the question, and do NOT call another tool with the "
+            "previous tool's result as input - read their answer and pick the next action."
         )
-        return reminder
 
     def build_tool_context(self, session: BaseSession) -> dict[str, Any]:
         ctx = super().build_tool_context(session)
         ctx["session_context"] = session.context
         ctx["_session"] = session
-        # Use the full session_id - the previous `[:8]` truncation left only
-        # one hex char of entropy after the `SYSTEM_` prefix, so distinct
-        # sessions routinely collided onto the same craft_id and stomped
-        # each other's UI panel state.
+        # The full session_id: a truncated one let distinct sessions share a
+        # craft_id and overwrite each other's panel.
         session.context.setdefault("craft_id", f"adzump_{session.session_id}")
         if session.auth:
             ctx["auth"] = session.auth
         return ctx
 
+    # The quick-reply chips under the reply. First match wins:
+    #   1. chips a tool queued (_pending_suggestions)
+    #   2. none while a map or any question widget is on screen - it owns the ask
+    #   3. one value-only "Go ahead" / "Confirm location" / "Yes, launch" chip for
+    #      a prose advance ask (_advance_chip)
+    #   4. none right after a captured chip answer - untagged chips on a prose
+    #      question can't be captured, so the question would repeat
+    #   5. otherwise inferred from the reply text (infer_suggestions)
+    async def get_pending_suggestions(
+        self,
+        session: BaseSession,
+        assistant_text: str = "",
+    ) -> dict[str, Any] | None:
+        # Pop the one-reply capture marker before any return, so it never leaks
+        # into the next reply (the loop doesn't clear the persisted context).
+        captured = session.context.pop("_captured_this_turn", None)
+        pending = session.context.pop("_pending_suggestions", None)
+        if pending:
+            return pending
+        if session.context.get("_pending_location_confirm"):
+            return None
+        if session.context.get("_pending_elicitation"):
+            return None
+        adv = AdzumpAgent._advance_chip(assistant_text)
+        if adv:
+            return adv
+        if captured:
+            return None
+        return await infer_suggestions(assistant_text, session.context)
+
+    # A one-click reply when the model asks to move on in plain text ("Shall we
+    # proceed?") and no widget is on screen:
+    #   last line mentions "launch"    -> [Yes, launch]
+    #   last line mentions "location"  -> [Confirm location]
+    #   any other move-on ask          -> [Go ahead]
+    #   not a move-on ask              -> no chip
+    # A click just sends the chip's text as a normal message; nothing is saved.
+    @staticmethod
+    def _advance_chip(text: str) -> dict[str, Any] | None:
+        lt = (text or "").lower()
+        if not lt:
+            return None
+        # Only the trailing line is the ask: a summary card above it lists a
+        # "Location:" bullet and "Ready to launch", which must not fire a
+        # "Confirm location" chip at the launch step.
+        tail = next((ln for ln in reversed(lt.splitlines()) if ln.strip()), "")
+        markers = (
+            "let's confirm", "lets confirm", "confirm the location", "shall i",
+            "shall we", "ready to", "ready when you", "go ahead", "look good",
+            "looks good", "proceed", "all set",
+        )
+        if not any(m in tail for m in markers):
+            return None
+        # Launch wins over location: the launch ask's line is "...Ready to launch the campaign?".
+        if "launch" in tail:
+            return {"options": [{"label": "Yes, launch",
+                                 "value": "yes, launch"}], "mode": "single"}
+        if "location" in tail:
+            return {"options": [{"label": "Confirm location",
+                                 "value": "yes, confirm the location"}], "mode": "single"}
+        return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
+
+    # After each reply: catch up the map for a newly picked platform, save this
+    # chat's draft, show the map.
     async def _on_loop_complete(
         self, session: BaseSession, tool_call_log: list[dict[str, Any]],
     ) -> None:
         await super()._on_loop_complete(session, tool_call_log)
-        await self._autosave_campaign(session)
         await self._map_targets_for_new_platform(session)
+        await self._autosave_campaign(session)
         await self._emit_stored_targeting_panel(session)
+        # The loop saved the context before these hooks ran; the mapping and the
+        # panel marker changed it since, and the next request reloads it.
+        await session.save_context()
 
+    # Saves this chat's campaign draft after every reply (skipped until a
+    # product URL exists). A failed save is logged, never raised.
     async def _autosave_campaign(self, session: BaseSession) -> None:
-        """Every-turn durable save of whatever the spec holds (draft status)."""
         ctx = session.context
-        from app.agents.adzump.services.business_storage import save_campaign, resolve_url
+        from app.agents.adzump.services.product_service import save_campaign
         if not resolve_url(ctx):
             return
         try:
@@ -428,11 +457,10 @@ class AdzumpAgent(BaseAgent):
         except Exception as e:
             logger.warning("End-of-turn campaign save failed (non-fatal): %s", e)
 
+    # Target areas saved before a platform was picked aren't mapped for it yet:
+    # map them now, so the next reminder counts them as mapped. Network calls
+    # belong here, after the reply, never in build_turn_reminder.
     async def _map_targets_for_new_platform(self, session: BaseSession) -> None:
-        """If platform was set this turn but existing locations aren't yet mapped
-        for it (storage-reuse path: locations existed before platform was chosen),
-        map them now so has_mapped_geo_targets is true for the next turn's prompt.
-        Runs at end-of-turn where external I/O belongs - NOT in build_turn_reminder."""
         ctx = session.context
         platform = (ctx.get("campaign_spec") or {}).get("platform") or ""
         product = ctx.get("product_data") or {}
@@ -440,33 +468,33 @@ class AdzumpAgent(BaseAgent):
         if not (platform and target_areas) or is_mapped_for(target_areas, platform):
             return
         from app.agents.adzump.agents.location.platform_mapping import PlatformGeoMapper
+        from app.agents.adzump.services.product_service import save_product_fields
         country_code = (product.get("place") or {}).get("country_code") or "IN"
         try:
-            mapped = await PlatformGeoMapper(self.build_tool_context(session)).map_target_areas(
+            tool_ctx = self.build_tool_context(session)
+            mapped = await PlatformGeoMapper(tool_ctx).map_target_areas(
                 target_areas, platform, country_code
             )
             if mapped:
-                product["target_areas"] = mapped
+                await save_product_fields(ctx, tool_ctx, {"target_areas": mapped})
         except Exception as e:
             logger.warning("End-of-turn geo auto-mapping failed (non-fatal): %s", e)
 
+    # A platform was just picked and the saved areas are already mapped for it:
+    # show the map now, because manage_targeting_locations won't run (nothing is
+    # owed). Once per platform.
     async def _emit_stored_targeting_panel(self, session: BaseSession) -> None:
-        """If platform was just set this turn and mapped locations already exist
-        (storage reuse path), emit the craft panel with platform so the map
-        appears - manage_targeting_locations won't fire because
-        has_mapped_geo_targets is already True."""
         ctx = session.context
-        from app.agents.adzump.services.business_storage import resolve_url
-        cctx = CampaignContext.from_session(session)
-        platform = cctx.spec.get("platform") or ""
-        if not (platform and cctx.has_mapped_geo_targets) \
+        actx = AdzumpContext.from_session(session)
+        platform = actx.spec.get("platform") or ""
+        if not (platform and actx.has_mapped_geo_targets) \
                 or ctx.get("_last_craft_platform") == platform:
             return
         ctx["_last_craft_platform"] = platform
         url = resolve_url(ctx)
         product = ctx.get("product_data") or {}
         stream = self._current_stream
-        craft_id = ctx.get("craft_id") or ctx.get("_craft_id")
+        craft_id = ctx.get("craft_id")
         if not (stream and craft_id and url):
             return
         from app.agents.adzump.tools.craft import emit_craft_panel
@@ -484,8 +512,7 @@ class AdzumpAgent(BaseAgent):
         except Exception as e:
             logger.debug("Post-platform craft emit failed (non-fatal): %s", e)
 
-        # Emit a visible locations row so the user sees the stored
-        # targeting areas being applied (mirrors the discover UX).
+        # A visible locations row, so the user sees the saved areas applied.
         try:
             mapped = product.get("target_areas") or []
             if mapped:
@@ -502,79 +529,30 @@ class AdzumpAgent(BaseAgent):
         except Exception as e:
             logger.debug("Stored-locations row emit failed (non-fatal): %s", e)
 
-    @staticmethod
-    def _advance_chip(text: str) -> dict[str, Any] | None:
-        """F23 · a prose advance/confirm ask (e.g. "Let's confirm the location for
-        the campaign") with no live widget gets ONE value-only quick-reply chip so
-        the user can click instead of having to type to proceed. Value-only (no
-        ``field``/``answer``) → the click just sends "yes …" text that routes to the
-        model, so it CANNOT reintroduce the F4 untagged-capture loop. Keyword-gated
-        + deterministic (no extra LLM call), per the panel. Returns the chip dict or
-        None."""
-        lt = (text or "").lower()
-        if not lt:
-            return None
-        # F27 · evaluate the TRAILING line (the actual ask), NOT the whole blob -
-        # a launch/review summary lists a "Location:" bullet and contains "ready
-        # to" (in "Ready to launch"), which made this fire a "Confirm location"
-        # chip at the launch step. The genuine advance ask is always its own short
-        # trailing line, so anchoring there fixes the over-match.
-        tail = next((ln for ln in reversed(lt.splitlines()) if ln.strip()), "")
-        markers = (
-            "let's confirm", "lets confirm", "confirm the location", "shall i",
-            "shall we", "ready to", "ready when you", "go ahead", "look good",
-            "looks good", "proceed", "all set",
-        )
-        if not any(m in tail for m in markers):
-            return None
-        # Label precedence: launch → location → generic (launch must win - the
-        # launch ask's trailing line is "…Ready to launch the campaign?").
-        if "launch" in tail:                                   # F27 · launch step
-            return {"options": [{"label": "Yes, launch",
-                                 "value": "yes, launch"}], "mode": "single"}
-        if "location" in tail:
-            return {"options": [{"label": "Confirm location",
-                                 "value": "yes, confirm the location"}], "mode": "single"}
-        return {"options": [{"label": "Go ahead", "value": "yes, go ahead"}], "mode": "single"}
 
-    async def get_pending_suggestions(
-        self,
-        session: BaseSession,
-        assistant_text: str = "",
-    ) -> dict[str, Any] | None:
-        # v3 · F4 - pop the one-run capture marker FIRST, before any early
-        # return, so it can never leak into the next turn (it rides the
-        # persisted context dict, which the generic run-loop doesn't clear).
-        # Kept here (not in core/agent.py) so the Adzump-specific marker stays
-        # out of the generic runtime.
-        captured = session.context.pop("_captured_this_turn", None)
-        pending = session.context.pop("_pending_suggestions", None)
-        if pending:
-            return pending
-        # When a map widget is in flight, the widget IS the answer mechanism -
-        # don't let the inferrer auto-inject competing Yes/No chips.
-        if session.context.get("_pending_location_confirm"):
-            return None
-        # v8 Plan B WS6 · any deferred elicitation already owns the ask (map,
-        # upload prompt, explicit chips). Suppress the untraced infer_suggestions
-        # fallback so it can't overlay competing chips on the elicitation bubble
-        # (and to skip its extra per-turn gpt-4o-mini call). Full tracing-wrap
-        # of infer_suggestions remains a fast-follow.
-        if session.context.get("_pending_elicitation"):
-            return None
-        # v3 · F4 - a tagged answer was captured this turn, but no tagged
-        # present_options was emitted (we'd have returned above). The LLM asked
-        # the next question as prose → suppress the untagged infer fallback whose
-        # chips would carry no field tag (a click wouldn't be captured → re-ask
-        # loop). The user can type the answer (typed-capture handles
-        # duration/budget/platform); next turn the LLM re-asks via a tagged tool.
-        # F23 · a prose advance/confirm ask (no live widget) gets one value-only
-        # "Go ahead"/"Confirm location" chip so the user needn't type to proceed.
-        # BEFORE the captured-guard so it fires even right after a chip answer (the
-        # dead-end case). Value-only → can't reintroduce the F4 untagged-capture loop.
-        adv = AdzumpAgent._advance_chip(assistant_text)
-        if adv:
-            return adv
-        if captured:
-            return None
-        return await infer_suggestions(assistant_text, session.context)
+# A returning product already has a confirmed place: copy it into
+# campaign_spec.location so the location isn't asked again. A local business
+# also needs mapped target areas first; otherwise it confirms again.
+def _hydrate_location_from_product_data(ctx: dict) -> None:
+    from app.agents.adzump.agents.location.models import is_local_business
+
+    spec = ctx.setdefault("campaign_spec", {})
+    if spec.get("location"):
+        return
+    product = ctx.get("product_data") or {}
+    place = product.get("place") or {}
+    if not place.get("address"):
+        return
+
+    scale = (product.get("business_scale") or "national").lower().strip()
+    # Mapped for ANY platform counts - the handle rides nested on each area.
+    has_resolved_targets = any(
+        a.get("google") or a.get("meta") for a in product.get("target_areas") or []
+    )
+    if is_local_business(scale) and not has_resolved_targets:
+        return
+
+    spec["location"] = place["address"]
+    logger.info(
+        "hydrated_location_from_product_data: location=%s", place["address"]
+    )
