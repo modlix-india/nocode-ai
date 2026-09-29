@@ -206,6 +206,7 @@ class AdzumpAgent(BaseAgent):
         if not last_user:
             return ""
         value = answers.get(last_user)  # exact chip match
+        picked = value is not None
         if value is None and is_clear_decline_reply(last_user):
             # A typed clear decline. Legacy field names ride an old rail;
             # _apply_field canonicalizes their "true" to the enum.
@@ -229,6 +230,7 @@ class AdzumpAgent(BaseAgent):
             last_user,
             session.context,
             _current_turn({"_session": session}),
+            picked=picked,
         )
         session.context.setdefault("_turn_captures", []).append(
             {"layer": 1, "field": field, "value": str(value),

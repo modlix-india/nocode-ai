@@ -339,12 +339,24 @@ def _current_turn(context: dict[str, Any]) -> int:
     return int(getattr(session, "_turn_count", 0) or 0)
 
 
-def _field_traceable(field: str, value: Any, last_user: str, session_ctx: dict) -> bool:
-    """Can this field's value be traced to what the user actually said?"""
+def _field_traceable(
+    field: str, value: Any, last_user: str, session_ctx: dict, *, picked: bool = False,
+) -> bool:
+    """Can this field's value be traced to what the user actually said? A
+    ``picked`` value is the answer on the button the user clicked, which is
+    the proof - only whether the field takes that value is left to check
+    (live 2026-09-28: a "Facebook only" button sending "declined" failed the
+    phrase check and the Instagram question was asked twice)."""
     v = str(value).strip().lower()
     lu = last_user.strip().lower()
     if not v:
         return False
+    if picked:
+        if field == "instagram":
+            return v == OfferState.DECLINED.value
+        if field in ("competitive_analysis", "competitor_creatives"):
+            return v in (OfferState.DECLINED.value, OfferState.ACCEPTED.value)
+        return True
 
     if field == "location":
         if session_ctx.get("_pending_location_confirm"):
@@ -809,6 +821,8 @@ def _apply_field(
     session_ctx: dict,
     turn: int,
     batch_fields=frozenset(),
+    *,
+    picked: bool = False,
 ) -> tuple[bool, str]:
     """Validated single-field write - the one place a campaign_spec field is
     checked and stored. Shared by `set_campaign_spec` (LLM path) and
@@ -816,6 +830,7 @@ def _apply_field(
     traceability rule. ``value`` must already be normalized + changed (callers
     filter no-ops). ``batch_fields`` names the other fields being set in the
     same call, so the F2 cascade never clears a freshly-bundled sibling.
+    ``picked`` marks a button the user clicked (see _field_traceable).
     Returns (stored, info): info is the delta string on success or the rejection
     reason on failure."""
     spec = session_ctx.setdefault("campaign_spec", {})
@@ -830,7 +845,7 @@ def _apply_field(
             return (False, f"{field} takes only \"true\" (a decline)")
         field, value = legacy_field, OfferState.DECLINED.value
     if field in _USER_TEXT_FIELDS and not _field_traceable(
-        field, value, last_user, session_ctx
+        field, value, last_user, session_ctx, picked=picked
     ):
         return (False, "not traceable to user's last message")
     # Validated: retire the legacy marker (if an old session carried one) in

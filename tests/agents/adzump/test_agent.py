@@ -34,6 +34,10 @@ def _dur_pe():
     return elicitation("duration", {"30 days": "30 days", "60 days": "60 days"})
 
 
+def _ig_pe():
+    return elicitation("instagram", {"accepted": "accepted", "declined": "declined"})
+
+
 def _budget_pe(**extra):
     return elicitation("budget", {"₹5,000/day": "₹5,000/day",
                                   "₹10,000/day": "₹10,000/day",
@@ -192,6 +196,14 @@ class TaggedCaptureTests(unittest.TestCase):
             ("creatives yes chip writes accepted",
              elicitation("competitor_creatives", {"Yes": "accepted", "No": "declined"}),
              "Yes", {"competitor_creatives": "accepted"}, True),
+            # live 2026-09-28: a chip sending the bare answer failed the phrase
+            # check and the Instagram question was asked twice.
+            ("instagram chip sending its answer", _ig_pe(), "declined",
+             {"instagram": "declined"}, True),
+            ("instagram takes only a decline", _ig_pe(), "accepted", {}, False),
+            ("offer chip sending its answer",
+             elicitation("competitive_analysis", {"declined": "declined"}),
+             "declined", {"competitive_analysis": "declined"}, True),
             ("duration chip", _dur_pe(), "30 days",
              {"duration": "30 days"}, True),
             ("budget preset chip", _budget_pe(), "₹10,000/day",
