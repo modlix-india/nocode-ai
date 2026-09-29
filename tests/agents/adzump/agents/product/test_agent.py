@@ -3,9 +3,11 @@
 writers) and the discovery output contract (_discovery_violations /
 _scrub_unverified - the code teeth behind 'every competitor cites
 fetch_candidates evidence')."""
+import asyncio
 import unittest
 
 from app.agents.adzump.agents.product.agent import (
+    _PassthroughEventStream,
     _build_minimal_result,
     _discovery_violations,
     _scrub_unverified,
@@ -101,6 +103,38 @@ class DiscoveryContractTests(unittest.TestCase):
         for comp in (invented, bad_cite):
             self.assertIsNone(comp["url"])
             self.assertNotIn("competitor_id", comp)
+
+
+class ThinkingStreamTests(unittest.TestCase):
+    """The card's thinking names candidate IDs, even one cut across deltas."""
+
+    def test_an_id_split_across_deltas_is_named_whole(self):
+        class Parent:
+            def __init__(self):
+                self.thinking, self.order = [], []
+
+            async def emit_thinking(self, text):
+                self.thinking.append(text)
+                self.order.append("thinking")
+
+            async def emit_tool_start(self, *args, **kwargs):
+                self.order.append("tool")
+
+        state = {"candidate_pool": {
+            "C16": {"name": "Valmark Cityville - Villas", "host": "valmarkcityville.com"}}}
+        parent = Parent()
+        stream = _PassthroughEventStream(parent, "tu1", state)
+
+        async def run():
+            for delta in ["Keeping C1", "6 and C", "99. Next C1"]:
+                await stream.emit_thinking(delta)
+            await stream.emit_tool_start("fetch_candidates", {})
+            await stream.flush_thinking()
+
+        asyncio.run(run())
+        self.assertEqual("".join(parent.thinking),
+                         "Keeping Valmark Cityville (valmarkcityville.com) and C99. Next C1")
+        self.assertEqual(parent.order[-2:], ["thinking", "tool"])  # held piece before the row
 
 
 if __name__ == "__main__":

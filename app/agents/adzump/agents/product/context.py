@@ -100,7 +100,7 @@ Judgment rules, in priority order (marketing-expert calibrated, 2026-09-09; real
 6. **Junk is not a competitor**: listicle/"Top 10" page titles, news articles, and locality guides are page titles, not businesses - skip them.
 7. **A huge same-corridor launch even at 0.6x our price is worth including** when it dominates the searches - it drains the same ad audience and inflates our cost per lead; note that role in why_competitor.
 
-Write a one-line verdict for EVERY candidate in your reasoning - e.g. `C3 PICK - same road, ₹3-4 Cr, seen 4/7` / `C7 SKIP - North Bangalore, different buyer pool` - covering all rows, not just the picks (an exclusion needs a stated reason too). Then call `fetch_candidates` with the 6-8 strongest IDs (max 12).
+Write a one-line verdict for EVERY candidate in your reasoning, the ID followed by the project name and its site - e.g. `C3 Sobha Magnus (sobha.com) PICK - same road, ₹3-4 Cr, seen 4/7` / `C7 Prestige Park Grove (prestigeconstructions.com) SKIP - North Bangalore, different buyer pool` - covering all rows, not just the picks (an exclusion needs a stated reason too). Then call `fetch_candidates` with the 6-8 strongest IDs (max 12).
 
 ### Step 5 - Re-judge on the fetched evidence, keep DIRECT only
 
@@ -118,6 +118,7 @@ If fewer than 3 entries verified and you skipped viable candidates, you may call
 
 - **Ground every competitor name in evidence from `fetch_candidates`.** Only include brands that appear in its verified evidence. Do not re-add candidates whose fetch failed or that turned out to be aggregators.
 - **One project per entry, proper name only.** `name` is the project's own name exactly as the market knows it (e.g. "Purva Sparkling Springs", "Sobha Magnus") - never a developer prefix ("Puravankara – ..."), never two projects glued with "/" or "&", never a parenthetical gloss ("(Puravankara)", "(Bannerghatta Road)"). Two projects = two entries. Everything downstream (Google Business lookup, ad-library search, advertiser matching) keys on this name; a mashup name breaks all of it.
+- **Your reasoning is shown to the user live - write IDs with names.** Whenever you mention a candidate, write its ID with the project name and site (`C6 Rainbow Mayfair (rainbowmayfair.com)`), never a bare ID or a bare ID list. IDs alone stay for tool calls and the final JSON.
 - **Cite candidate evidence by ID, don't copy its URLs.** When your evidence came from `fetch_candidates`, put the entry's `ID:` line into `competitor_id` and set `url` to null - the system attaches the verified URL by ID (IDs are exact; hand-copied URLs get corrupted). When looking up businesses by name WITHOUT candidate evidence, write the URL you verified and omit `competitor_id`.
 - **Required pipeline**: 7 `web_search` queries (5 discovery + 2 review), then `extract_candidates`, then `fetch_candidates` with your picks. Do not skip a step.
 - **If nothing verifies**, write the final JSON with `competitors: []` and add a `notes` entry explaining no candidates could be verified (rather than making competitors up).

@@ -106,7 +106,9 @@ class ExtractCandidatesTests(unittest.TestCase):
         self.assertTrue(pool["C2"]["is_aggregator"])  # Lodha on 99acres
         # URL custody stays in the pool; the model never sees a full URL.
         self.assertEqual(pool["C1"]["url"], "https://purvasparklingspring.com/")
-        self.assertNotIn("https://", result.summary)
+        self.assertNotIn("https://", result.model_summary)
+        # The user's row is a plain line; the table is the model's.
+        self.assertEqual(result.summary, "2 possible competitors from 2 searches")
 
     def test_self_reference_never_enters_the_pool(self):
         _, research_state = self._run(_searches())
@@ -118,7 +120,7 @@ class ExtractCandidatesTests(unittest.TestCase):
         result, _ = self._run([{"query": "q1", "candidates": [
             {"name": "Sobha Magnus | Luxury Flats\nBannerghatta",
              "url": "https://sobha.com/magnus"}]}])
-        row = next(line for line in result.summary.splitlines()
+        row = next(line for line in result.model_summary.splitlines()
                    if line.startswith("C1 |"))
         self.assertEqual(len(row.split(" | ")), 5)  # ID | name | host | seen in | flags
 
@@ -174,7 +176,8 @@ class FetchCandidatesTests(unittest.TestCase):
         result = self._run(["C1"], context)
         self.assertTrue(result.success)
         self.assertEqual(self._verified_cids(context), ["C1"])
-        self.assertIn("C1 = Purva Sparkling Springs", result.summary)  # citable roster
+        self.assertIn("C1 = Purva Sparkling Springs", result.model_summary)  # citable roster
+        self.assertEqual(result.summary, "1 verified: Purva Sparkling Springs")
 
     def test_bad_calls_error_before_any_fetch(self):
         over_budget = _context([{"query": "q1", "candidates": [
@@ -224,7 +227,64 @@ class FetchCandidatesTests(unittest.TestCase):
                 result = self._run(ids, context, fetch_status=status)
                 self.assertTrue(result.success)
                 self.assertEqual(self._verified_cids(context), ["C1"])
-                self.assertIn("C1 = Purva Sparkling Springs", result.summary)
+                self.assertIn("C1 = Purva Sparkling Springs", result.model_summary)
+                self.assertTrue(result.summary.startswith("Nothing new - keeping the 1"))
+
+
+class FetchRowTests(unittest.TestCase):
+    """The user's tool row names what verified by its title's lead phrase
+    (live 2026-09-29: rows showed the model's ID table)."""
+
+    def test_short_name_rows(self):
+        for title, expected in [
+            ("Rainbow Mayfair Begur - Brochure, Pros&Cons", "Rainbow Mayfair Begur"),
+            ("Godrej Vanantara Bannerghatta Road, Bangalore | New", "Godrej Vanantara Bannerghatta Road"),
+            ("Introducing SOBHA Magnus: Biophilic living", "Introducing SOBHA Magnus"),
+            ("Nambiar District-25 Phase 2", "Nambiar District-25 Phase 2"),
+            ("", "sobha.com"),
+        ]:
+            with self.subTest(title):
+                self.assertEqual(
+                    comp_discovery._short_name({"name": title, "host": "sobha.com"}), expected)
+
+
+class ThinkingIdNamesTests(unittest.TestCase):
+    """The analyst's thinking reaches the user with each candidate ID named
+    (live 2026-09-29: "I can't confirm C18, C15, C12, or C1")."""
+
+    STATE = {"candidate_pool": {
+        "C6": {"name": "Rainbow Mayfair | Luxury Villas", "host": "rainbowmayfair.com",
+               "url_options": {"C6.U2": "https://www.rainbowmayfair.com/villas/"}},
+        "C16": {"name": "Valmark Cityville - Villas", "host": "valmarkcityville.com"},
+    }}
+
+    def test_rows(self):
+        for label, text, expected in [
+            ("a bare list names each",
+             "picking C6 and C16",
+             "picking Rainbow Mayfair (rainbowmayfair.com) and Valmark Cityville (valmarkcityville.com)"),
+            ("an ID the analyst named stays",
+             "C6 Rainbow Mayfair (rainbowmayfair.com) PICK",
+             "C6 Rainbow Mayfair (rainbowmayfair.com) PICK"),
+            ("a URL option becomes its short link",
+             "C6.U2 is the project page",
+             "rainbowmayfair.com/villas is the project page"),
+            ("an unknown ID stays", "C99 skipped", "C99 skipped"),
+            ("a word starting with C is not an ID", "Cityville C-grade", "Cityville C-grade"),
+        ]:
+            with self.subTest(label):
+                self.assertEqual(comp_discovery.name_candidate_ids(text, self.STATE), expected)
+
+    def test_split_partial_id_rows(self):
+        for text, expected in [
+            ("picking C1", ("picking ", "C1")),
+            ("picking C6.U", ("picking ", "C6.U")),
+            ("picking C", ("picking ", "C")),
+            ("picking C6 now", ("picking C6 now", "")),
+            ("ABC", ("ABC", "")),
+        ]:
+            with self.subTest(text):
+                self.assertEqual(comp_discovery.split_partial_id(text), expected)
 
 
 class AttachUrlOptionsTests(unittest.TestCase):
@@ -308,7 +368,7 @@ class ResolveUrlsTests(unittest.TestCase):
         client = mock.Mock()
         listings = listing if isinstance(listing, list) else [listing]
         client.find_business_listings = mock.AsyncMock(
-            side_effect=[[l] if l else [] for l in listings])
+            side_effect=[[item] if item else [] for item in listings])
         with mock.patch(
             "app.agents.adzump.adapters.google.maps.GoogleMapsClient",
             return_value=client,

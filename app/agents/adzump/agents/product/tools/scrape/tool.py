@@ -381,7 +381,7 @@ def _save_new_site_links(product_data: dict, page_links: list[dict]) -> None:
     """Append page_links into product_data['site_links'], dedup by href.
     Surfaces under `siteLinks` in the parent agent's storage write."""
     site_links: list[dict] = product_data.setdefault("site_links", [])
-    seen_hrefs = {l.get("href") for l in site_links if l.get("href")}
+    seen_hrefs = {link.get("href") for link in site_links if link.get("href")}
     for link in page_links:
         if link["href"] not in seen_hrefs:
             site_links.append(link)

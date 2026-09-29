@@ -15,12 +15,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 from app.agents.adzump._shared import (
     emit_progress,
     host_of,
+    short_url,
 )
 from app.agents.adzump.agents.product.competitor_urls import (
     cached_business_listing,
@@ -152,9 +154,14 @@ async def _extract_candidates(params: dict, context: dict) -> ToolResult:
                   "shop as one zone count; a non-cross-shopped corridor does "
                   "not. State a reason for every wrong-geography exclusion."]
     lines += ["", "Judge every row against the search content you already read "
-              "(one-line PICK/SKIP verdict each), then call fetch_candidates "
-              f"with the 6-8 strongest IDs (max {_MAX_FETCH_IDS})."]
-    return ToolResult(success=True, summary="\n".join(lines))
+              "(one-line PICK/SKIP verdict each, written as `ID project-name "
+              "(site)`), then call fetch_candidates with the 6-8 strongest IDs "
+              f"(max {_MAX_FETCH_IDS})."]
+    return ToolResult(
+        success=True,
+        summary=f"{len(candidates)} possible competitors from {n_queries} searches",
+        model_summary="\n".join(lines),
+    )
 
 
 # ─── Tool 2: fetch_candidates - code enforcement ────────────────────────────
@@ -254,8 +261,77 @@ async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
         success=True,
         data={"verified": verified,
               "dropped": {"aggregator": aggregator_drops, "fetch_fail": fetch_fails}},
-        summary="\n".join(lines),
+        summary=_fetch_row(verified, len(aggregator_drops) + len(fetch_fails),
+                           research_state["verified_competitors"]),
+        model_summary="\n".join(lines),
     )
+
+
+# The user's tool row for a fetch: what verified, by short name, and how many
+# dropped. The model reads the full evidence block instead.
+def _fetch_row(verified: list[dict], dropped: int, all_verified: list[dict]) -> str:
+    if verified:
+        row = f"{len(verified)} verified: " + ", ".join(_short_name(c) for c in verified)
+    elif all_verified:
+        row = f"Nothing new - keeping the {len(all_verified)} already verified"
+    else:
+        row = "Nothing verified"
+    return f"{row} ({dropped} dropped)" if dropped else row
+
+
+# A candidate's page title cut to its lead phrase ("Rainbow Mayfair Begur -
+# Brochure, Pros&Cons" -> "Rainbow Mayfair Begur"), else its site.
+_TITLE_BREAK = re.compile(r"\s[-–—]\s|[|:,]")
+
+
+def _short_name(candidate: dict) -> str:
+    title = " ".join((candidate.get("name") or "").split())
+    name = _TITLE_BREAK.split(title, maxsplit=1)[0].strip()
+    if len(name) > 40:
+        name = name[:39].rstrip() + "…"
+    return name or candidate.get("host") or "?"
+
+
+# ─── Candidate IDs in the analyst's thinking, as the user reads it ──────────
+
+_ID_IN_TEXT = re.compile(r"\bC(\d+)(\.U\d+)?\b")
+# The end of a thinking delta that may be an ID cut in two ("C1" + "6").
+_PARTIAL_ID_AT_END = re.compile(r"\bC\d*(?:\.U?\d*)?$")
+
+
+# The analyst's thinking with each candidate ID named for the user (the
+# summarized thinking keeps bare IDs whatever the prompt says, live 2026-09-29):
+#   C6      -> "Rainbow Mayfair (rainbowmayfair.com)": its site, since one
+#              project sits on many sites
+#   C6.U2   -> that URL option's short link
+#   left    an unknown ID, or one the analyst already named ("C6 Rainbow ...")
+# The model's own history keeps the IDs; this is display only.
+def name_candidate_ids(text: str, research_state: dict) -> str:
+    pool = research_state.get("candidate_pool") or {}
+
+    def swap(match: re.Match) -> str:
+        candidate = pool.get(f"C{match.group(1)}")
+        if not candidate:
+            return match.group(0)
+        if match.group(2):
+            url = (candidate.get("url_options") or {}).get(match.group(0))
+            return short_url(url) if url else match.group(0)
+        label = _short_name(candidate)
+        first_word = label.split()[0].lower() if label.split() else ""
+        following = text[match.end():].lstrip(" (").lower()
+        if len(first_word) >= 3 and following.startswith(first_word):
+            return match.group(0)
+        return f"{label} ({candidate.get('host') or '?'})"
+
+    return _ID_IN_TEXT.sub(swap, text)
+
+
+# Splits a delta into what can be shown now and a trailing piece that may be
+# the start of an ID, held until the next delta completes it.
+def split_partial_id(text: str) -> tuple[str, str]:
+    match = _PARTIAL_ID_AT_END.search(text)
+    return (text[:match.start()], text[match.start():]) if match else (text, "")
+
 
 
 _URL_OPTION_READS = 2  # unread alive options content-read per candidate
@@ -456,7 +532,7 @@ def _evidence_block(verified: list[dict], aggregator_drops: list[dict],
 
     footer: list[str] = []
     if skipped_verified:
-        footer.append(f"Already verified earlier, not re-fetched: "
+        footer.append("Already verified earlier, not re-fetched: "
                       + ", ".join(skipped_verified))
     if fetch_fails:
         footer.append(f"Dropped due to fetch failure ({len(fetch_fails)}): "

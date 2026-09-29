@@ -25,6 +25,10 @@ from app.core.session import BaseSession, AuthContext
 from app.core.streaming import AgentEventStream
 from app.agents.adzump.agents.product.context import build_product_context
 from app.agents.adzump.agents.product.tools import PRODUCT_TOOLS
+from app.agents.adzump.agents.product.tools.comp_discovery import (
+    name_candidate_ids,
+    split_partial_id,
+)
 from app.agents.adzump.agents.product.models import AnalysisOutput, AssetRequirements
 from app.agents.adzump._shared import extract_json, primary_screenshot_url
 
@@ -193,13 +197,19 @@ class _PassthroughEventStream(AgentEventStream):
     (text, tool_start/result, done, error) - the parent agent owns those.
     """
 
-    def __init__(self, parent: AgentEventStream, parent_tool_use_id: str) -> None:
+    def __init__(
+        self, parent: AgentEventStream, parent_tool_use_id: str, research_state: dict,
+    ) -> None:
         # super().__init__() so un-overridden base members (emit_complete,
         # request_confirmation, events, ...) find their queue instead of
         # crashing; the local queue is never consumed - overrides delegate.
         super().__init__()
         self._parent = parent
         self._parent_tool_use_id = parent_tool_use_id
+        # The candidate pool the thinking's IDs are named from.
+        self._research_state = research_state
+        # A thinking piece that may be an ID cut across two deltas.
+        self._held_thinking = ""
 
     @property
     def is_cancelled(self) -> bool:
@@ -218,11 +228,21 @@ class _PassthroughEventStream(AgentEventStream):
         return
 
     async def emit_thinking(self, reasoning: str) -> None:
-        # Forward analyst's reasoning so it appears inside the agent card.
-        await self._parent.emit_thinking(reasoning)
+        # Forward analyst's reasoning so it appears inside the agent card, its
+        # candidate IDs named for the user.
+        shown, self._held_thinking = split_partial_id(self._held_thinking + reasoning)
+        if shown:
+            await self._parent.emit_thinking(name_candidate_ids(shown, self._research_state))
+
+    # Sends a held thinking piece: before a tool row, and when a run ends.
+    async def flush_thinking(self) -> None:
+        if self._held_thinking:
+            held, self._held_thinking = self._held_thinking, ""
+            await self._parent.emit_thinking(name_candidate_ids(held, self._research_state))
 
     async def emit_tool_start(self, tool_name, tool_input, tool_use_id="", display_name="") -> None:
         # Forward analyst's tool calls so they nest inside the agent card.
+        await self.flush_thinking()
         await self._parent.emit_tool_start(tool_name, tool_input, tool_use_id, display_name)
 
     async def emit_tool_update(self, tool_use_id: str, message: str) -> None:
@@ -436,7 +456,9 @@ class ProductAgent(BaseAgent):
                 "craft_id": parent_session_context.get("craft_id", ""),
             }
 
-        wrapped_stream = _PassthroughEventStream(parent_event_stream, parent_tool_use_id)
+        wrapped_stream = _PassthroughEventStream(
+            parent_event_stream, parent_tool_use_id,
+            sub_session.context.setdefault("_research_state", {}))
 
         msg = user_message or f"Analyze this business: {url}"
         await self.run(
@@ -444,6 +466,7 @@ class ProductAgent(BaseAgent):
             session=sub_session,
             event_stream=wrapped_stream,
         )
+        await wrapped_stream.flush_thinking()
         final_text = self._last_assistant_text(sub_session)
 
         violations: list[str] = []
@@ -459,6 +482,7 @@ class ProductAgent(BaseAgent):
                     session=sub_session,
                     event_stream=wrapped_stream,
                 )
+                await wrapped_stream.flush_thinking()
                 final_text = self._last_assistant_text(sub_session)
                 violations = _discovery_violations(extract_json(final_text),
                                                    research_state)
