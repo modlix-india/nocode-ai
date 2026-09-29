@@ -231,6 +231,45 @@ class FetchCandidatesTests(unittest.TestCase):
                 self.assertTrue(result.summary.startswith("Nothing new - keeping the 1"))
 
 
+class FullJudgmentInputTests(unittest.TestCase):
+    """The analyst reads its candidate table and fetch evidence whole (live
+    2026-09-29: both were cut at 4000 chars, it never saw the later rows or
+    the citable-ID roster, and kept 1-2 competitors)."""
+
+    def test_a_large_table_and_evidence_reach_the_model_whole(self):
+        searches = [{"query": f"q{q}", "candidates": [
+            {"name": f"Project {q}-{i} Luxury Villas for Sale in Bannerghatta Road "
+                     f"| 3 BHK, 4 BHK Villas with Lake View",
+             "url": f"https://project{q}x{i}.com/"} for i in range(9)]}
+            for q in range(7)]
+        context = _context(searches)
+        table = asyncio.run(_extract_candidates({}, context))
+        sent = table.to_tool_result_content()
+        self.assertGreater(len(table.model_summary), 4000)
+        self.assertNotIn("[truncated", sent)
+        self.assertIn("then call fetch_candidates", sent)  # the closing instructions
+
+        async def fake_fetch(candidate):
+            return {**candidate, "fetch_status": "ok",
+                    "fetch_answer": "TYPE: BRAND\n" + "Verified project facts. " * 90,
+                    "fetch_url": candidate.get("url")}
+
+        async def fake_options(candidate, session_ctx):
+            candidate["url_options"] = {f"{candidate['cid']}.U1": candidate["url"]}
+            candidate["url_option_lines"] = [f"{candidate['cid']}.U1 | reads as: " + "x" * 280]
+
+        ids = [f"C{i}" for i in range(1, 9)]
+        with mock.patch.object(comp_discovery, "_resolve_urls", new=mock.AsyncMock()), \
+             mock.patch.object(comp_discovery, "_fetch_one_candidate", new=fake_fetch), \
+             mock.patch.object(comp_discovery, "_attach_url_options", new=fake_options):
+            evidence = asyncio.run(_fetch_candidates({"ids": ids}, context))
+        sent = evidence.to_tool_result_content()
+        self.assertGreater(len(evidence.model_summary), 4000)
+        self.assertNotIn("[truncated", sent)
+        self.assertIn("Citable IDs", sent)
+        self.assertIn("C8 = ", sent)
+
+
 class FetchRowTests(unittest.TestCase):
     """The user's tool row names what verified by its title's lead phrase
     (live 2026-09-29: rows showed the model's ID table)."""

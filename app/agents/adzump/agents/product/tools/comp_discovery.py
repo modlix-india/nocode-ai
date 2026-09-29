@@ -40,6 +40,13 @@ logger = logging.getLogger(__name__)
 
 _MAX_FETCH_IDS = 12
 _FETCH_TIMEOUT_SEC = 20.0
+# What the analyst may read of the candidate table and the fetch evidence -
+# its whole judgment rests on them, so they are sent in full instead of under
+# the 4000-char default (live 2026-09-29: a 5.4k table and 7.1k evidence were
+# cut, the analyst never saw the later rows or the citable-ID roster, and kept
+# 1-2 competitors). Worst cases fit: ~100 table rows of ~150 chars, and 12
+# fetched pages of ~3.7k (2k answer + URL options).
+_JUDGMENT_RESULT_CHARS = 48_000
 
 # Whole-word markers - a token equal to one of these signals a sub-city
 # anchor. E.g. "Bannerghatta Road" has the token "road"; "JP Nagar Phase 5"
@@ -161,6 +168,7 @@ async def _extract_candidates(params: dict, context: dict) -> ToolResult:
         success=True,
         summary=f"{len(candidates)} possible competitors from {n_queries} searches",
         model_summary="\n".join(lines),
+        max_result_chars=_JUDGMENT_RESULT_CHARS,
     )
 
 
@@ -264,6 +272,7 @@ async def _fetch_candidates(params: dict, context: dict) -> ToolResult:
         summary=_fetch_row(verified, len(aggregator_drops) + len(fetch_fails),
                            research_state["verified_competitors"]),
         model_summary="\n".join(lines),
+        max_result_chars=_JUDGMENT_RESULT_CHARS,
     )
 
 
