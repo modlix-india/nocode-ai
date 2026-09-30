@@ -700,18 +700,20 @@ NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", finish=_LAUNCH_PRESCRIPTION, steps=(
          fields=("summary_confirmed",), requires=tuple(step.name for step in _DETAILS),
          done=lambda actx: actx.summary_confirmed,
          prescribe=lambda actx: _SUMMARY_PRESCRIPTION),
-    # A build that owes work has answered channel and ad groups already (an
-    # old session may hold one without either in the spec).
+    # A build that ran has answered channel and ad groups already (an old
+    # session may hold one without either in the spec).
     Step("channel", label="Campaign type", value=_channel_value,
          fields=("channel",), requires=("summary",),
          applies=lambda actx: actx.is_google,
-         done=lambda actx: bool(actx.spec.get("channel") or actx.build_gaps),
+         done=lambda actx: bool(actx.spec.get("channel") or actx.build_done
+                                or actx.build_gaps),
          prescribe=_prescribe_channel),
     # Ad groups are keyword themes, so only Search picks them.
     Step("ad_groups", label="Ad groups", value=_spec_value("ad_groups"),
          fields=("ad_groups",), requires=("channel",),
          applies=lambda actx: actx.is_google and actx.channel is Channel.SEARCH,
-         done=lambda actx: bool(actx.spec.get("ad_groups") or actx.build_gaps),
+         done=lambda actx: bool(actx.spec.get("ad_groups") or actx.build_done
+                                or actx.build_gaps),
          prescribe=_prescribe_ad_groups),
     Step("build", label="Review panel",
          value=lambda actx: ", ".join(actx.review_items) or None,

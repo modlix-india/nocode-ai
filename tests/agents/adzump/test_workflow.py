@@ -251,16 +251,9 @@ class DependencyMirrorTests(unittest.TestCase):
 
     @staticmethod
     def _invalidated_by(field: str) -> set[str]:
-        """Transitive closure of _FIELD_DEPENDENTS from one changed field."""
+        """What one changed field clears - one hop, as _clear_dependents does."""
         from app.agents.adzump.tools.campaign_data import _FIELD_DEPENDENTS
-        cleared: set[str] = set()
-        frontier = [field]
-        while frontier:
-            for dep in _FIELD_DEPENDENTS.get(frontier.pop(), ()):
-                if dep not in cleared:
-                    cleared.add(dep)
-                    frontier.append(dep)
-        return cleared
+        return set(_FIELD_DEPENDENTS.get(field, ()))
 
     def test_every_step_is_mapped_or_exempt(self):
         # A NEW step must be placed in this mirror deliberately - either
@@ -330,6 +323,9 @@ class BuildStageTests(unittest.TestCase):
              {**self.CONFIRMED, "build_gaps": ("unfinished ad groups - call `manage_keywords`",)},
              "unfinished ad groups", "manage_keywords"),
             ("built: launch", {**search, "ad_groups": "brand"},
+             {**self.CONFIRMED, "build_done": True}, "launch", "launch_campaign tool"),
+            # an old session, or a platform round trip that cleared both answers
+            ("built without channel or ad groups: launch", GOOGLE_DONE,
              {**self.CONFIRMED, "build_done": True}, "launch", "launch_campaign tool"),
         ]
         for case, spec, kw, prefix, carries in rows:

@@ -306,7 +306,7 @@ class AdzumpAgent(BaseAgent):
     # When the last reply ended on a question: a note telling the model this
     # message IS the answer, so it doesn't ask again.
     #   question already answered -> dropped, no note
-    #   campaign review panel     -> note; stays open until the user says launch
+    #   campaign review panel     -> note; open until another tool runs
     #   upload request            -> note; stays open until the model moves on
     #   a helper tool's question  -> note: hand the reply back to that tool; cleared
     #   chip question             -> note with the chip values; cleared

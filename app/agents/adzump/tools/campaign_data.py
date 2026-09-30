@@ -168,7 +168,9 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "instagram": ("summary_confirmed",),
     "competitive_analysis": ("summary_confirmed",),
     "competitor_creatives": ("summary_confirmed",),
-    # The build stage is asked after the okay; taking the okay back re-asks it.
+    # The build stage is asked after the okay. Clearing is one hop: a detail
+    # edit pops the okay but keeps these; only a direct write taking the okay
+    # back ("true" -> anything else) re-asks them.
     "summary_confirmed": ("channel", "ad_groups"),
     # Ad groups are keyword themes - a Search-only concept. Switching to Demand Gen
     # must not carry them into a campaign that has no keywords.
@@ -440,6 +442,10 @@ def _field_traceable(
         return False
     if field == "instagram":
         return v == OfferState.DECLINED.value and is_ig_skip(lu)
+    if field == "summary_confirmed":
+        # A typed okay stands only on a clear go-ahead - the model never
+        # okays the summary for the user.
+        return v == "true" and is_clear_affirmative_reply(lu)
 
     if lu == v:
         return True
@@ -1103,6 +1109,16 @@ set_campaign_spec = ToolDefinition(
             ),
             required=False,
             enum=["brand", "generic", "brand,generic"],
+        ),
+        ToolParameter(
+            name="summary_confirmed",
+            type="string",
+            description=(
+                'Set "true" only when the user clearly okays the campaign summary card '
+                "in words (a chip click is recorded for you)."
+            ),
+            required=False,
+            enum=["true"],
         ),
     ],
     execute=_set_campaign_spec,
