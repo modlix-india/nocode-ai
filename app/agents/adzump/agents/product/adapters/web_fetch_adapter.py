@@ -160,7 +160,10 @@ def _to_markdown(url: str, html: str) -> tuple[str, str]:
 # ---- LLM extractor -------------------------------------------------------
 
 async def _extract_via_anthropic(user_prompt: str) -> str:
-    """Focused-question extractor using Claude Haiku (default)."""
+    """Focused-question extractor using Claude Haiku (default).
+
+    No `temperature`: SDK 1.x dropped the sampling params, and passing one
+    failed every page check before it reached Claude (dev 2026-09-30)."""
     import anthropic
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -170,7 +173,6 @@ async def _extract_via_anthropic(user_prompt: str) -> str:
         max_tokens=EXTRACTOR_MAX_TOKENS,
         system=_SUBAGENT_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
-        temperature=0.2,
     )
     for block in resp.content:
         if getattr(block, "type", None) == "text":
