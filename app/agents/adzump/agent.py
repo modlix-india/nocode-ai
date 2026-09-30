@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 class AdzumpAgent(BaseAgent):
     """Chat agent that builds ad campaigns through conversation."""
 
-    _instance: "AdzumpAgent | None" = None
+    _instance: "AdzumpAgent | None" = None  # singleton; GIL serialises the attr write
 
     # When the model batches a question widget with other tools, run them one by
     # one and stop after the first question, so two widgets never stack.
@@ -306,7 +306,9 @@ class AdzumpAgent(BaseAgent):
     # When the last reply ended on a question: a note telling the model this
     # message IS the answer, so it doesn't ask again.
     #   question already answered -> dropped, no note
+    #   campaign review panel     -> note; open until another tool runs
     #   upload request            -> note; stays open until the model moves on
+    #   a helper tool's question  -> note: hand the reply back to that tool; cleared
     #   chip question             -> note with the chip values; cleared
     #   any other question        -> short note; cleared
     # Only on the first model call of a reply; later calls return "" and keep
@@ -323,6 +325,13 @@ class AdzumpAgent(BaseAgent):
             session.context.pop("_pending_elicitation", None)
             return ""
         if pe.get("expects") == "multi":
+            if pe.get("tool") == "prepare_campaign_review":
+                return (
+                    "## Resuming - campaign review is still open\n"
+                    "The review panel is on screen and the user has been reviewing / editing it "
+                    "across several panel actions. Do NOT restate the setup or re-run the build; "
+                    "acknowledge their changes and, when they signal they're done, move to launch."
+                )
             return (
                 "## Resuming - upload request is still open\n"
                 "Last turn you asked the user to upload assets. They may send "
@@ -333,6 +342,16 @@ class AdzumpAgent(BaseAgent):
             )
         session.context.pop("_pending_elicitation", None)  # single: one-shot
         tool = pe.get("tool", "the previous step")
+        if pe_field == "user_message":
+            # The asker holds the record the reply refers to, and we were never told what it
+            # asked - so reading the answer here means inventing what it meant.
+            return (
+                "## Resuming after a question\n"
+                f"`{tool}` asked the user something last turn and their message is the "
+                f"answer. Send it straight back: `{tool}(user_message=<their verbatim "
+                "reply>)`. Do NOT interpret it, act on it, or say anything was added or "
+                "changed - you were not told what was asked."
+            )
         if pe_field and pe.get("answers"):
             # A typed reply to a chip question is the model's to land: pick the
             # canonical value and write it.
@@ -487,8 +506,12 @@ class AdzumpAgent(BaseAgent):
         ctx = session.context
         actx = AdzumpContext.from_session(session)
         platform = actx.spec.get("platform") or ""
+        # Stop once campaign creation has begun: the campaign craft owns the panel from
+        # then on, so re-emitting the setup craft here just steals focus
+        # (prepare_campaign_review sets campaign_craft_id).
         if not (platform and actx.has_mapped_geo_targets) \
-                or ctx.get("_last_craft_platform") == platform:
+                or ctx.get("_last_craft_platform") == platform \
+                or ctx.get("campaign_craft_id"):
             return
         ctx["_last_craft_platform"] = platform
         url = resolve_url(ctx)

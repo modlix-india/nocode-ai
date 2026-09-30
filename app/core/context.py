@@ -70,6 +70,11 @@ class BaseContext:
         """
         self._static_suffix = text or ""
 
+    def use_static_prefix_only(self) -> None:
+        """Skip the async doc load — the static prefix is the whole system prompt
+        (for agents with no doc_paths)."""
+        self._cached_static_text = self._static_prefix
+
     async def load(self) -> None:
         """Load and cache static documentation from disk.
 

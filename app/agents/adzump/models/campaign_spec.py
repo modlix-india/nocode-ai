@@ -56,6 +56,10 @@ class CampaignSpec(BaseModel):
     competitor_creatives: OfferState = OfferState.UNSET
     # only UNSET/DECLINED; linked = ig_page set
     instagram: OfferState = OfferState.UNSET
+    # Google build stage (user answers, asked after the summary is okayed)
+    summary_confirmed: str = ""  # "true" once the user okays the summary card
+    channel: str = ""  # a Channel value (SEARCH / DEMAND_GEN); Meta leaves it unset
+    ad_groups: str = ""  # comma-joined keyword theme ids - Search only
     # lifecycle (not a user answer)
     campaign_status: str = ""
 

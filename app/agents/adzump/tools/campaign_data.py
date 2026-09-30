@@ -25,6 +25,7 @@ import unicodedata
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.agents.adzump.agents.campaign.models import Channel
 from app.agents.adzump.models import (
     LEGACY_DECLINED_KEYS,
     LEGACY_MARKER_TO_FIELD,
@@ -90,6 +91,7 @@ def _normalize_id(v: Any) -> Any:
 # Fields that can be set via this tool.
 ALLOWED_FIELDS = {
     "platform",
+    "channel",  # Google only: SEARCH | DEMAND_GEN - decides which build tools run
     "duration",
     "budget",
     "location",
@@ -97,6 +99,8 @@ ALLOWED_FIELDS = {
     "account",
     "fb_page",
     "ig_page",
+    "ad_groups",  # Google: ad groups to build; bounded by the tool enum + resolve_theme_ids
+    "summary_confirmed",  # "true" once the user okays the campaign summary - gates the build
     # Offer fields (enum: accepted/declined). Legacy *_declined names stay
     # accepted (in-flight rails, steered-by-old-prompt writes) but are
     # canonicalized to the enum at the _apply_field seam - storage never
@@ -117,6 +121,7 @@ _ACCOUNT_LIKE_FIELDS = {"parent_account", "account", "fb_page", "ig_page"}
 # this set - _apply_field canonicalizes them first.
 _USER_TEXT_FIELDS = {
     "platform",
+    "channel",
     "duration",
     "budget",
     "location",
@@ -131,6 +136,9 @@ _USER_TEXT_FIELDS = {
 # field that changed → the fields it invalidates.
 _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
     "platform": (
+        "channel",
+        "ad_groups",
+        "summary_confirmed",
         "parent_account",
         "account",
         "fb_page",
@@ -145,11 +153,28 @@ _FIELD_DEPENDENTS: dict[str, tuple[str, ...]] = {
         "competitive_analysis_declined",
         "competitor_creatives_declined",
     ),
-    "parent_account": ("account", "fb_page", "ig_page", "instagram", "ig_page_declined"),
-    "fb_page": ("ig_page", "instagram", "ig_page_declined"),
-    # No spec dependents, but a genuine change invalidates the geo targets in
-    # product_data - handled as a special case in _clear_dependents.
-    "location": (),
+    "parent_account": ("account", "fb_page", "ig_page", "instagram", "ig_page_declined",
+                       "summary_confirmed"),
+    "fb_page": ("ig_page", "instagram", "ig_page_declined", "summary_confirmed"),
+    # A genuine change also invalidates the geo targets in product_data -
+    # handled as a special case in _clear_dependents.
+    "location": ("summary_confirmed",),
+    # The okayed summary showed every detail: changing one means the user
+    # okays the new summary before anything is built or launched.
+    "duration": ("summary_confirmed",),
+    "budget": ("summary_confirmed",),
+    "account": ("summary_confirmed",),
+    "ig_page": ("summary_confirmed",),
+    "instagram": ("summary_confirmed",),
+    "competitive_analysis": ("summary_confirmed",),
+    "competitor_creatives": ("summary_confirmed",),
+    # The build stage is asked after the okay. Clearing is one hop: a detail
+    # edit pops the okay but keeps these; only a direct write taking the okay
+    # back ("true" -> anything else) re-asks them.
+    "summary_confirmed": ("channel", "ad_groups"),
+    # Ad groups are keyword themes - a Search-only concept. Switching to Demand Gen
+    # must not carry them into a campaign that has no keywords.
+    "channel": ("ad_groups",),
 }
 
 # v3 · F3 - phrases that mean "skip linking Instagram, run Facebook-only".
@@ -185,9 +210,20 @@ def is_ig_skip(text: str) -> bool:
 # only as the WHOLE reply, so a polarity-flip ("no, change the budget") is NOT a
 # decline. Same shape + role as _IG_SKIP_PHRASES / is_ig_skip.
 _DECLINE_PHRASES = (
-    "skip competitor", "skip competitors", "skip the competitor", "no competitor",
-    "not now", "maybe later", "do it later", "no need", "no thanks",
-    "don't bother", "dont bother", "skip it", "skip this", "skip that",
+    "skip competitor",
+    "skip competitors",
+    "skip the competitor",
+    "no competitor",
+    "not now",
+    "maybe later",
+    "do it later",
+    "no need",
+    "no thanks",
+    "don't bother",
+    "dont bother",
+    "skip it",
+    "skip this",
+    "skip that",
 )
 
 
@@ -204,8 +240,20 @@ def is_decline(text: str) -> bool:
 # instead). is_decline is substring-based and over-fires on these: "not now, first
 # tell me about the audience" (defer+ask), "no competitors named yet" (informing).
 _DECLINE_AMBIG_MARKERS = (
-    "?", "first", "tell me", "what ", "what'", "how ", "which ", "why ",
-    "named", "instead", "before we", "about the", "explain", " vs ",
+    "?",
+    "first",
+    "tell me",
+    "what ",
+    "what'",
+    "how ",
+    "which ",
+    "why ",
+    "named",
+    "instead",
+    "before we",
+    "about the",
+    "explain",
+    " vs ",
 )
 
 
@@ -394,6 +442,10 @@ def _field_traceable(
         return False
     if field == "instagram":
         return v == OfferState.DECLINED.value and is_ig_skip(lu)
+    if field == "summary_confirmed":
+        # A typed okay stands only on a clear go-ahead - the model never
+        # okays the summary for the user.
+        return v == "true" and is_clear_affirmative_reply(lu)
 
     if lu == v:
         return True
@@ -406,6 +458,12 @@ def _field_traceable(
         # "Meta" / "facebook" / "instagram" / "fb" / "ig" → META.
         v_platform = Platform.from_value(v)
         if v_platform is not None and Platform.from_value(lu) is v_platform:
+            return True
+    if field == "channel":
+        # Same shape as platform: the stored value ("DEMAND_GEN") and the user's chip
+        # or typed reply ("Demand Gen", "demand gen") rarely match as substrings.
+        v_channel = Channel.from_value(v)
+        if v_channel is not None and Channel.from_value(lu) is v_channel:
             return True
     if field in ("duration", "budget"):
         # Normalization-aware canonical equality: parse BOTH sides
@@ -675,7 +733,9 @@ def _store_confirmed_location(
         place["lat"] = None
         place["lng"] = None
     name = product.get("product_name") or ""
-    place["display_name"] = f"{name}, {place['address']}" if name and place["address"] else ""
+    place["display_name"] = (
+        f"{name}, {place['address']}" if name and place["address"] else ""
+    )
 
 
 _LOCATION_UPDATE_RE = re.compile(r'"type"\s*:\s*"location_update"')
@@ -957,6 +1017,16 @@ set_campaign_spec = ToolDefinition(
             enum=["Google Ads", "Meta"],
         ),
         ToolParameter(
+            name="channel",
+            type="string",
+            description=(
+                "Google campaign type. Only for Google - Meta has no channel. "
+                "SEARCH targets keywords; DEMAND_GEN targets audiences."
+            ),
+            required=False,
+            enum=[c.value for c in Channel],
+        ),
+        ToolParameter(
             name="duration",
             type="string",
             description="Campaign duration (e.g., '30 days', '3 months')",
@@ -1028,6 +1098,27 @@ set_campaign_spec = ToolDefinition(
             type="string",
             description="Meta only - Instagram Business account id linked to the fb_page.",
             required=False,
+        ),
+        ToolParameter(
+            name="ad_groups",
+            type="string",
+            description=(
+                "Google only - which targeting ad groups to build, when the user narrows "
+                'the plan in words (e.g. "no, only brand" -> "brand"). Set only what they '
+                "actually said; the review chips capture the rest."
+            ),
+            required=False,
+            enum=["brand", "generic", "brand,generic"],
+        ),
+        ToolParameter(
+            name="summary_confirmed",
+            type="string",
+            description=(
+                'Set "true" only when the user clearly okays the campaign summary card '
+                "in words (a chip click is recorded for you)."
+            ),
+            required=False,
+            enum=["true"],
         ),
     ],
     execute=_set_campaign_spec,

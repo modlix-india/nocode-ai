@@ -17,6 +17,7 @@ import re
 from typing import Any
 
 from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
+from app.core.session import record_oneshot_usage
 from app.agents.adzump.models import LEGACY_MARKER_TO_FIELD
 from app.config import settings
 
@@ -173,11 +174,9 @@ async def _present_options(params: dict[str, Any], context: dict[str, Any]) -> T
         # Rides _pending_elicitation via core (same channel as elicit_expects);
         # None when untagged, so this stays inert for control-flow asks.
         data=({"elicit_field": field, "elicit_answers": answer_map} if field else None),
-        summary=(
-            f"Asked the user: \"{question[:120]}\" with {len(options)} options. "
-            "Question is already on screen - do not write it again. "
-            "Stop generating text now; wait for the user's reply."
-        ),
+        # The tool-only-turn restore stand-in (session._tool_only_turn_note): the bare
+        # question the user saw, not a fixed meta-frame the resumed model would imitate.
+        summary=question[:200],
     )
 
 
@@ -352,6 +351,15 @@ async def infer_suggestions(
             max_tokens=300,
             response_format={"type": "json_object"},
         )
+        # Bill this one-shot to the active agent's session (the loop can't see it).
+        if resp.usage is not None:
+            await record_oneshot_usage(
+                {
+                    "input_tokens": resp.usage.prompt_tokens,
+                    "output_tokens": resp.usage.completion_tokens,
+                },
+                "gpt-4o-mini",
+            )
         data = json.loads((resp.choices[0].message.content or "").strip())
     except Exception as e:
         logger.debug("infer_suggestions failed: %s: %s", type(e).__name__, str(e)[:200])

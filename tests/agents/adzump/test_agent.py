@@ -66,6 +66,73 @@ class FromSessionTests(unittest.TestCase):
         self.assertFalse(bare.ig_accounts_fetched)
 
 
+
+class ElicitationRoutingTests(unittest.TestCase):
+    """`awaiting_tool` reads one shape only, so the elicitations already in use are untouched."""
+
+    @staticmethod
+    def _session(pe, said=""):
+        return types.SimpleNamespace(
+            context={
+                "product_data": dict(SAAS),
+                "campaign_spec": {},
+                "_pending_elicitation": pe,
+            },
+            messages=[{"role": "user", "content": said}] if said else [],
+            _turn_count=11,
+        )
+
+    def _awaiting(self, pe):
+        return AdzumpContext.from_session(self._session(pe)).awaiting_tool
+
+    def _hint(self, pe):
+        return AdzumpAgent._resume_elicitation_section(
+            AdzumpAgent.__new__(AdzumpAgent), self._session(pe), 1
+        )
+
+    def test_only_an_elicitation_naming_user_message_routes_back(self):
+        self.assertEqual(
+            self._awaiting({"tool": "manage_audience", "field": "user_message"}),
+            "manage_audience",
+        )
+
+    def test_the_existing_elicitations_are_unaffected(self):
+        for pe in [
+            {"tool": "present_options", "field": "platform", "expects": "single"},
+            {"tool": "present_options", "field": "budget", "answers": {"a": "b"}},
+            {"tool": "prepare_campaign_review", "field": None, "expects": "multi"},
+            {"tool": "extract_site_assets", "field": None, "expects": "multi"},
+            {},
+        ]:
+            with self.subTest(tool=pe.get("tool")):
+                self.assertIsNone(self._awaiting(pe))
+
+    def test_a_routed_question_does_not_write_a_campaign_field(self):
+        # `field` is a tool PARAMETER here, not a spec field - tagged-capture must ignore it.
+        session = self._session(
+            {"tool": "manage_audience", "field": "user_message",
+             "expects": "single", "answers": None},
+            said="yes add them",
+        )
+        agent = AdzumpAgent.__new__(AdzumpAgent)
+        self.assertEqual(AdzumpAgent._capture_tagged_answer(agent, session, 1), "")
+        self.assertEqual(session.context["campaign_spec"], {})
+        # Left open, so the resume hint and the journey still see it this turn.
+        self.assertIn("_pending_elicitation", session.context)
+
+    def test_the_resume_hint_sends_the_answer_back(self):
+        hint = self._hint({"tool": "manage_audience", "field": "user_message",
+                           "expects": "single"})
+        self.assertIn("manage_audience(user_message=", hint)
+        self.assertIn("not told what was asked", hint)
+
+    def test_a_chip_question_keeps_the_original_hint(self):
+        hint = self._hint({"tool": "present_options", "field": "platform",
+                           "expects": "single"})
+        self.assertIn("pick the next action", hint)
+        self.assertNotIn("user_message=", hint)
+
+
 # ── F3 · Instagram is optional ──────────────────────────────────────────────
 class InstagramOptionalTests(unittest.TestCase):
     META_FULL = {"platform": "Meta", "duration": "30 days", "budget": "$50/day",

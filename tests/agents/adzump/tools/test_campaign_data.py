@@ -642,5 +642,17 @@ class IsRealEstateTests(unittest.TestCase):
                 self.assertEqual(bool(is_real_estate(bt)), expected)
 
 
+class DeclaredParamsTests(unittest.TestCase):
+    def test_journey_writes_are_declared(self):
+        # regression: master's unknown-parameter guard refused summary_confirmed,
+        # so a typed okay of the summary card could never land.
+        from app.agents.adzump.tools.campaign_data import set_campaign_spec
+        from app.core.agent import BaseAgent
+        for field in ("channel", "ad_groups", "summary_confirmed"):
+            with self.subTest(field):
+                self.assertIsNone(BaseAgent._reject_unknown_params(
+                    set_campaign_spec, {field: "x"}))
+
+
 if __name__ == "__main__":
     unittest.main()

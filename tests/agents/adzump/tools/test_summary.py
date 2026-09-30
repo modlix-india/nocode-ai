@@ -71,7 +71,7 @@ class ShowCampaignSummaryTests(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.audience, "user")
         self.assertIn("**Ad Account**", result.summary)  # the card, not a partial
-        self.assertIn("launch", result.model_summary)  # next step steered
+        self.assertIn('field "summary_confirmed"', result.model_summary)  # next step steered
 
     def test_incomplete_journey_refuses(self):
         rows = [

@@ -4,7 +4,7 @@ The card is rendered by code from the typed context - a model re-typing it
 rephrases fields, drops bullets, and swaps real IDs for placeholders.
 ``show_campaign_summary`` returns it audience="user" so the exact markdown
 reaches the chat; the model only supplies a lead-in and the follow-up
-launch ask.
+"Proceed with the campaign?" ask.
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from typing import Any
 from app.core.tools.base import ToolDefinition, ToolResult
 from app.agents.adzump.models import OfferState, offer_state
 from app.agents.adzump.workflow import (
-    NEW_CAMPAIGN,
+    CAMPAIGN_DETAILS,
+    SUMMARY_CONFIRM_ASK,
     AdzumpContext,
     account_display,
     website_display,
@@ -22,14 +23,14 @@ from app.agents.adzump.workflow import (
 
 
 async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
-    """Render the review card for the user. Refuses until the journey is
-    complete - the same walk that prescribes review, so the card and the
-    prescription can never disagree."""
+    """Render the review card for the user. Refuses until every campaign
+    detail is collected - the same walk that prescribes the summary, so the
+    card and the prescription can never disagree."""
     session = context.get("_session")
     if session is None:
         return ToolResult(success=False, error="No session available.")
     actx = AdzumpContext.from_session(session)
-    if not NEW_CAMPAIGN.walk(actx).complete:
+    if not CAMPAIGN_DETAILS.walk(actx).complete:
         return ToolResult(
             success=False,
             error=(
@@ -45,9 +46,7 @@ async def _show_campaign_summary(params: dict[str, Any], context: dict[str, Any]
         summary=render_summary_card(actx),
         model_summary=(
             "Summary card is on screen - do NOT write your own summary text. "
-            'Now ask via the present_options tool: "Ready to launch the '
-            'campaign?" with chips Yes, launch / No, make changes. On '
-            "'Yes, launch', call launch_campaign()."
+            f"Now {SUMMARY_CONFIRM_ASK}."
         ),
     )
 
@@ -101,7 +100,7 @@ show_campaign_summary = ToolDefinition(
         "Render the campaign review summary card to the user. Call this when "
         "every campaign field is set (the turn reminder tells you) - the card "
         "is rendered by code from stored state, so NEVER write the summary "
-        "yourself. After it, ask the launch confirmation via present_options."
+        "yourself. After it, ask the user to confirm it via present_options."
     ),
     display_name="Campaign Summary",
     parameters=[],

@@ -45,7 +45,7 @@ class LaunchGateTests(unittest.TestCase):
             ("a question, not a go-ahead", {}, "what budget did we pick?", None, "rec", False,
              "confirmation"),
             ("a clear no", {}, "no", None, "rec", False, "confirmation"),
-            ("the save failed", {}, "Yes, launch", meta, None, False, "NOT saved"),
+            ("the save failed", {}, "Yes, launch", meta, None, False, "Could not save"),
             ("matching platform tags", {}, "Yes, launch", meta, "rec", True, ""),
             ("an old session with untagged ids", {}, "Yes, launch", None, "rec", True, ""),
         ]:

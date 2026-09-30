@@ -90,6 +90,11 @@ def make_actx(
     pending_ask: str | None = None,
     field_asks: dict | None = None,
     pending_location: str | None = None,
+    build_done: bool = False,
+    build_gaps: tuple[str, ...] = (),
+    review_items: tuple[str, ...] = (),
+    summary_confirmed: bool = False,
+    awaiting_tool: str | None = None,
 ) -> AdzumpContext:
     """A `AdzumpContext` for journey-walk / prescription tests."""
     return AdzumpContext(
@@ -109,6 +114,11 @@ def make_actx(
         competitor_creatives_resolution=(
             OfferResolution.FULFILLED if creatives_resolved
             else OfferResolution.OPEN),
+        build_done=build_done,
+        build_gaps=build_gaps,
+        review_items=review_items,
+        summary_confirmed=summary_confirmed,
+        awaiting_tool=awaiting_tool,
     )
 
 

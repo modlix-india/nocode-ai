@@ -2,7 +2,7 @@
 import os
 import logging
 from pydantic_settings import BaseSettings
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -433,6 +433,16 @@ class Settings(BaseSettings):
     ADZUMP_PROVIDER: str = "deepseek"  # Adzump orchestrator on DeepSeek (Kailash 2026-09-08, matching AppBuilder); competitor research stays Claude (Anthropic-only web_search); the vision sub-agents pin their own model (agents/vision, agents/creative_essence)
     ADZUMP_ANALYST_THINKING: bool = True  # Extended (adaptive) thinking for the Product Analyst ONLY - its reasoning streams to the UI during the 36->4 judgment. Off everywhere else (BaseAgent default). Toggle to disable without a code change.
     ADZUMP_ANALYST_EFFORT: str = "medium"  # Bounds the analyst's adaptive-thinking depth (low|medium|high|max). Unset effort = API default "high": a 101k-token final judgment turn spent 6.5 min thinking (live 2026-09-21). The re-judge is a judgment task with a ~2k-token JSON output - medium suits it.
+    # Overridden per environment in ~/.nocode-ai/variables.sh, which start-standalone.sh
+    # sources - set either of these there rather than editing the default.
+    # true = validateOnly: Google checks the payload and creates nothing, and the custom
+    # segment is left out rather than created. The launch reply says when a run was dry.
+    # ON until creative lands: with no AdGroupAd a created campaign can never serve, so a
+    # real launch would leave an unservable campaign and a permanent custom audience.
+    ADZUMP_PUBLISH_DRY_RUN: bool = True
+    # false skips asset selection - the priciest step in a scrape (~266k tokens). A campaign
+    # built with it off has no logo or images.
+    ADZUMP_VISION_ENABLED: bool = True
     ADZUMP2_PROVIDER: str = "minimax"  # Adzump2 LLM provider
     LEADZUMP_PROVIDER: str = "deepseek"  # LeadZump CRM assistant — same provider and
     # balanced tier as AppBuilder, so the two agents share one model and one set of
@@ -522,7 +532,6 @@ class Settings(BaseSettings):
             ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
             ("secrets", "googleAPIKey"): "GOOGLE_API_KEY",
             ("secrets", "googleMapsAPIKey"): "GOOGLE_MAPS_API_KEY",
-            ("secrets", "minimaxAPIKey"): "MINIMAX_API_KEY",
             ("secrets", "googleMapID"): "GOOGLE_MAP_ID",
             ("llm", "provider"): "LLM_PROVIDER",
             ("gateway", "url"): "GATEWAY_URL",

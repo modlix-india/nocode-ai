@@ -18,6 +18,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from typing import AsyncIterator, List, Optional
@@ -28,7 +29,7 @@ from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context
 from app.core.session import BaseSession, AuthContext
-from app.core.streaming import AgentEvent
+from app.core.streaming import AgentEvent, AgentEventStream
 from app.core import run_manager, stream_registry
 from app.db.models import SessionListItem, SessionListResponse, SessionStatus
 from app.services.chat_attachments import get_attachments
@@ -399,6 +400,22 @@ def build_image_blocks(
         else:
             logger.info("Attachment[%d]: type=%s (skipped, not image or no data)", i, att.type)
     return blocks if blocks else None
+
+
+def sse_stream_response(event_stream: AgentEventStream, run_coro) -> StreamingResponse:
+    """Run a quick one-shot coroutine that writes to ``event_stream`` and stream it
+    back - outside run_manager, so no reattach (a review-panel widget action)."""
+
+    async def events():
+        task = asyncio.create_task(run_coro)
+        try:
+            async for event in event_stream.events():
+                yield event
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return sse_response(events())
 
 
 def sse_response(events: AsyncIterator[AgentEvent]) -> StreamingResponse:

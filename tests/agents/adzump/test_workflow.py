@@ -13,8 +13,13 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    build_review_items,
+    set_audience,
+)
 from app.agents.adzump.core.journey import Status
-from app.agents.adzump.workflow import NEW_CAMPAIGN, AdzumpContext
+from app.agents.adzump.workflow import CAMPAIGN_DETAILS, NEW_CAMPAIGN, AdzumpContext
 from app.agents.adzump.models import OfferResolution
 from app.agents.adzump.tools.campaign_data import CREATIVES_REVIEW_ASK
 from tests.agents.adzump._fixtures import RE, SAAS, make_actx, make_session
@@ -101,7 +106,7 @@ class JourneyInvariantTests(unittest.TestCase):
                 else:
                     self.assertNotIn("fetch_competitor_creatives", line)
 
-    # S0-5 → S2 · the review prescription is two tool calls; the card itself
+    # S0-5 → S2 · the summary prescription is two tool calls; the card itself
     # is CODE-rendered (tools/summary.py) - no VERBATIM template remains.
     def test_review_block_shape(self):
         rows = [
@@ -116,12 +121,11 @@ class JourneyInvariantTests(unittest.TestCase):
                 missing = NEW_CAMPAIGN.walk(actx).missing
                 self.assertEqual(len(missing), 1)
                 block = missing[0]
-                self.assertTrue(block.startswith("review & publish"))
-                for tool in ("show_campaign_summary", "launch_campaign"):
-                    self.assertIn(tool, block)
+                self.assertTrue(block.startswith("review the summary"))
+                self.assertIn("show_campaign_summary", block)
+                self.assertIn('field "summary_confirmed"', block)
                 # F20: the model echoed copyable call syntax into the launch bubble
                 self.assertNotIn("present_options(", block)
-                self.assertNotIn("launch_campaign(", block)
 
     # S0-6 · in-flight legacy session resumes sanely through from_session
     def test_legacy_session_resume(self):
@@ -138,7 +142,7 @@ class JourneyInvariantTests(unittest.TestCase):
                       OfferResolution.DECLINED)
         missing = NEW_CAMPAIGN.walk(actx).missing
         self.assertEqual(len(missing), 1)
-        self.assertTrue(missing[0].startswith("review & publish"))
+        self.assertTrue(missing[0].startswith("review the summary"))
 
 
 class JourneyEngineTests(unittest.TestCase):
@@ -239,22 +243,17 @@ class DependencyMirrorTests(unittest.TestCase):
     # Each step's spec field(s) are its Step.fields. Steps outside the spec
     # cascade write none: product is the whole session (a new URL restarts
     # everything), target_areas lives in product_data (its invalidation is the
-    # location hook, behavior-tested in test_campaign_data).
-    EXEMPT = {"product", "target_areas"}
+    # location hook, behavior-tested in test_campaign_data). tool_question is a
+    # one-turn routing of the reply, and the build lives in campaign_build
+    # (prepare_campaign_review refuses to rebuild over the user's review).
+    EXEMPT = {"product", "target_areas", "tool_question", "build"}
     STEP_FIELDS = {step.name: step.fields for step in NEW_CAMPAIGN.steps}
 
     @staticmethod
     def _invalidated_by(field: str) -> set[str]:
-        """Transitive closure of _FIELD_DEPENDENTS from one changed field."""
+        """What one changed field clears - one hop, as _clear_dependents does."""
         from app.agents.adzump.tools.campaign_data import _FIELD_DEPENDENTS
-        cleared: set[str] = set()
-        frontier = [field]
-        while frontier:
-            for dep in _FIELD_DEPENDENTS.get(frontier.pop(), ()):
-                if dep not in cleared:
-                    cleared.add(dep)
-                    frontier.append(dep)
-        return cleared
+        return set(_FIELD_DEPENDENTS.get(field, ()))
 
     def test_every_step_is_mapped_or_exempt(self):
         # A NEW step must be placed in this mirror deliberately - either
@@ -295,6 +294,118 @@ class DependencyMirrorTests(unittest.TestCase):
             for dep in dependents:
                 with self.subTest(changed=changed, dependent=dep):
                     self.assertIn(dep, known)
+
+
+class BuildStageTests(unittest.TestCase):
+    """After the details: the user okays the summary, then on Google picks the
+    campaign type (and, for Search, the ad groups), the build runs, and launch
+    comes last. Meta goes from the okayed summary straight to launch."""
+
+    CONFIRMED = {"summary_confirmed": True}
+
+    def _walk(self, spec=GOOGLE_DONE, **kw):
+        return NEW_CAMPAIGN.walk(make_actx(dict(spec), product=SAAS, attempted=True, **kw))
+
+    def test_each_stage_prescribes_the_next_step(self):
+        search = {**GOOGLE_DONE, "channel": "SEARCH"}
+        rows = [  # (case, spec, context, first entry's prefix, text it must carry)
+            ("the summary first", GOOGLE_DONE, {}, "review the summary",
+             'field "summary_confirmed"'),
+            ("then the campaign type", GOOGLE_DONE, self.CONFIRMED, "channel",
+             'field "channel"'),
+            ("search picks its ad groups", search, self.CONFIRMED, "ad groups",
+             '"answer": "brand,generic"'),
+            ("demand gen builds the audience", {**GOOGLE_DONE, "channel": "DEMAND_GEN"},
+             self.CONFIRMED, "build the campaign", "audience targeting"),
+            ("search builds the keywords", {**search, "ad_groups": "brand"}, self.CONFIRMED,
+             "build the campaign", "do NOT ask either question again"),
+            ("a build owing work is finished, not rebuilt", GOOGLE_DONE,
+             {**self.CONFIRMED, "build_gaps": ("unfinished ad groups - call `manage_keywords`",)},
+             "unfinished ad groups", "manage_keywords"),
+            ("built: launch", {**search, "ad_groups": "brand"},
+             {**self.CONFIRMED, "build_done": True}, "launch", "launch_campaign tool"),
+            # an old session, or a platform round trip that cleared both answers
+            ("built without channel or ad groups: launch", GOOGLE_DONE,
+             {**self.CONFIRMED, "build_done": True}, "launch", "launch_campaign tool"),
+        ]
+        for case, spec, kw, prefix, carries in rows:
+            with self.subTest(case):
+                first = self._walk(spec, **kw).missing[0]
+                self.assertTrue(first.startswith(prefix), first)
+                self.assertIn(carries, first)
+                # F20: prose that names the tool, never copyable call syntax
+                for call in ("present_options(", "prepare_campaign_review(", "launch_campaign("):
+                    self.assertNotIn(call, first)
+
+    def test_every_channel_is_offered(self):
+        first = self._walk(**self.CONFIRMED).missing[0]
+        for channel in Channel:
+            self.assertIn(f'"answer": "{channel.value}"', first)
+            self.assertIn(channel.chip_label, first)
+
+    def test_meta_never_builds(self):
+        meta = {**META_DONE, "ig_page": "ig-7"}
+        for kw in ({}, self.CONFIRMED):
+            with self.subTest(kw=kw):
+                progress = NEW_CAMPAIGN.walk(make_actx(
+                    meta, product=SAAS, creatives_resolved=True, **kw))
+                joined = " ".join(progress.missing)
+                self.assertNotIn("prepare_campaign_review", joined)
+                self.assertNotIn("ad_groups", joined)
+                self.assertNotIn("Review panel", progress.state_section())
+        self.assertTrue(progress.missing[0].startswith("launch"))
+
+    def test_the_review_panel_row_names_what_the_channel_declared(self):
+        progress = self._walk({**GOOGLE_DONE, "channel": "DEMAND_GEN"}, **self.CONFIRMED,
+                              build_done=True,
+                              review_items=("the audience targeting", "where the ads will show"))
+        self.assertIn("- Review panel: the audience targeting, where the ads will show ✓",
+                      progress.state_section())
+
+    def test_a_slot_that_never_ran_is_not_promised(self):
+        # DemandGenBuild declares creative, but no tool fills it yet.
+        ctx = {"campaign_spec": {"platform": "GOOGLE", "account": "1",
+                                 "channel": "Demand Gen"}}
+        set_audience(ctx, {"signals": [], "demographics": {},
+                           "dimension_groups": [], "meta": {}})
+        self.assertEqual(build_review_items(ctx), ("the audience targeting",))
+
+    def test_the_summary_card_waits_only_for_the_details(self):
+        # The card renders off CAMPAIGN_DETAILS: the steps after it never hold it back.
+        for kw in ({}, self.CONFIRMED, {**self.CONFIRMED, "build_done": True}):
+            with self.subTest(kw=kw):
+                actx = make_actx(GOOGLE_DONE, product=SAAS, attempted=True, **kw)
+                self.assertTrue(CAMPAIGN_DETAILS.walk(actx).complete)
+
+    def test_the_summary_okay_reads_either_answer_shape(self):
+        for stored, confirmed in [("true", True), ("Yes, proceed", True),
+                                  ("false", False), ("No, make changes", False), ("", False)]:
+            with self.subTest(stored=stored):
+                session = make_session(spec={**GOOGLE_DONE, "summary_confirmed": stored},
+                                       product=SAAS)
+                self.assertIs(AdzumpContext.from_session(session).summary_confirmed, confirmed)
+
+
+class HelperQuestionTests(unittest.TestCase):
+    """A helper agent asked the user something. It holds the record the answer
+    refers to, so the reply goes back to it - prescribing the next campaign step
+    instead reads as leave to move on (live: "yes add them" was answered with
+    "should we launch?", and the next "yes" launched the campaign)."""
+
+    def _missing(self, **kw):
+        spec = {**GOOGLE_DONE, "channel": "DEMAND_GEN"}
+        return NEW_CAMPAIGN.walk(make_actx(
+            spec, product=SAAS, attempted=True, summary_confirmed=True, build_done=True,
+            review_items=("the audience targeting",), **kw)).missing
+
+    def test_the_reply_goes_back_to_whichever_tool_asked(self):
+        for tool in ("manage_audience", "manage_keywords"):
+            with self.subTest(tool):
+                missing = self._missing(awaiting_tool=tool)
+                self.assertIn(f"{tool}(user_message=", missing[0])
+                self.assertIn("Do NOT act on it yourself", missing[0])
+                self.assertFalse(any(m.startswith("launch") for m in missing))
+        self.assertTrue(self._missing()[0].startswith("launch"))
 
 
 if __name__ == "__main__":

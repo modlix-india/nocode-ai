@@ -4,8 +4,9 @@ Ported from ``ds/adapters/google/client.py``. Key adaptations:
 - Reads the developer token from ``get_adzump_config().google_ads`` (not ``os.getenv``).
 - Auth headers (the user's forwarded request headers) are passed per-request
   rather than read from a global ContextVar.
-- Raises plain ``RuntimeError`` / ``httpx.HTTPStatusError`` instead of ds's custom
-  exception classes.
+- Raises a typed ``GoogleAdsApiError`` (subclass of ``RuntimeError``) carrying the HTTP
+  status, so callers branch on the failure kind (e.g. a 429 rate limit) without parsing
+  messages.
 - Uses ``httpx.AsyncClient`` directly (no dependency on ds's http_request wrapper).
 """
 
@@ -25,6 +26,52 @@ GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 _cached_oauth_token: str | None = None
 _oauth_token_expiry: float = 0.0
+
+
+class GoogleAdsApiError(RuntimeError):
+    """A non-2xx response from the Google Ads API.
+
+    Carries ``status_code`` so callers branch on the failure kind (e.g. a 429 rate
+    limit) by type — never by parsing the message string.
+
+    ``payload`` is the decoded error body. Google's top-level ``error.message`` is generic
+    ("Request contains an invalid argument."); the actual cause is in ``error.details[]``,
+    in one of two envelopes. Callers that need it parse the body rather than the message.
+    """
+
+    def __init__(
+        self, status_code: int, message: str, payload: dict | None = None
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.payload = payload or {}
+
+    @property
+    def is_rate_limited(self) -> bool:
+        return self.status_code == 429
+
+
+def parse_mutate_errors(payload: dict) -> list[str]:
+    """Readable messages from a failed mutate, for any resource.
+
+    Google answers in TWO envelopes - GoogleAdsFailure.errors[] and, for a type mismatch,
+    google.rpc.BadRequest.fieldViolations[]. Order is kept: the FIRST error is the cause, the
+    later RESOURCE_NOT_FOUNDs are its fallout.
+    """
+    messages: list[str] = []
+    for detail in (payload.get("error") or {}).get("details") or []:
+        for err in detail.get("errors") or []:
+            code = err.get("errorCode") or {}
+            label = next(iter(code.values()), "") if code else ""
+            text = err.get("message", "")
+            messages.append(f"{label}: {text}" if label else text)
+        for violation in detail.get("fieldViolations") or []:
+            messages.append(
+                f"{violation.get('field', '')}: {violation.get('description', '')}"
+            )
+    if not messages and (message := (payload.get("error") or {}).get("message")):
+        messages.append(message)
+    return messages
 
 
 class GoogleAdsClient:
@@ -48,7 +95,10 @@ class GoogleAdsClient:
         return token
 
     async def get(
-        self, endpoint: str, client_code: str, auth_headers: dict[str, str],
+        self,
+        endpoint: str,
+        client_code: str,
+        auth_headers: dict[str, str],
     ) -> dict:
         token = await self._get_api_token(client_code, auth_headers)
         url = f"{self.BASE_URL}/{self.API_VERSION}/{endpoint}"
@@ -119,8 +169,36 @@ class GoogleAdsClient:
             _raise_for_google_error(response)
             return self._parse_stream(response.json())
 
+    async def post(
+        self,
+        endpoint: str,
+        json_body: dict,
+        client_code: str,
+        auth_headers: dict[str, str],
+        login_customer_id: str | None = None,
+    ) -> dict:
+        """POST to a Google Ads service method and return the parsed JSON.
+
+        For endpoints like ``customers/{id}:generateKeywordIdeas`` or
+        ``geoTargetConstants:suggest`` (``endpoint`` is the path after the API
+        version). Reuses the shared token, auth headers, and error handling so
+        every Google Ads call stays consistent.
+        """
+        token = await self._get_api_token(client_code, auth_headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/{endpoint}"
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            response = await client.post(
+                url,
+                headers=self._build_auth_headers(token, login_customer_id),
+                json=json_body,
+            )
+            _raise_for_google_error(response)
+            return response.json()
+
     async def _get_api_token(
-        self, client_code: str, auth_headers: dict[str, str],
+        self,
+        client_code: str,
+        auth_headers: dict[str, str],
     ) -> str:
         # Priority order:
         # 1. Direct access token from config (short-lived, pasted by dev)
@@ -135,7 +213,9 @@ class GoogleAdsClient:
         return await fetch_google_api_token(client_code, auth_headers)
 
     def _build_auth_headers(
-        self, access_token: str, login_customer_id: str | None = None,
+        self,
+        access_token: str,
+        login_customer_id: str | None = None,
     ) -> dict[str, str]:
         if not access_token:
             raise RuntimeError(
@@ -210,8 +290,10 @@ def _raise_for_google_error(response: httpx.Response) -> None:
         return
 
     message = f"Google Ads API {response.status_code}"
+    payload: dict = {}
     try:
-        error = response.json().get("error", {})
+        payload = response.json()
+        error = payload.get("error", {})
         if error.get("message"):
             message = f"Google Ads API {response.status_code}: {error['message']}"
     except Exception:
@@ -219,9 +301,10 @@ def _raise_for_google_error(response: httpx.Response) -> None:
 
     logger.warning(
         "google_ads_error: status=%d body=%s",
-        response.status_code, response.text[:400],
+        response.status_code,
+        response.text[:400],
     )
-    raise RuntimeError(message)
+    raise GoogleAdsApiError(response.status_code, message, payload)
 
 
 # Singleton instance

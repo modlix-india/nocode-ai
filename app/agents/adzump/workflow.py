@@ -11,10 +11,22 @@ orchestrator lives in a leaf module.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field as dc_field
 from typing import Callable
 
 from app.core.session import BaseSession
+from app.agents.adzump.agents.campaign.google.keyword.themes import (
+    DEFAULT_THEME_IDS,
+    KEYWORD_THEMES,
+)
+from app.agents.adzump.agents.campaign.models import (
+    Channel,
+    build_gaps,
+    build_review_items,
+    is_build_complete,
+    resolve_channel,
+)
 from app.agents.adzump.core.dynamic_context import DynamicContext
 from app.agents.adzump.core.journey import Journey, Step
 from app.agents.adzump.models import (
@@ -53,6 +65,8 @@ _CREATIVES_VERDICT = {
     OfferResolution.MOOT: "no competitors to fetch for",
     OfferResolution.EXHAUSTED: "not answered - skipped",
 }
+# A refusal, however the chip was labelled or answered.
+_CONSENT_REFUSALS = ("false", "no")
 
 
 @dataclass(frozen=True)
@@ -90,6 +104,20 @@ class AdzumpContext:
     # gate, and the turn record can never disagree. Defaulted for direct test
     # construction.
     competitor_creatives_resolution: OfferResolution = OfferResolution.OPEN
+    # The tool whose question the user's message answers: its ask fills
+    # `user_message`, so the reply goes back to it untouched. Read before
+    # _resume_elicitation_section pops the ask later in the same build.
+    awaiting_tool: str | None = None
+    # True once the user okays the campaign summary - the gate before anything
+    # is built or launched.
+    summary_confirmed: bool = False
+    # The Google build, from the channel that owns it (agents/campaign/models.py):
+    #   build_done    every slot it can't launch without is filled, no work left
+    #   build_gaps    work a filled slot still owes, each naming its repair tool
+    #   review_items  what the review panel shows, named by the channel
+    build_done: bool = False
+    build_gaps: tuple[str, ...] = ()
+    review_items: tuple[str, ...] = ()
 
     @classmethod
     def from_session(cls, session: BaseSession) -> "AdzumpContext":
@@ -127,6 +155,12 @@ class AdzumpContext:
             competitor_creatives_resolution=creatives_offer_resolution(
                 ctx.get("campaign_spec") or {}, ctx
             ),
+            awaiting_tool=pe.get("tool") if pe.get("field") == "user_message" else None,
+            summary_confirmed=_is_affirmative(
+                (ctx.get("campaign_spec") or {}).get("summary_confirmed")),
+            build_done=is_build_complete(ctx),
+            build_gaps=build_gaps(ctx),
+            review_items=build_review_items(ctx),
         )
 
     @property
@@ -142,10 +176,22 @@ class AdzumpContext:
         return _platform_is_meta(self.spec.get("platform"))
 
     @property
+    def channel(self) -> Channel:
+        """Google's campaign type. Meaningless for Meta - guard with ``is_google``."""
+        return resolve_channel(self.spec)
+
+    @property
     def has_mapped_geo_targets(self) -> bool:
         return is_mapped_for(
             self.product.get("target_areas"), self.spec.get("platform")
         )
+
+
+def _is_affirmative(value: object) -> bool:
+    """Whether a captured consent answer means yes. A chip stores "true"; a typed
+    reply the model records ("yes, go ahead") must read the same way."""
+    text = str(value or "").strip().lower()
+    return bool(text) and not text.startswith(_CONSENT_REFUSALS)
 
 
 # ─── Step prescriptions ──────────────────────────────────────────────────────
@@ -368,18 +414,92 @@ def _prescribe_instagram(actx: AdzumpContext) -> str:
     )
 
 
+def _prescribe_tool_reply(actx: AdzumpContext) -> str:
+    # First, not only: anything else at the top reads as leave to move on and
+    # to report an outcome nobody gave us. The rest stays for a user who
+    # changed the subject.
+    return (
+        f"answer the question `{actx.awaiting_tool}` asked - call "
+        f"`{actx.awaiting_tool}(user_message=<their verbatim reply>)` NOW. Do NOT act "
+        "on it yourself, claim anything changed, or move on."
+    )
+
+
+def _options(*chips: tuple[str, str | None]) -> str:
+    """(label, answer) pairs as the present_options JSON the prescriptions quote."""
+    return json.dumps([{"label": label, "value": label, "answer": answer}
+                       for label, answer in chips], ensure_ascii=False)
+
+
+# Asked right after the summary card; show_campaign_summary's result repeats it.
+SUMMARY_CONFIRM_ASK = (
+    'use the present_options tool (field "summary_confirmed") to ask "Proceed '
+    f'with the campaign?" with options {_options(("Yes, proceed", "true"), ("No, make changes", None))}'
+)
+
 # The review card is CODE-rendered (tools/summary.py) - the model never
 # writes the summary itself, only a lead-in line.
-_REVIEW_PRESCRIPTION = (
-    "review & publish - TWO tool calls this turn:\n"
+_SUMMARY_PRESCRIPTION = (
+    "review the summary - TWO tool calls this turn:\n"
     "(1) call `show_campaign_summary()` - it renders the campaign summary "
     "card for the user from stored state. NEVER write the summary yourself; "
     "a brief lead-in line (\"Everything's set - here's the plan:\") is fine.\n"
-    "(2) THEN use the present_options tool to ask \"Ready to launch the "
-    "campaign?\" with chips: Yes, launch / No, make changes. When the user "
-    "picks 'Yes, launch', run the launch_campaign tool (no arguments) - the "
-    "one tool that persists the campaign. These are tools to CALL - never "
-    "type tool-call syntax into your reply."
+    f"(2) THEN {SUMMARY_CONFIRM_ASK}. These are tools to CALL - never type "
+    "tool-call syntax into your reply."
+)
+
+
+def _prescribe_channel(actx: AdzumpContext) -> str:
+    # From the enum: a channel that exists can be built, so a new one is
+    # offered without touching this module.
+    options = _options(*((c.chip_label, c.value) for c in Channel))
+    return (
+        'channel - use the present_options tool (field "channel") to ask "What '
+        f'kind of Google campaign should we run?" with options {options}. CALL '
+        "the tool - never type the call into your reply."
+    )
+
+
+def _prescribe_ad_groups(actx: AdzumpContext) -> str:
+    # One chip per keyword theme plus a combined one, from the theme registry,
+    # so a new theme becomes a chip without touching this copy.
+    ids = list(DEFAULT_THEME_IDS)
+    combined = "Both" if len(ids) == 2 else "All"
+    options = _options(*((KEYWORD_THEMES[t].label, t) for t in ids),
+                       (combined, ",".join(ids)))
+    return (
+        'ad groups - use the present_options tool (field "ad_groups") to ask '
+        f'"Which ad groups should we build?" with options {options}. Whatever '
+        "they pick is what gets built - do not talk them out of narrowing it. "
+        "CALL the tool - never type the call into your reply."
+    )
+
+
+def _prescribe_build(actx: AdzumpContext) -> str:
+    if actx.build_gaps:
+        # A build that ran owes this work; building again would discard it.
+        return "\n".join(actx.build_gaps)
+    if actx.channel is Channel.SEARCH:
+        return (
+            "build the campaign - the user okayed the summary and chose the ad groups "
+            f'("{actx.spec.get("ad_groups")}"). Call the prepare_campaign_review tool (no '
+            "arguments) NOW - it researches the keywords and shows them in the review "
+            "panel. Do NOT re-post the summary and do NOT ask either question again."
+        )
+    return (
+        "build the campaign - the user okayed the summary. Call the "
+        "prepare_campaign_review tool (no arguments) NOW - it builds the audience "
+        "targeting and shows it in the review panel. Do NOT re-post the summary."
+    )
+
+
+_LAUNCH_PRESCRIPTION = (
+    "launch - the campaign is confirmed. If State shows a Review panel, ask the "
+    "user to review and edit what it shows first. Then use the present_options "
+    "tool to ask \"Ready to launch the campaign?\" with chips: Yes, launch / No, "
+    "make changes. When the user picks 'Yes, launch', run the launch_campaign "
+    "tool (no arguments) - the one tool that persists the campaign. These are "
+    "tools to CALL - never type tool-call syntax into your reply."
 )
 
 
@@ -454,6 +574,11 @@ def _creatives_value(actx: AdzumpContext) -> str | None:
     return _CREATIVES_VERDICT.get(actx.competitor_creatives_resolution)
 
 
+def _channel_value(actx: AdzumpContext) -> str | None:
+    channel = Channel.from_value(actx.spec.get("channel"))
+    return channel.chip_label if channel else None
+
+
 def _instagram_value(actx: AdzumpContext) -> str | None:
     if linked := _account_value("ig_page")(actx):
         return linked
@@ -488,7 +613,7 @@ def _has_geo_anchor(actx: AdzumpContext) -> bool:
 #   - Manager / Business Account: Prestige Group (ID: 1029384756) ✓ - just set
 #   - Ad Account: Prestige Leads (ID: act_5566778899) ✓ - just set
 #   - Facebook Page: -
-NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", finish=_REVIEW_PRESCRIPTION, steps=(
+_DETAILS = (
     Step("product", label="Product", value=_product_value,
          done=lambda actx: bool(actx.product),
          prescribe=_prescribe_product),
@@ -556,6 +681,46 @@ NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", finish=_REVIEW_PRESCRIPTION, steps=(
          done=lambda actx: instagram_offer_resolution(actx.spec)
          is not OfferResolution.OPEN,
          prescribe=_prescribe_instagram),
+)
+
+# The details alone: complete = the summary card may render.
+CAMPAIGN_DETAILS = Journey(name="CAMPAIGN_DETAILS", steps=_DETAILS,
+                           finish=_SUMMARY_PRESCRIPTION)
+
+# The whole flow: a helper's open question first, then the details, the
+# summary okay, and on Google the build the review panel shows.
+NEW_CAMPAIGN = Journey(name="NEW_CAMPAIGN", finish=_LAUNCH_PRESCRIPTION, steps=(
+    Step("tool_question", label="Question from a helper", value=lambda actx: actx.awaiting_tool,
+         applies=lambda actx: actx.awaiting_tool is not None,
+         done=lambda actx: False,
+         prescribe=_prescribe_tool_reply),
+    *_DETAILS,
+    Step("summary", label="Campaign summary",
+         value=lambda actx: "confirmed" if actx.summary_confirmed else None,
+         fields=("summary_confirmed",), requires=tuple(step.name for step in _DETAILS),
+         done=lambda actx: actx.summary_confirmed,
+         prescribe=lambda actx: _SUMMARY_PRESCRIPTION),
+    # A build that ran has answered channel and ad groups already (an old
+    # session may hold one without either in the spec).
+    Step("channel", label="Campaign type", value=_channel_value,
+         fields=("channel",), requires=("summary",),
+         applies=lambda actx: actx.is_google,
+         done=lambda actx: bool(actx.spec.get("channel") or actx.build_done
+                                or actx.build_gaps),
+         prescribe=_prescribe_channel),
+    # Ad groups are keyword themes, so only Search picks them.
+    Step("ad_groups", label="Ad groups", value=_spec_value("ad_groups"),
+         fields=("ad_groups",), requires=("channel",),
+         applies=lambda actx: actx.is_google and actx.channel is Channel.SEARCH,
+         done=lambda actx: bool(actx.spec.get("ad_groups") or actx.build_done
+                                or actx.build_gaps),
+         prescribe=_prescribe_ad_groups),
+    Step("build", label="Review panel",
+         value=lambda actx: ", ".join(actx.review_items) or None,
+         requires=("channel", "ad_groups"),
+         applies=lambda actx: actx.is_google,
+         done=lambda actx: actx.build_done,
+         prescribe=_prescribe_build),
 ))
 
 
@@ -582,6 +747,35 @@ _HOW_TO_RESPOND = (
     "\"don't include that area\", \"remove the last one\"); "
     "requests to clear or replace the whole list (\"clear all locations\", "
     "\"change targeting to just Bangalore\").\n"
+    "1b. ONCE THE KEYWORD PANEL EXISTS - a question about its keywords, an edit, or "
+    "retrying an ad group that failed → call `manage_keywords(user_message=<their "
+    "verbatim message>)` IMMEDIATELY. Do NOT answer it yourself - the keyword agent "
+    "recorded why each keyword was chosen or skipped; you did not, so you would be "
+    "guessing. Before the panel exists this rule does not apply: choosing which ad "
+    "groups to build is a `set_campaign_spec(ad_groups=...)` answer, not a keyword "
+    "edit.\n"
+    "   A Demand Gen custom segment is also built from keywords - that is rule 1c, not "
+    "this one.\n"
+    '   Triggers (any of these): why a keyword is there ("why did you include '
+    'affordable running shoes?"); why one ISN\'T ("why is cheap shoes missing?", '
+    '"where\'s my brand name?"); judgement on a keyword ("is X too broad?", '
+    '"is X worth it?"); adding ("add keywords for the locations", "include '
+    'apartment terms too"); removing or changing ("remove the low-volume ones", '
+    '"make X exact match", "that one\'s irrelevant").\n'
+    "   AFTER manage_keywords: the keyword agent has ALREADY replied to the user in chat, "
+    "and you were NOT told what it did. Do NOT restate it, summarise it, or claim any "
+    "outcome (added / removed / changed) - you would be guessing. Just continue.\n"
+    "1c. Audience question or edit (once an audience is in the panel) → call "
+    "`manage_audience(user_message=<their verbatim message>)` IMMEDIATELY. Do NOT "
+    "answer it yourself - the audience agent recorded why each segment was chosen and "
+    "holds Google's segment catalogue; you have neither, so you would be guessing.\n"
+    '   Triggers (any of these): why a segment is targeted ("why are we targeting '
+    'apartment buyers?"); who it reaches ("who does this actually reach?"); adding '
+    '("add something for new parents", "target people moving house"); removing '
+    '("drop the luxury one", "stop targeting students"); demographic changes '
+    '("only 25 to 44", "women only", "top income brackets").\n'
+    "   AFTER manage_audience: same rule as 1b - the audience agent has already replied "
+    "and you were NOT told what it changed. Do NOT restate or claim any outcome.\n"
     "2. Info question → answer briefly from State, then do the Next action.\n"
     "3. Correction → `set_campaign_spec(<field>=<new>)`, acknowledge, then re-check Next action.\n"
     "4. **New data** (typed or chip-clicked) → `set_campaign_spec(<field>=<value>)` IMMEDIATELY, "
@@ -592,7 +786,8 @@ _HOW_TO_RESPOND = (
     '5. Ambient ("ok", "continue", "next") → just do Next action.\n'
     "6. Otherwise → do Next action.\n"
     "\n**You report tool results.** Tools and helper agents never write to "
-    "the chat - their results reach only you. Tell the user what changed "
+    "the chat - their results reach only you (except the keyword and audience "
+    "agents, rules 1b/1c). Tell the user what changed "
     "(competitors found, ads fetched, targeting updated, images saved) "
     "once, briefly, in your own words; the side panel already shows the "
     "full details. Only a question widget or the campaign summary card "
