@@ -11,9 +11,11 @@ Tools are organized by domain:
 
 from app.agents.adzump.tools.product import BUSINESS_TOOLS
 from app.agents.adzump.tools.competitor import COMPETITOR_TOOLS
+from app.agents.adzump.tools.creatives import CREATIVE_TOOLS
 from app.agents.adzump.tools.accounts import ACCOUNT_TOOLS
 from app.agents.adzump.tools.campaign_data import CAMPAIGN_SPEC_TOOLS
 from app.agents.adzump.tools.suggestions import SUGGESTION_TOOLS
+from app.agents.adzump.tools.summary import show_campaign_summary
 from app.agents.adzump.tools.research import RESEARCH_TOOLS
 from app.agents.adzump.tools.audience_management import AUDIENCE_TOOLS
 from app.agents.adzump.tools.keyword_management import KEYWORD_TOOLS
@@ -27,9 +29,11 @@ from app.agents.adzump.tools.asset_manage import MANAGE_ASSETS_TOOLS
 ALL_TOOLS = [
     *BUSINESS_TOOLS,
     *COMPETITOR_TOOLS,
+    *CREATIVE_TOOLS,
     *ACCOUNT_TOOLS,
     *CAMPAIGN_SPEC_TOOLS,
     *SUGGESTION_TOOLS,
+    show_campaign_summary,
     *RESEARCH_TOOLS,
     *LOCATION_TOOLS,
     *KEYWORD_TOOLS,

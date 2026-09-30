@@ -37,8 +37,8 @@ from app.agents.adzump.agents.campaign.tools.google.keyword_research import (
     _resolve_geo,
 )
 from app.agents.adzump.agents.campaign.tools.google.keyword_update import _apply_edit
-from app.agents.adzump.next_action import _next_action
-from tests.agents.adzump._fixtures import make_cctx
+from app.agents.adzump.workflow import NEW_CAMPAIGN
+from tests.agents.adzump._fixtures import make_actx
 
 _ALL = ["brand", "generic"]
 
@@ -317,14 +317,15 @@ class UnfinishedBuildRoutingTests(unittest.TestCase):
         return {"label": label, "status": status, "positives": [{"keyword": "a"}]}
 
     def prescriptions(self, ctx):
-        cctx = make_cctx(
+        actx = make_actx(
             dict(self.SPEC),
             product=self.PRODUCT,
+            attempted=True,
             summary_confirmed=True,
             build_done=is_build_complete(ctx),
             build_gaps=build_gaps(ctx),
         )
-        return list(_next_action(cctx))
+        return list(NEW_CAMPAIGN.walk(actx).missing)
 
     def test_a_partial_ad_group_routes_to_manage_not_a_rebuild(self):
         ctx = self.ctx(

@@ -63,7 +63,18 @@ def main() -> int:
     ap.add_argument("--session", default=None, help="explicit session_id to resume")
     ap.add_argument("--new", action="store_true", help="ignore saved session, start fresh")
     ap.add_argument("--url", default=DEFAULT_URL)
+    ap.add_argument(
+        "--draft-mode",
+        default="LIVE",
+        choices=["LIVE", "DRAFT", "PAGE_ONLY_DRAFT"],
+        help="where the agent's definition edits land (default: LIVE)",
+    )
     ap.add_argument("--read-timeout", type=float, default=240.0)
+    ap.add_argument(
+        "--forwarded-host", default="appbuilder.local.modlix.com",
+        help="X-Forwarded-Host to send — must match the token's hostName claim "
+             "(e.g. apps.local.modlix.com for MCP-minted tokens)",
+    )
     args = ap.parse_args()
 
     token = _load_token()
@@ -79,7 +90,7 @@ def main() -> int:
         # directly, the gateway no longer injects these, so the service would
         # forward host=localhost:5001 to the security service and get a 401.
         # Set them to a host:port the token's `hostName`/`port` claims allow.
-        "X-Forwarded-Host": "appbuilder.local.modlix.com",
+        "X-Forwarded-Host": args.forwarded_host,
         "X-Forwarded-Port": "443",
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
@@ -89,6 +100,10 @@ def main() -> int:
         "session_id": session_id,
         "app_code": args.app,
         "auto_confirm": True,
+        # Explicit, because the server defaults to DRAFT and reads anything it
+        # does not recognise as DRAFT too. A clone run is judged by what the
+        # live app looks like afterwards, so its writes have to land there.
+        "draft_mode": args.draft_mode,
     }
 
     transcript = TRANSCRIPT_FILE.open("a", encoding="utf-8")

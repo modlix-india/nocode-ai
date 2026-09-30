@@ -1,6 +1,6 @@
 ---
 name: Modlix design system — theme tokens + per-component property catalog
-description: How the platform's design tokens work, the full per-component (property × enum × token) catalog, and the rules for using them instead of inline overrides.
+description: How Modlix styling resolves (theme, component spv, app defaults), the per-component property x enum x token catalog, Text roles, when a variant actually exists, and the traps. App-agnostic; read the app's own theme for its palette.
 type: reference
 ---
 
@@ -51,33 +51,30 @@ The baseline size (`14px`) doesn't lock in the value — per-component `font-siz
 
 ### Colors (numbered, semantically empty primitives)
 
-| Slot | Role in appbuilder |
-|---|---|
-| `colorOne` | PRIMARY brand color (amber `#F59E0B`) |
-| `colorTwo` | Brand color hover/darker (`#D97706`) |
-| `colorThree` | Brand color deepest (`#B45309`) |
-| `colorFour` | Ink white `#FFFFFF` |
-| `colorFive` | Muted text `rgba(255,255,255,0.70)` |
-| `colorSix` | Faint text `rgba(255,255,255,0.55)` |
-| `colorSeven` | Faint border `rgba(255,255,255,0.10)` |
-| `colorEight` | Page bg `#0a0a0a` |
-| `colorNine` | Elevated bg `#131316` |
-| `colorTen` | Surface bg `#1A1A20` |
-| `colorEleven..Fifteen` | Extra accents (we point them at `<colorOne>` for consistent amber accents) |
+`colorOne..Fifteen`, `fontColorOne..Nine`, `backgroundColorOne..Ten`,
+`backgroundHoverColorOne..Five`, `backgroundDarkerColorOne..Five`.
 
-### fontColor — text inside components
+**The slots carry no fixed meaning and differ per app.** Do not assume what any
+number holds. Read the live values before styling anything:
 
-| Slot | Default |
-|---|---|
-| `fontColorOne` | `#FFFFFF` — primary text |
-| `fontColorTwo` | `rgba(255,255,255,0.70)` — muted |
-| `fontColorThree` | `#FFFFFF` — Link `_primary` default |
-| `fontColorFour` | `rgba(255,255,255,0.70)` — Link `_secondary` |
-| `fontColorFive` | `<colorOne>` — Link `_tertiary` (amber accent) |
-| `fontColorSix` | `rgba(255,255,255,0.55)` |
-| `fontColorSeven` | `<colorOne>` — Link `_quinary` |
-| `fontColorEight` | `rgba(255,255,255,0.45)` |
-| `fontColorNine` | `<colorOne>` — Link `_quaternary` |
+```
+get_theme <appTheme>      # or GET /api/ui/themes/{id} -> variables.ALL
+```
+
+An earlier version of this doc pinned appbuilder's palette here as a dark theme
+(`fontColorOne: #FFFFFF`, page background `#0a0a0a`). Appbuilder has been light
+amber-on-near-black-text since, so those values were wrong for three months. Hence:
+read the theme, never this table.
+
+**Absent from the theme does not mean absent at render time.** Every one of these
+slots also has a default in `nocode-ui/ui-app/client/src/App/appStyleProperties.ts`
+(`backgroundColorOne` is `dv: '<colorOne>'`, `fontColorNine` is `<colorFour>`, and
+so on), and the runtime merges those in before resolving. A theme that never names
+`backgroundColorOne` still renders primary buttons in `colorOne`. Check what a
+default *resolves to* before concluding a variable produces nothing.
+
+An **unknown** variable resolves to the empty string, so `<neverDefined>` emits
+`color: ;` and the browser drops it. Silent, no error.
 
 ### Backgrounds + hover/darker variants
 
@@ -169,9 +166,106 @@ Read row-by-row: each component lists every styling enum property + its valid va
 
 These render layout containers / non-visual logic — their visuals come from layout properties + your inline composition, not from theme tokens:
 
-`Grid`, `Iframe`, `Image`, `ImageWithBrowser`, `Page`, `SubPage`, `SectionGrid`, `Form`, `FormEditor`, `Popover`, `Prompt`, `SchemaForm`, `SchemaBuilder`, `MarkdownEditor`, `TextEditor`, `TextList`, `TemplateEditor`, `ThemeEditor`, `Tags`, `Animator`, `Carousel`, `Timer`, `AnalyticsQuery`, `KIRunEditor`, `PageEditor`, `Popup` (mostly), `SSEventListener`, `WebAnalyticsWidget`, `ProductAnalyticsWidget`, `SessionReplayList`, `SessionReplayPlayer`, `FillerDefinitionEditor`, `FillerValueEditor`.
+`Grid`, `Iframe`, `Image`, `ImageWithBrowser`, `Page`, `SubPage`, `SectionGrid`, `Form`, `FormEditor`, `Popover`, `SchemaForm`, `MarkdownEditor`, `TextEditor`, `TextList`, `TemplateEditor`, `ThemeEditor`, `Tags`, `Animator`, `Carousel`, `Timer`, `AnalyticsQuery`, `KIRunEditor`, `PageEditor`, `Popup` (mostly), `SSEventListener`, `WebAnalyticsWidget`, `ProductAnalyticsWidget`, `SessionReplayList`, `SessionReplayPlayer`, `FillerDefinitionEditor`, `FillerValueEditor`.
 
 For these, set spacing/layout/visibility properties + use the parent Grid's layout slots. Don't try to set `colorScheme` — they don't have one.
+
+`Prompt` and `SchemaBuilder` are NOT in that list: they have no `colorScheme`, but
+they do read named theme variables (`prompt*`, `schemaBuilder*`). Set those in the
+theme rather than styling them inline.
+
+## A variant only exists if the theme defines it
+
+Five colour schemes on paper is not five schemes in an app. `_secondary` on a
+Dropdown is not a different-looking Dropdown, it is an **unstyled** one: with no
+matching variables the combination falls through to the component's generic `spv`
+default, which almost never matches the brand.
+
+Count before you pick:
+
+```
+get_theme <appTheme>  ->  variables.ALL
+count keys matching   ^dropdown.*OutlinedSecondary$      # 0 means don't use it
+```
+
+In appbuilder, for everything except Button only `_primary` has coverage; Button
+additionally has `_quaternary` for delete. Every other app will differ. This is the
+single most useful thing to check before choosing a `designType` / `colorScheme`.
+
+**Unset takes the default** (`designType: _default`, `colorScheme: _primary`), which
+is usually what you want. Leaving them off is normal; set them only to deviate.
+
+## Text: a role is a whole style, not a colour
+
+`Text` is usually the most numerous component on a page and the largest source of
+drift. Its variables are keyed on the **pair** `(textContainer, textColor)`:
+
+```
+textFont<textContainer><textColor>    # a CSS font shorthand: weight, size, family
+textColor<textContainer><textColor>   # the colour
+```
+
+Because the font is keyed on the pair too, a role can carry **size and weight as
+well as colour**. Eleven containers times thirteen roles is a type system already
+built into the platform, and most apps never wire it up.
+
+- `textContainer` is the HTML element (`SPAN` default, `H1`..`H6`, `P`, `B`, `I`,
+  `PRE`), so it is a **semantic** choice. Promote a `SPAN` to a heading for display
+  type; never demote an existing heading just to make it smaller.
+- `textColor` picks the role. Its `spv` already maps each one to a theme colour
+  (`_primaryText` → `<fontColorOne>`, `_subText` → `<fontColorTwo>`, …), so very
+  little theme work is needed before roles start working.
+
+**Setting `textColor` is only half the job.** Inline styles beat the theme, so the
+Text keeps rendering its literal font and colour until those leaves are deleted.
+Use `remove_component_styles` for `fontSize`, `color`, `fontWeight`, `fontFamily`,
+`lineHeight` and their `text-` prefixed twins. Deletion is what makes the theme
+visible.
+
+## A page CAN reference the theme
+
+The `<var>` syntax does **not** work in a page style leaf: `<fontColorOne>` there
+does nothing, because substitution runs on *theme* values only. But an expression
+does work:
+
+```json
+{"text-color": {"location": {"type": "EXPRESSION", "expression": "Theme.fontColorOne"}}}
+```
+
+`ThemeExtractor` (prefix `Theme.`) is registered alongside `Store`, `LocalStore`,
+`Page` and `Parent`. Verified live: a leaf bound to `Theme.colorOne` rendered
+`#F59E0B`. It returns the variable's **raw** value, so one whose value is itself
+`<anotherVar>` comes back unexpanded; use it for leaf palette tokens.
+
+Order of preference:
+
+1. **Change the theme** whenever you are styling *the component*. One rule reaches
+   every instance and keeps a re-skin possible.
+2. **`Theme.` in an expression** when it really is this one instance, or the value
+   is conditional. Stays on-palette.
+3. **A literal** only for something that is not a design token: a layout number, a
+   one-off gradient.
+
+## Traps
+
+- **All base style leaves must live under ONE rule key.** The runtime's
+  `createNewState` overwrites `pseudoStates[state].defaultOne` per rule, so two
+  unconditioned rules on one component silently lose all but the last.
+- **Never delete an `EXPRESSION` leaf while stripping inline styling.** It holds
+  *state*, not a value. Removing the `text-color` expression from a segmented
+  control deletes the active-item highlight, with no error.
+- **A `Text` can be a glyph** — a dot, a chevron, a close cross. Its size is
+  functional; snapping it onto a type scale breaks the layout around it.
+- **`LUXON_FORMAT` needs epoch SECONDS.** It does `parseInt(value)` then
+  `DateTime.fromSeconds(...)`, so an ISO string renders as 01 Jan 1970 because
+  `parseInt("2026-08-29T…")` is `2026`. Fix the endpoint, not the page.
+- **`update_theme` replaces the ENTIRE variable map.** For a one-variable change,
+  `PUT /api/ui/themes/{id}` with the fetched document. After any theme write, check
+  the variable count moved by exactly what you added and spot-check an unrelated
+  group: a bad replacement drops whole groups silently.
+- **A `TextEditor` inside a `Popup` renders blank.** It measures a zero-size
+  container on mount, and `vh` heights do not resolve in an auto-sized modal.
+- **`showEmptyRows` is a `TableColumns` property**, not a `Table` property.
 
 ## Working flow
 
@@ -183,36 +277,13 @@ When applying a style to a component:
 4. **For overrides outside the theme system** (layout, animation, positioning), use `patch_component_styles` for inline values.
 5. **Strip inline color/font overrides** that were previously set — use `remove_component_styles` (the inverse of `patch_component_styles`) so the theme cascade actually wins.
 
-## Brand-to-theme mapping (appbuilder, 2026-05-18)
+## The app's own palette
 
-```yaml
-primaryFont:   "400 14px/1.4 'Geist', system-ui, sans-serif"
-secondaryFont: "400 14px/1.4 'Inter', system-ui, sans-serif"
-tertiary..senaryFont: <primaryFont>
-
-colorOne..Three:    amber primary / hover-dark / deeper (#F59E0B, #D97706, #B45309)
-colorFour:          #FFFFFF
-colorFive..Six:     muted whites
-colorSeven..Ten:    faint border + dark surfaces
-colorEleven..Fifteen: all → <colorOne>
-
-fontColorOne..Two:    white / 0.70 white
-fontColorThree..Four: white / 0.70 white (Link default + secondary)
-fontColorFive:        <colorOne> (Link _tertiary = amber)
-fontColorSix:         0.55 white
-fontColorSeven:       <colorOne>
-fontColorEight:       0.45 white
-fontColorNine:        <colorOne>
-
-backgroundColorOne:     <colorOne> (amber buttons)
-backgroundColorTwo..Ten: hover/darker/elevated/page surfaces
-backgroundHoverColor*:   amber-dark / faint white hover surfaces
-backgroundDarkerColor*:  amber-deep / dark surfaces
-
-bodyBackground: subtle amber-tinted radial + diagonal slate gradient
-```
-
-Read live with `get_theme appbuildertheme`.
+Per-app, and not recorded here on purpose — it goes stale and this doc serves every
+app. Read it live with `get_theme <appTheme>`, and keep the app's design decisions
+in its own folder in the `modlix-apps` repo. `appbuilder_SYSTEM/DesignGuidelines.md`
+is the worked example: palette, type scale, Text roles, and which
+(design, scheme) combinations that app actually has.
 
 ## How to refresh this doc
 

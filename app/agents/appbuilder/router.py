@@ -7,10 +7,10 @@ Only the /chat endpoint with appbuilder-specific logic lives here.
 from __future__ import annotations
 
 import logging
-from typing import Optional, List
+from typing import Any, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.base_auth import require_auth_context
 from app.core.base_router import (
@@ -19,8 +19,10 @@ from app.core.base_router import (
     create_common_routes,
     stream_agent_response,
 )
-from app.core.session import BaseSession, AuthContext
-from app.services.session_manager import get_session_manager
+from app.core import run_manager
+from app.core.session import BaseSession, AuthContext, session_title
+from app.core.tools.draft_registry import DraftScope, to_scope
+from app.services.chat_attachments import store_chat_attachments
 from app.services.security import ALLOWED_AI_APPS
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,18 @@ def set_appbuilder_agent(agent) -> None:
     """Set the AppBuilderAgent instance (called from main.py lifespan)."""
     global _agent
     _agent = agent
+
+
+def get_appbuilder_agent():
+    """The one AppBuilderAgent this process built, or None if it failed to.
+
+    There is exactly one, made during startup with the component catalogue, the
+    API catalogue and a loaded context — about 10K tokens of rendered prefix that
+    is computed once and cached for the life of the process. Anything that needs
+    to author a page uses THIS one; a second instance would re-download both
+    catalogues and then disagree with the first about what components exist.
+    """
+    return _agent
 
 
 async def require_ai_auth_context(
@@ -68,6 +82,30 @@ class AppUserAuth(BaseModel):
     password: Optional[str] = None
 
 
+class OpenDraft(BaseModel):
+    """One object the caller has open, unsaved.
+
+    A page arrives as `overlay`: the components that differ from the saved
+    version, because a real page reaches 1.4MB and shipping it whole on every
+    message would put megabytes on the wire to say "nothing has changed". A clean
+    page sends an empty overlay. Everything else is a form's worth of fields, so
+    it arrives whole in `doc`.
+    """
+
+    kind: str = ""
+    # The collection this object saves to, e.g. "/api/core/storages". An
+    # alternative to naming the kind, and the usual one: the workspace keeps the
+    # API on each tab but no kind name, and resolving one from the other on this
+    # side means the mapping lives only in the intercept's table.
+    api: str = ""
+    id: str
+    name: str = ""
+    app_code: str = ""
+    dirty: bool = False
+    doc: Optional[dict] = None
+    overlay: Optional[dict] = None
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
@@ -83,6 +121,32 @@ class ChatRequest(BaseModel):
     # with the customer's live app (screenshot_page / drive_page /
     # call_as_app_user) is invoked. Other tools ignore it.
     app_user: Optional[AppUserAuth] = None
+    # What the caller's UI has open, for chats embedded in an editor (the
+    # appbuilder sidekick). Free-form, but the keys the agent renders are
+    # active_object, open_tabs and open_tab_ids. Lets the agent answer about
+    # the thing in front of the user without a discovery round-trip first.
+    editor_context: Optional[dict] = None
+    # Objects the caller has open and unsaved. For exactly these, the agent reads
+    # the caller's copy and holds its writes there instead of saving, so the user
+    # can look at the change before committing it. Everything else is written
+    # normally. A caller that sends nothing (the plain chat page) gets exactly the
+    # behaviour it always had.
+    open_drafts: Optional[List[OpenDraft]] = None
+    # How much of this turn's definition writes go to the app's draft surface
+    # instead of live, so the user gets a reviewable copy and the agent can
+    # screenshot its own work. One of LIVE, DRAFT, PAGE_ONLY_DRAFT.
+    #
+    # Defaults to DRAFT, and anything unrecognised also reads as DRAFT, so live
+    # writing has to be asked for by name. A caller that gets the spelling wrong
+    # ends up with work it can review and publish, which is recoverable; the
+    # other default hands it a live change it never agreed to. The agent degrades
+    # to live writes anyway on a deployment that has no draft surface.
+    draft_mode: DraftScope = DraftScope.DRAFT
+
+    @field_validator("draft_mode", mode="before")
+    @classmethod
+    def _coerce_draft_mode(cls, v: Any) -> DraftScope:
+        return to_scope(v)
 
 
 class TemplateAiRequest(BaseModel):
@@ -125,6 +189,246 @@ async def author_template(
     )
 
 
+class WhatsappMessageAiRequest(BaseModel):
+    """Request for the WhatsApp message library's AI panel."""
+
+    prompt: str
+    # How many interchangeable phrasings to write. Several rather than one is the point of the
+    # feature, not a setting: a rule sends one body to every matching lead, and identical text at
+    # volume is what gets a linked number banned.
+    variantCount: Optional[int] = 4
+    currentVariants: Optional[List[str]] = None
+    language: Optional[str] = "en"
+    tone: Optional[str] = ""
+
+
+@router.post("/whatsapp/message")
+async def author_whatsapp_message(
+    body: WhatsappMessageAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Write several interchangeable versions of a WhatsApp message.
+
+    Backs the message library editor. Stateless — the current variants are sent so an unsaved draft
+    can be revised, matching how the template AI tab already works.
+
+    Returns ``{variants, variables, message, warnings}``. The warnings are advisory: an unknown merge
+    field or two near-identical versions are things somebody should see before saving, but refusing
+    to return the draft would just lose their work.
+    """
+    from app.services.whatsapp_message_ai import generate_message_variants
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    return await generate_message_variants(
+        prompt=body.prompt,
+        variant_count=body.variantCount or 4,
+        current_variants=body.currentVariants,
+        language=body.language or "en",
+        tone=body.tone or "",
+    )
+
+
+class VersionDiffRequest(BaseModel):
+    """Request for the workspace version-history compare step.
+
+    Both snapshots are sent by the caller. The service has no way to read an editor's
+    current state on its own, and the two documents together are what the comparison
+    needs, so the page posts them rather than the service fetching one of them back.
+    """
+
+    objectType: Optional[str] = ""
+    name: Optional[str] = ""
+    currentVersion: Optional[Any] = None
+    versionNumber: Optional[Any] = None
+    versionMessage: Optional[str] = ""
+    current: Optional[dict] = None
+    older: Optional[dict] = None
+
+
+@router.post("/version-diff")
+async def version_diff(
+    body: VersionDiffRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Say what separates a saved version from what is live, before anyone loads it over their work.
+
+    Stateless. The difference is computed exactly in Python and only that list goes to the
+    model, so the answer is grounded and the cost does not scale with document size.
+    """
+    from app.services.version_diff import summarise_version_diff
+
+    if body.older is None:
+        raise HTTPException(status_code=400, detail="older is required")
+
+    return await summarise_version_diff(
+        object_type=body.objectType or "",
+        name=body.name or "",
+        current_version=body.currentVersion,
+        version_number=body.versionNumber,
+        version_message=body.versionMessage or "",
+        current=body.current or {},
+        older=body.older,
+    )
+
+
+class OgImageRequest(BaseModel):
+    """Request for the Social preview pane's Generate button.
+
+    `image_urls` is the leg the builders actually use: their `FileSelector` both
+    uploads into the files library and picks from it, and what it hands back is
+    a URL, so the page never has to base64 anything. `attachments` takes the
+    same {type, name, mime_type, data} shape the chat endpoint does, for callers
+    that have bytes rather than a URL.
+
+    EVERY string field here tolerates null, and that is not defensive habit.
+
+    The pane builds this body with `System.Make`, which interpolates EVERY slot
+    of its `resultShape` whether the path behind it resolves or not. An empty
+    box, an app with no description, a page scope nobody armed: each arrives as
+    an explicit `null`, not as an omitted key. A plain `str = ""` rejects null,
+    so the request 422s before the handler runs, and it 422s on the ordinary
+    case rather than an exotic one. This bit twice, on `image_urls` and then on
+    `site_description`, which is why it is now a rule with a validator behind it
+    rather than a type on each field.
+    """
+
+    #: Optional now. The pipeline harvests the site's own palette, logo and
+    #: typeface, so a set of cards can be proposed with nothing typed at all;
+    #: a prompt steers the choice rather than being the whole input.
+    prompt: Optional[str] = ""
+    app_code: Optional[str] = ""
+    client_code: Optional[str] = ""
+    page_name: Optional[str] = ""
+    style_notes: Optional[str] = ""
+    image_provider: Optional[str] = ""
+    # What the site IS, so a prompt that only names a URL still produces a card
+    # about the right product. The pane already holds both on the document it is
+    # editing, so sending them costs nothing and saves the service a fetch.
+    site_name: Optional[str] = ""
+    site_description: Optional[str] = ""
+    # Two fixed slots, one for the file picker and one for the pasted URL, so an
+    # unused slot is a null INSIDE the list. Blank entries are skipped in
+    # `collect_reference_images`.
+    image_urls: Optional[List[Optional[str]]] = None
+    attachments: Optional[List[dict]] = None
+    #: Where the card will live, used for `og:url` and the domain line drawn on
+    #: the card itself.
+    domain: Optional[str] = ""
+    #: How many options to draw. Rendering is deterministic and costs no model
+    #: call per card, so offering a set is barely dearer than offering one.
+    count: Optional[int] = 6
+
+    @field_validator("app_code", "client_code", "page_name", "style_notes",
+                     "image_provider", "site_name", "site_description", "domain",
+                     "prompt",
+                     mode="before")
+    @classmethod
+    def _null_is_blank(cls, v: Any) -> str:
+        """A slot the page could not fill means the caller said nothing."""
+        return "" if v is None else v
+
+    @field_validator("count", mode="before")
+    @classmethod
+    def _null_is_default(cls, v: Any) -> int:
+        """A Modlix binding that never resolved sends null, not a missing key."""
+        if v in (None, ""):
+            return 6
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return 6
+
+
+@router.post("/og-image")
+async def author_og_image(
+    body: OgImageRequest,
+    auth: AuthContext = Depends(require_ai_auth_context),
+):
+    """Draw a set of 1200x630 cards from the app's own brand material.
+
+    Returns `{cards: [...], warnings: [...]}` plus the first card's fields at the
+    top level. Each card carries `{url, rel, template, headline, accent,
+    background, width, height, bytes}`, so the pane can show a picker and put
+    the chosen URL into the draft it is already editing.
+
+    **No image-generation model is involved.** The app's logo, palette,
+    typeface and a screenshot of its own page are harvested; a language model
+    chooses layouts, palettes and headlines as JSON; and a deterministic
+    renderer draws them. A diffusion model cannot place a logo, set type or
+    hold a grid, and what it was really contributing was taste about colour
+    and composition, which is a judgement that can be returned as data.
+
+    The URLs are files-service static paths, which serve anonymously with no
+    Referer -- unlike the screenshot service, which enforces one on GET and so
+    would 403 for every crawler that tried to fetch the card.
+
+    Nothing is written to the application or page definition here, so a card
+    nobody picks is never saved.
+    """
+    from app.services.og_image_ai import OgImageError, generate_og_cards
+
+    app_code = body.app_code or auth.app_code or ""
+    client_code = body.client_code or auth.client_code or ""
+
+    try:
+        return await generate_og_cards(
+            prompt=body.prompt,
+            app_code=app_code,
+            client_code=client_code,
+            page_name=body.page_name,
+            count=body.count,
+            image_urls=body.image_urls,
+            attachments=body.attachments,
+            headers=auth.to_headers(),
+            site_name=body.site_name,
+            site_description=body.site_description,
+            domain=body.domain,
+            auth=auth,
+        )
+    except OgImageError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+class SceneAiRequest(BaseModel):
+    """Request for the Scene Editor's AI pane: a prompt plus the current (possibly unsaved) scene."""
+
+    prompt: str
+    scene: Optional[dict] = None
+    componentType: Optional[str] = "ShaderBackground"
+    # Same wire shape the chat endpoint takes -- {type, name, mime_type, data} with data as raw
+    # base64 -- so the editor's attachment code is the Prompt component's, unchanged.
+    attachments: Optional[List[dict]] = None
+
+
+@router.post("/scene")
+async def author_scene(
+    body: SceneAiRequest, auth: AuthContext = Depends(require_ai_auth_context)
+):
+    """Build or revise a 3D scene document from a description. Returns {scene, message, warnings}.
+
+    Backs the Scene Editor's AI pane. Stateless -- the whole current document is sent, so an
+    unsaved scene can be revised without anything being written first, matching how the template
+    editor's AI tab already works.
+
+    Nothing is saved here. The editor applies the returned document to its own undo stack, so a
+    result the user does not like is one Undo away and never reached the page.
+    """
+    from app.services.scene_ai import generate_scene
+
+    if not body.prompt or not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    try:
+        return await generate_scene(
+            prompt=body.prompt,
+            scene=body.scene,
+            component_type=body.componentType or "ShaderBackground",
+            attachments=body.attachments,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 @router.post("/chat")
 async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_context)):
     """Stream an appbuilder agent response as SSE."""
@@ -134,9 +438,23 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
     if body.app_code:
         auth.app_code = body.app_code
 
-    session = BaseSession(agent_name="appbuilder")
+    # Named at creation, not after it. The name only reaches the INSERT for a
+    # NEW session — a resumed one keeps whatever it is already called — and an
+    # attachment-only send, which carries no words at all, still gets a name
+    # rather than a blank line in the chat list.
+    session = BaseSession(agent_name="appbuilder", title=session_title(body.message))
     if body.app_code:
         session.context["app_code"] = body.app_code
+    if body.editor_context:
+        session.context["editor_context"] = body.editor_context
+    # The plain string, not the enum: session.context is persisted to CONTEXT_JSON.
+    session.context["draft_mode"] = body.draft_mode.value
+    if body.open_drafts:
+        # Kept as plain dicts on the session so the agent can build the registry
+        # when it has the event stream in hand. The documents themselves never go
+        # near session.context's persisted half: a page reaches 1.4MB and that
+        # column is not the place for it.
+        session.open_drafts = [d.model_dump() for d in body.open_drafts]
     # Pre-approve mutating tools for headless/harness callers (see agent loop).
     session.context["auto_confirm"] = body.auto_confirm
 
@@ -148,12 +466,36 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_ai_auth_co
 
     await session.get_or_create(body.session_id, auth)
 
-    if not body.session_id:
-        title = body.message[:100].strip()
-        if title:
-            await get_session_manager().update_session_title(
-                session.session_id, title, auth.user_id
+    if body.attachments:
+        # Asked before anything is written, because `start_run` below answers a
+        # second concurrent run with a 409 — and by then we would already have
+        # stored these files against turn N+1, which is the turn the run that is
+        # ALREADY going is about to write. `start_run` keeps its own check as
+        # the authoritative one; this only stops the write that precedes it.
+        if await run_manager.is_run_live(session.session_id):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "A run is already in progress for this session",
+                    "session_id": session.session_id,
+                },
             )
+        try:
+            # `client_code` comes off the verified AuthContext and never off the
+            # body: the files endpoint behind this is permitAll inside the
+            # cluster, so this is the only thing deciding whose storage is
+            # written.
+            await store_chat_attachments(
+                body.attachments,
+                session_id=session.session_id,
+                turn_number=session.next_turn_number(),
+                client_code=auth.client_code,
+                access_app_code=auth.access_app_code,
+                headers=auth.to_headers(),
+            )
+        except Exception:  # noqa: BLE001
+            # Keeping a copy is worth strictly less than answering the user.
+            logger.warning("Could not store chat attachments", exc_info=True)
 
     image_blocks = build_image_blocks(body.attachments, _agent._provider_name) if body.attachments else None
-    return stream_agent_response(_agent, body.message, session, image_blocks, model_override=body.model)
+    return await stream_agent_response(_agent, body.message, session, image_blocks, model_override=body.model)

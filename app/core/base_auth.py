@@ -78,11 +78,32 @@ async def _authenticate(
         client_code=ctx_auth.clientCode,
         client_id=(ctx_auth.user.clientId if ctx_auth.user else 0) or 0,
         user_id=(ctx_auth.user.id if ctx_auth.user else 0) or 0,
-        app_code=access_app_code,
+        # NOT the access app. `app_code` is the app being built, and the only
+        # things that know it are the chat request (`app_code` in the body) and
+        # a resumed session's stored context. Defaulting it to the product the
+        # caller happens to be using made every app-less conversation open
+        # grounded in appbuilder or sitezump itself.
+        app_code="",
         access_app_code=access_app_code,
+        client_level_type=(ctx_auth.clientLevelType or ""),
+        user_name=_display_name(ctx_auth),
         forwarded_host=forwarded_host,
         forwarded_port=forwarded_port,
     )
+
+
+def _display_name(ctx_auth) -> str:
+    """The caller's name for anything that reports who acted.
+
+    Falls back through userName then emailId: a notification saying "someone"
+    is worse than one saying an email address.
+    """
+    user = getattr(ctx_auth, "user", None)
+    if user is None:
+        return ""
+    parts = [(user.firstName or "").strip(), (user.lastName or "").strip()]
+    full = " ".join(p for p in parts if p)
+    return full or (user.userName or "") or (user.emailId or "")
 
 
 async def require_auth_context(request: Request) -> AuthContext:

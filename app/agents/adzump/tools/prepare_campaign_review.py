@@ -23,7 +23,7 @@ from app.core.tools.base import ToolDefinition, ToolResult
 
 logger = logging.getLogger(__name__)
 
-# A failed build leaves the slot empty, so _next_action re-prescribes this tool and the model
+# A failed build leaves the slot empty, so the journey re-prescribes this tool and the model
 # calls it again. Per TURN, not per session - the session outlives the loop.
 _MAX_BUILD_ATTEMPTS = 2
 _ATTEMPTS_KEY = "_build_attempts"

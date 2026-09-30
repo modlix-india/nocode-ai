@@ -94,7 +94,7 @@ def _candidates_page(state: dict, lead: str) -> ToolResult:
     return ToolResult(
         success=True,
         summary=f"{lead} (keyword | volume | competition | CPC range):\n{body}{tail}",
-        MAX_RESULT_CHARS=constants.KEYWORD_METRICS_RESULT_MAX,
+        max_result_chars=constants.KEYWORD_METRICS_RESULT_MAX,
     )
 
 

@@ -9,7 +9,7 @@ metadata:
 
 | Env label (`MODLIX_ENV_NAME`) | nocode-saas source |
 |---|---|
-| `local` | The local working tree (`/Users/kirangrandhi/kiran/fincity/nocode-saas`) |
+| `local` | The `nocode-saas` checkout in the CFA workspace |
 | `dev` | branch `oci-development` |
 | `stage` | branch `oci-stage` |
 | `prod` | branch `oci-production` |
@@ -24,7 +24,7 @@ branch**.
 # Reading source for a specific env without changing the working tree
 
 ```bash
-cd /Users/kirangrandhi/kiran/fincity/nocode-saas
+cd "$CFA_WORKSPACE_DIR/nocode-saas"     # default /var/cfa/workspace
 git fetch origin
 # Show a file at a specific branch without checkout
 git show origin/oci-development:security/src/main/java/com/fincity/security/controller/UserController.java
@@ -38,14 +38,14 @@ For deeper exploration, **check out** the matching branch in a worktree
 (non-destructive — leaves your main checkout alone):
 
 ```bash
-cd /Users/kirangrandhi/kiran/fincity/nocode-saas
+cd "$CFA_WORKSPACE_DIR/nocode-saas"
 git worktree add ../nocode-saas-oci-stage origin/oci-stage
-# now /Users/kirangrandhi/kiran/fincity/nocode-saas-oci-stage has the stage source
+# the sibling nocode-saas-oci-stage now holds the stage source
 ```
 
 # Configuration repo
 
-`/Users/kirangrandhi/kiran/fincity/oci-config` holds env-specific
+The `oci-config` repo holds env-specific
 configuration (URLs, secrets, feature flags). If a behavior differs across
 envs and the code looks identical, the answer is usually in `oci-config`
 overrides for that env.

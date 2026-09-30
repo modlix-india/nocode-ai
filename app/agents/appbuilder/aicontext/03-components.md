@@ -122,8 +122,42 @@
 ### Form
 - `validationCheck`, `onSubmit`
 
+**Leave vertical room for the floating label.** TextBox, TextArea and Dropdown
+render their label *outside* their own box once it floats: the label is
+`position: absolute` at `bottom: 100%`, so it sits above the control and overflows
+upward. A column of inputs with a small gap therefore collides — the label of one
+row lands on top of the control above it, which is exactly what it looks like: two
+labels printed over each other.
+
+So a grid of form rows needs an **explicit gap of at least 20px**; 24px is
+comfortable. Do not rely on the theme's `gapBetween`, which should be `0px` so
+full-bleed page sections do not show seams (see `04-styles-and-themes`). The form
+grid is one of the places that must set its own.
+
+Two more things that read as defects on a generated form:
+- A **phone field defaults its country code to `+93`** (Afghanistan) unless you set
+  one. Set the country the site is for.
+- Put label text in the field's own label, not in a separate Text above it. Two
+  stacked labels is the most common way these forms end up looking broken.
+
 ### Table
-- `data`, `columns`, `pagination`, `sortable`, `selectable`
+Table is a family, not a single component: `Table` + `TableColumns` /
+`TableColumn` / `TableGrid` / `TablePreviewGrid` / `TableRow` / `TableEmptyGrid`,
+driven by **seven** binding paths. Do not guess its props.
+
+- `bindingPath` data array (REQUIRED), `bindingPath2` selection,
+  `bindingPath3` page number, `bindingPath4` rows per page, `bindingPath5` mode,
+  `bindingPath6` sort, `bindingPath7` personalization
+- `tableDesign` (`_design0`.. `_design9`), `colorScheme`, `tableLayout`,
+  `displayMode`, `previewMode`, `offlineData`, `selectionType`, `multiSelect`,
+  `uniqueKey` (REQUIRED for selection / tree / personalization), `defaultSize`,
+  `perPageNumbers`, `totalPages`, `treeMode`, `childrenKey`
+- Cells vary per row ONLY via `Parent.<field>`. A literal `text.value` renders
+  the same string on every row, and that is the single most common Table bug.
+- Events: `onSelect`, `onPagination`, `onSort`, `onExpandEvent`
+
+Full model and recipes: `pattern_read('handle-tables')`.
+Failure modes: `platform_doc_read('table_gotchas')`.
 
 ### Carousel
 - `autoPlay`, `interval`, `showDots`, `showArrows`
@@ -153,4 +187,50 @@ For form components (TextBox, Dropdown, etc.):
 
 ## Common Properties (most components)
 
-`visibility`, `readOnly`, `onClick`, `linkPath`, `designType`, `colorScheme`
+`visibility`, `readOnly`, `onClick`, `linkPath`, `designType`, `colorScheme`,
+`analyticsLabel`
+
+## Analytics Labels
+
+`analyticsLabel` is a stable snake_case name for what a control *does*. It is
+emitted as `data-analytics-label` on the rendered element, and it is the ONLY
+thing the analytics beacon captures clicks on. A control without one is not
+recorded at all — autocapture is deliberately limited to labelled elements,
+because a name guessed from the DOM changes the next time the layout moves.
+
+Give one to every interactive component: Button, Link, ToggleButton, CheckBox,
+RadioButton, Dropdown, TextBox, TextArea, Otp, PhoneNumber, ColorPicker,
+RangeSlider, FileSelector, Tabs, Menu, Tree, Icon and Image when clickable.
+
+```json
+{"label": "Submit", "onClick": "handleSubmit", "analyticsLabel": "contact_submit"}
+```
+
+Name it for the action and the place, not the visible text: `contact_submit`,
+`plan_upgrade`, `filter_by_status`, `consent_accept_all`. Two buttons reading
+"Save" on different screens need different labels; a button whose text is
+translated still needs a stable one. Match the naming to any
+`UIEngine.TrackAnalyticsEvent` event names on the same page.
+
+**33 of the 77 components accept it. Grid, Text, Table and the TableComponents,
+Form, ArrayRepeater, Popup and Chart do NOT** — passing it there is rejected by
+validation. A clickable Grid used as a card therefore cannot carry one today;
+put the label on a control inside it, or accept that the card is invisible to
+autocapture. `get_component_schema` lists the properties a type really accepts.
+
+See `platform_doc_read("reference/analytics_labels")` for the full list and the
+naming convention.
+
+## Keyboard Shortcuts
+
+Button and TextBox take `shortcutKey` (e.g. `Mod+S`, where `Mod` is Cmd on Mac and
+Ctrl elsewhere), plus `shortcutScope` (PAGE/GLOBAL/LOCAL), `shortcutPriority` and
+`shortcutGroup`. TextBox also takes `shortcutAction` (FOCUS/FOCUS_SELECT/EVENT)
+and `onShortcut`. For a key with no control on screen, use the non-visual
+`Shortcut` component with `shortcutKey` + `onShortcut`.
+
+Never put a shortcut on a component inside a Table or ArrayRepeater row: it is
+silently refused, because one key cannot say which row it meant.
+
+Full rules, reserved keys and how to display the key on screen:
+`platform_doc_read("keyboard_shortcuts")`.

@@ -62,6 +62,27 @@ class SerializeContextTests(unittest.TestCase):
     def test_started_tuids_is_a_declared_ephemeral_key(self):
         self.assertIn("_started_tuids", _EPHEMERAL_CONTEXT_KEYS)
 
+    def test_research_state_bulk_is_pruned_but_evidence_survives(self):
+        # search_results + candidate_pool are rebuilt every extract_candidates
+        # run; persisting them overflowed CONTEXT_JSON (64KB, live 2026-09-21).
+        # verified_competitors is the cross-request evidence base and must stay.
+        ctx = {
+            "product_data": {"name": "X"},
+            "_research_state": {
+                "search_results": [{"query": "q", "candidates": [{"name": "A"}]}],
+                "candidate_pool": {"C1": {"name": "A", "url": "https://a.example"}},
+                "verified_competitors": [{"cid": "C1", "name": "A"}],
+            },
+        }
+        loaded = json.loads(_serialize_context(ctx))
+        self.assertNotIn("search_results", loaded["_research_state"])
+        self.assertNotIn("candidate_pool", loaded["_research_state"])
+        self.assertEqual(loaded["_research_state"]["verified_competitors"],
+                         [{"cid": "C1", "name": "A"}])
+        # The LIVE context dict must be untouched — only the persisted copy slims.
+        self.assertIn("search_results", ctx["_research_state"])
+        self.assertIn("candidate_pool", ctx["_research_state"])
+
 
 if __name__ == "__main__":
     unittest.main()

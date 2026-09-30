@@ -40,67 +40,49 @@ class MapMetaTypeTests(unittest.TestCase):
                 patch.object(mapping_mod.google_maps_client, "geocode", side_effect=_no_geocode):
             return asyncio.run(mapper._map_meta(dict(area), "IN"))
 
-    def test_type_set_when_lookup_succeeds(self):
-        out = self._map(
-            {"name": "Bandra", "city": "Bandra"},
-            _meta_get([{"key": "1234", "name": "Bandra", "type": "city"}]),
-        )
-        self.assertEqual(out["meta"], {"type": "city", "key": "1234", "name": "Bandra"})
+    def test_a_match_sets_the_type(self):
+        # Meta buckets each target by type, so the handle always carries one.
+        for label, area, found, expected in [
+            ("a city match", {"name": "Bandra", "city": "Bandra"},
+             [{"key": "1234", "name": "Bandra", "type": "city"}],
+             {"type": "city", "key": "1234", "name": "Bandra"}),
+            # searched as a city, but Meta's own type wins
+            ("Meta's canonical type wins", {"name": "Goa", "city": "Goa"},
+             [{"key": "777", "name": "Goa", "type": "region"}],
+             {"type": "region", "key": "777", "name": "Goa"}),
+            ("a name-only area searches as a city", {"name": "Some Neighborhood"},
+             [{"key": "999", "name": "Some Neighborhood"}],
+             {"type": "city", "key": "999", "name": "Some Neighborhood"}),
+        ]:
+            with self.subTest(label):
+                self.assertEqual(self._map(area, _meta_get(found))["meta"], expected)
 
-    def test_prefers_meta_canonical_type_over_assumed(self):
-        # We searched with location_types=["city"] but Meta classified it a region -
-        # trust Meta's own type, not the field-derived loc_type.
-        out = self._map(
-            {"name": "Goa", "city": "Goa"},
-            _meta_get([{"key": "777", "name": "Goa", "type": "region"}]),
-        )
-        self.assertEqual(out["meta"]["type"], "region")
+    def test_no_match_no_handle(self):
+        # keyless Meta entries are invalid; the type lives only under meta.*
+        pincode = {"name": "400050", "pincode": "400050"}
+        for label, meta_get in [("no match", _meta_get([])), ("lookup failed", _meta_raises())]:
+            with self.subTest(label):
+                out = self._map(pincode, meta_get)
+                for key in ("meta", "type", "scale"):
+                    self.assertNotIn(key, out)
 
-    def test_no_handle_when_lookup_returns_empty(self):
-        # No match → no handle (keyless Meta entries are invalid).
-        out = self._map({"name": "400050", "pincode": "400050"}, _meta_get([]))
-        self.assertNotIn("meta", out)
+    def test_broad_scales_search_as_their_type(self):
+        # a national campaign's scale="country" must not be searched as a city
+        for label, area, found, searched in [
+            ("country", {"name": "India", "scale": "country"},
+             {"key": "IN", "name": "India", "type": "country"}, '"country"'),
+            ("state searches as a region", {"name": "Karnataka", "scale": "state"},
+             {"key": "456", "name": "Karnataka", "type": "region"}, '"region"'),
+        ]:
+            with self.subTest(label):
+                captured = {}
 
-    def test_no_handle_when_lookup_raises(self):
-        out = self._map({"name": "400050", "pincode": "400050"}, _meta_raises())
-        self.assertNotIn("meta", out)
+                async def _get(*_a, found=found, **kw):
+                    captured["params"] = kw.get("params") or {}
+                    return {"data": [found]}
 
-    def test_name_only_area_defaults_to_city_type(self):
-        # Name-only area searches as city; typeless Meta match keeps that type.
-        out = self._map(
-            {"name": "Some Neighborhood"},
-            _meta_get([{"key": "999", "name": "Some Neighborhood"}]),
-        )
-        self.assertEqual(out["meta"]["type"], "city")
-
-    def test_no_duplicated_flat_type_in_output(self):
-        out = self._map({"name": "400050", "pincode": "400050"}, _meta_get([]))
-        self.assertNotIn("type", out)       # type lives only under meta.*
-        self.assertNotIn("scale", out)        # local area carried no scale
-
-    def test_country_level_searches_as_country(self):
-        # National/international campaigns tag scale="country"; it must be searched
-        # (and typed) as a country, not mis-searched as a city.
-        captured = {}
-
-        async def _get(*_a, **kw):
-            captured["params"] = kw.get("params") or {}
-            return {"data": [{"key": "IN", "name": "India", "type": "country"}]}
-
-        out = self._map({"name": "India", "scale": "country"}, _get)
-        self.assertEqual(out["meta"], {"type": "country", "key": "IN", "name": "India"})
-        self.assertIn('"country"', captured["params"]["location_types"])
-
-    def test_state_level_searches_as_region(self):
-        captured = {}
-
-        async def _get(*_a, **kw):
-            captured["params"] = kw.get("params") or {}
-            return {"data": [{"key": "456", "name": "Karnataka", "type": "region"}]}
-
-        out = self._map({"name": "Karnataka", "scale": "state"}, _get)
-        self.assertEqual(out["meta"]["type"], "region")
-        self.assertIn('"region"', captured["params"]["location_types"])
+                self.assertEqual(self._map(area, _get)["meta"], found)
+                self.assertIn(searched, captured["params"]["location_types"])
 
     def test_existing_nested_handle_preserved(self):
         # A prior-mapping round-trip arrives nested → kept without a re-lookup.
@@ -223,19 +205,17 @@ class MapGoogleTests(unittest.TestCase):
                 patch.object(mapping_mod.google_maps_client, "geocode", side_effect=_no_geocode):
             return asyncio.run(mapper._map_google(dict(area), "IN"))
 
-    def test_resource_name_normalized(self):
-        out = self._map(
-            {"name": "Bengaluru", "city": "Bengaluru"},
-            [{"geoTargetConstant": {"id": "1007785", "canonicalName": "Bengaluru"}}],
-        )
-        self.assertEqual(
-            out["google"],
-            {"resourceName": "geoTargetConstants/1007785", "name": "Bengaluru"},
-        )
-
-    def test_no_match_leaves_no_google_handle(self):
-        out = self._map({"name": "Nowhere", "city": "Nowhere"}, [])
-        self.assertNotIn("google", out)       # keyless → proximity fallback, no handle
+    def test_rows(self):
+        for label, suggestions, expected in [
+            ("a match gets a normalized resource name",
+             [{"geoTargetConstant": {"id": "1007785", "canonicalName": "Bengaluru"}}],
+             {"resourceName": "geoTargetConstants/1007785", "name": "Bengaluru"}),
+            # keyless: proximity fallback, no handle
+            ("no match: no handle", [], None),
+        ]:
+            with self.subTest(label):
+                out = self._map({"name": "Bengaluru", "city": "Bengaluru"}, suggestions)
+                self.assertEqual(out.get("google"), expected)
 
 
 if __name__ == "__main__":

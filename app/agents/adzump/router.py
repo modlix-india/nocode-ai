@@ -2,9 +2,10 @@
 
 Common endpoints (models, sessions) are registered via ``create_common_routes``;
 the location agent's geo-search typeahead route (a UI helper, see
-``agents/location/search_router.py``) is folded in below so main.py mounts
-ONE adzump router. The orchestrator's HTTP surface is intentionally small:
-the LLM is the interface, the chat endpoint is the only conversational entry.
+``agents/location/search_router.py``) and the product library reads
+(``products_router.py``) are folded in below so main.py mounts ONE adzump
+router. The orchestrator's HTTP surface is intentionally small: the LLM is the
+interface, the chat endpoint is the only conversational entry.
 """
 
 from __future__ import annotations
@@ -30,9 +31,8 @@ from app.agents.adzump.agents.campaign.api import (
     parse_widget_message,
     stream_widget,
 )
-from app.agents.adzump.agents.location.search_router import (
-    router as location_search_router,
-)
+from app.agents.adzump.agents.location.search_router import router as location_search_router
+from app.agents.adzump.products_router import router as products_router
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ create_common_routes(router, agent_name="adzump")
 # Campaign-creation endpoints (e.g. keyword/volume for the review panel).
 router.include_router(campaign_api_router)
 router.include_router(location_search_router)
+router.include_router(products_router)
 
 
 class ChatRequest(BaseModel):
@@ -56,6 +57,9 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
     agent = AdzumpAgent.get_instance()
 
     session = BaseSession(agent_name="adzump")
+    # A product assistant works in the app hosting it, and says so: the shared
+    # resolver has no default for exactly this reason (see app_code_from_context).
+    session.context["app_code"] = auth.access_app_code
     await session.get_or_create(body.session_id, auth)
 
     if not body.session_id:
@@ -84,6 +88,6 @@ async def chat(body: ChatRequest, auth: AuthContext = Depends(require_auth_conte
         payload, mutate = widget
         return stream_widget(agent, session, payload, mutate)
 
-    return stream_agent_response(
+    return await stream_agent_response(
         agent, body.message, session, image_blocks, model_override=body.model
     )

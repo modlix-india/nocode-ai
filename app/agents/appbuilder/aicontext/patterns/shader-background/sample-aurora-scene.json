@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "renderer": {
+    "alpha": true,
+    "antialias": true,
+    "dprCap": 2,
+    "toneMapping": "aces",
+    "exposure": 1
+  },
+  "camera": {
+    "type": "fullscreen",
+    "fov": 50,
+    "position": [
+      0,
+      0,
+      1
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "near": 0.1,
+    "far": 1000,
+    "controls": false,
+    "autoRotate": false,
+    "autoRotateSpeed": 1
+  },
+  "environment": {
+    "preset": "",
+    "hdriUrl": "",
+    "background": false,
+    "backgroundColor": ""
+  },
+  "lights": [],
+  "objects": [
+    {
+      "id": "backdrop",
+      "name": "Backdrop",
+      "visible": true,
+      "source": {
+        "kind": "quad",
+        "url": "",
+        "shape": "box",
+        "count": 1000,
+        "distribution": "sphere"
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": {
+        "color": "#ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "opacity": 1,
+        "transparent": false,
+        "wireframe": false,
+        "shaderId": "aurora"
+      },
+      "animations": []
+    }
+  ],
+  "shaders": [
+    {
+      "id": "aurora",
+      "vertex": "\nvarying vec2 vUv;\nvoid main() {\n\tvUv = uv;\n\tgl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}\n",
+      "fragment": "\nvarying vec2 vUv;\nuniform float uTime;\nuniform vec3 uColorA;\nuniform vec3 uColorB;\nuniform vec3 uColorC;\n\nfloat hash(vec2 p) {\n\treturn fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);\n}\nfloat noise(vec2 p) {\n\tvec2 i = floor(p);\n\tvec2 f = fract(p);\n\tvec2 u = f * f * (3.0 - 2.0 * f);\n\treturn mix(\n\t\tmix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),\n\t\tmix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),\n\t\tu.y);\n}\n\nvoid main() {\n\tvec2 uv = vUv;\n\tfloat t = uTime * 0.06;\n\t// Two octaves, weights summing to 1 so n stays in 0..1.\n\tfloat n = 0.65 * noise(uv * vec2(2.0, 3.0) + vec2(t, t * 0.6))\n\t\t\t+ 0.35 * noise(uv * vec2(5.0, 7.0) - vec2(t * 1.7, 0.0));\n\tvec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, uv.y * 0.55 + n * 0.45));\n\t// Fold a repeating coordinate to 0 at the ribbon centre, then raise it to a\n\t// power so the glow falls off sharply instead of washing over everything.\n\tfloat ribbon = abs(fract(uv.y * 1.6 + n * 1.1) - 0.5) * 2.0;\n\tcol += uColorC * pow(1.0 - ribbon, 3.0) * 0.9;\n\tgl_FragColor = vec4(col, 1.0);\n}\n",
+      "uniforms": [
+        {
+          "name": "uColorA",
+          "type": "color",
+          "value": "#0b1026"
+        },
+        {
+          "name": "uColorB",
+          "type": "color",
+          "value": "#2b5cff"
+        },
+        {
+          "name": "uColorC",
+          "type": "color",
+          "value": "#7ef5d0"
+        }
+      ]
+    }
+  ],
+  "timeline": {
+    "driver": "time",
+    "duration": 4000,
+    "loop": true,
+    "tracks": []
+  },
+  "interactions": []
+}

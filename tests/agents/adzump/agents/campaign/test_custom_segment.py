@@ -502,9 +502,10 @@ class PendingQuestionTests(unittest.TestCase):
 
     @staticmethod
     def _log_entry(result):
-        """What core builds from a ToolResult before testing it - app/core/agent.py:961."""
+        """What core builds from a ToolResult before testing it (BaseAgent's tool log)."""
         return {
             "tool": "manage_audience",
+            "success": result.success,
             "kind": "tool",
             "elicit_mode": "deferred",
             "elicited": bool(

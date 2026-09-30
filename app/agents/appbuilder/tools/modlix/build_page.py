@@ -40,7 +40,8 @@ def _build_global_css(analysis) -> str:
 async def _execute_build_page_from_url(params: Dict[str, Any], context: Dict[str, Any]) -> ToolResult:
     url = (params.get("url") or "").strip()
     page_name = (params.get("page_name") or "").strip()
-    ac = (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     cc = (params.get("client_code") or context.get("client_code") or "SYSTEM").strip()
     if not url or not page_name:
         return ToolResult(success=False, error="`url` and `page_name` are required")

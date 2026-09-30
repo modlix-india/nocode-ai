@@ -97,7 +97,7 @@ async def _fetch_audience_segments(params: dict, context: dict) -> ToolResult:
         # reach it - to_tool_result_content falls back to data only when both are empty.
         summary=f"{len(candidates)} targetable segments available.",
         model_summary=tree,
-        MAX_RESULT_CHARS=_TREE_MAX_CHARS,
+        max_result_chars=_TREE_MAX_CHARS,
     )
 
 

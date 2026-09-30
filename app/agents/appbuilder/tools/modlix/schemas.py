@@ -27,7 +27,7 @@ from . import _conventions as c
 
 
 # Shared param-description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_COMMIT_MSG = "Commit message"
 _DESC_RUNTIME = "'ui' or 'core' — most app schemas live in 'core'"
@@ -43,7 +43,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
-    ac = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    ac = resolve_app_code(params, context)
     if not ac:
         return "", ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
     return ac, None
@@ -440,6 +441,7 @@ def _summarize_storage(s: dict[str, Any]) -> str:
         f"  version: {s.get('version')}",
         f"  clientCode: {s.get('clientCode')}",
         f"  flags: audited={s.get('isAudited')} versioned={s.get('isVersioned')} "
+        f"appLevel={s.get('isAppLevel')} "
         f"onlyThruKIRun={s.get('onlyThruKIRun')} generateEvents={s.get('generateEvents')}",
     ]
     for label, field in (("createAuth", "createAuth"), ("readAuth", "readAuth"),
@@ -485,6 +487,7 @@ async def _execute_list_storages(params: dict[str, Any], context: dict[str, Any]
         "triggers": sum(len(v or []) for v in (s.get("triggers") or {}).values()),
         "audited": s.get("isAudited"),
         "versioned": s.get("isVersioned"),
+        "appLevel": s.get("isAppLevel"),
     } for s in content]
     return ToolResult(success=True, summary=f"Storages in app '{ac}' ({len(rows)}):\n{json.dumps(rows, indent=2, default=str)}")
 
@@ -575,6 +578,7 @@ async def _execute_create_storage(params: dict[str, Any], context: dict[str, Any
         "name": name, "appCode": ac, "clientCode": cc, "schema": schema,
         "isAudited": bool(params.get("is_audited", True)),
         "isVersioned": bool(params.get("is_versioned", False)),
+        "isAppLevel": bool(params.get("is_app_level", False)),
         "onlyThruKIRun": bool(params.get("only_thru_kirun", False)),
         "generateEvents": bool(params.get("generate_events", False)),
         "message": params.get("message") or "Created storage via CFA",
@@ -617,7 +621,31 @@ create_storage_tool = ToolDefinition(
         ToolParameter(name="delete_auth", type="string", required=False, description=f"{_DESC_AUTHORITY_FMT} for DELETE"),
         ToolParameter(name="is_audited", type="boolean", required=False, default=True, description="Track created/updated by per row"),
         ToolParameter(name="is_versioned", type="boolean", required=False, default=False, description="Keep version history"),
-        ToolParameter(name="only_thru_kirun", type="boolean", required=False, default=False, description="Block REST writes; only Kirun fns mutate"),
+        ToolParameter(
+            name="is_app_level", type="boolean", required=False, default=False,
+            description=(
+                "App-level storage. It gates one thing: a per-client OVERRIDE of this DEFINITION "
+                "is refused unless the caller has app write access (StorageService.create). "
+                "It does NOT make the rows shared or app-wide. Row data stays scoped to the "
+                "clientCode header on every route, this flag set or not, verified on local by "
+                "writing under two client headers both ways and by running copyToDraft and "
+                "clear-rows per client. MongoAppDataService swaps in ca.getUrlClientCode() when "
+                "the flag is set, but JWTTokenFilter sets urlClientCode FROM that same header, "
+                "so the swap is a no-op wherever the header is present. So an app-level storage "
+                "still accumulates MANY clients' rows: one app runs from several URLs under "
+                "different client contexts, each landing in its own <CLIENT>_<app> database. "
+                "Anything that browses these rows needs a client picker regardless of this flag."
+            ),
+        ),
+        ToolParameter(
+            name="only_thru_kirun", type="boolean", required=False, default=False,
+            description=(
+                "Refuse the raw data API entirely (READS as well as writes) unless the call comes "
+                "from inside a KIRun execution — AppDataService.getStorageWithKIRunValidation "
+                "returns empty, which surfaces as 404. Set TRUE: pages must reach data through "
+                "api/core/function/execute/... , never api/core/data/<storage>."
+            ),
+        ),
         ToolParameter(name="generate_events", type="boolean", required=False, default=False, description="Emit eventDefinitions on row mutations"),
         ToolParameter(name="text_index_fields", type="array", required=False, description="Fields to enable FTS on", items={"type": "string"}),
         ToolParameter(name="indexes", type="object", required=False, description="Index definitions"),
@@ -685,6 +713,7 @@ async def _execute_update_storage(params: dict[str, Any], context: dict[str, Any
             changed.append(body_key)
     for opt_key, body_key in (
         ("is_audited", "isAudited"), ("is_versioned", "isVersioned"),
+        ("is_app_level", "isAppLevel"),
         ("only_thru_kirun", "onlyThruKIRun"), ("generate_events", "generateEvents"),
     ):
         v = params.get(opt_key)
@@ -717,6 +746,13 @@ update_storage_tool = ToolDefinition(
         ToolParameter(name="delete_auth", type="string", required=False, description=f"Replace {_DESC_AUTHORITY_FMT}"),
         ToolParameter(name="is_audited", type="boolean", required=False, description="Toggle audit"),
         ToolParameter(name="is_versioned", type="boolean", required=False, description="Toggle versioning"),
+        ToolParameter(
+            name="is_app_level", type="boolean", required=False,
+            description=(
+                "Toggle app-level: gates per-client OVERRIDES of this definition on app write "
+                "access. Row data stays scoped to the clientCode header regardless."
+            ),
+        ),
         ToolParameter(name="only_thru_kirun", type="boolean", required=False, description="Toggle REST-write block"),
         ToolParameter(name="generate_events", type="boolean", required=False, description="Toggle event emission"),
         ToolParameter(name="title", type="string", required=False, description="Replace title"),
@@ -977,9 +1013,104 @@ TOOLS: list[ToolDefinition] = [
     create_storage_tool,
     update_storage_tool,
     delete_storage_tool,
-    # Storage data — READ-ONLY (4)
+    # Storage data — READ-ONLY (5; read_storage_rows appended at end of file)
     list_storage_collections_tool,
     count_storage_rows_tool,
     query_storage_rows_tool,
     get_storage_row_tool,
 ]
+
+
+# ── read_storage_rows — inspect rows through the platform, not Mongo ─────────
+#
+# `query_storage_rows` / `count_storage_rows` above talk to Mongo directly.
+# That works only where a Mongo port is reachable (local dev), bypasses every
+# platform authorization check, and knows nothing about storage semantics.
+#
+# This tool goes through core instead: GET api/core/internal/data/<storage>,
+# a cluster-only READ-ONLY route (nginx blocks public /internal/**). It carries
+# the KIRun context marker, so it can also read storages marked
+# `only_thru_kirun=true` — which every generated app's storages SHOULD be, so
+# that pages are forced through api/core/function/execute/... instead of the
+# raw data API. Per-storage readAuth still applies; this only relaxes the
+# KIRun gate, never the authority check.
+
+_INTERNAL_DATA_PATH = "/api/core/internal/data"
+
+
+async def _execute_read_storage_rows(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    storage_name = (params.get("storage_name") or "").strip()
+    if not storage_name:
+        return ToolResult(success=False, error="`storage_name` is required")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code(params, context)
+    if not app_code:
+        return ToolResult(success=False, error="No appCode set. Pass `app_code` or set it on the chat request.")
+    client_code = (params.get("client_code") or context.get("client_code") or "SYSTEM").strip()
+    try:
+        size = max(1, min(int(params.get("size") or 20), 200))
+    except (TypeError, ValueError):
+        size = 20
+    try:
+        page_no = max(0, int(params.get("page") or 0))
+    except (TypeError, ValueError):
+        page_no = 0
+
+    client, headers = _client_and_headers(context)
+    req_headers = dict(headers)
+    # The route is permitAll so Spring does not reject it before the token is
+    # read, but readPage still needs a security context — keep the bearer token.
+    req_headers["appCode"] = app_code
+    req_headers["clientCode"] = client_code
+
+    query: dict[str, Any] = {"page": page_no, "size": size, "count": "true"}
+    for field, value in (params.get("filter") or {}).items():
+        query[str(field)] = value
+
+    r = await client.get(f"{_INTERNAL_DATA_PATH}/{storage_name}", headers=req_headers, params=query)
+    if not r.success:
+        return ToolResult(
+            success=False,
+            error=(
+                f"{r.error}\n\nIf this is a 404 on the ROUTE (not the storage), core may predate "
+                f"api/core/internal/data — rebuild and restart core. If it is 403, the storage's "
+                f"readAuth denies this caller."
+            ),
+        )
+    data = r.data if isinstance(r.data, dict) else {}
+    rows = data.get("content") or []
+    total = data.get("totalElements", len(rows))
+    return ToolResult(
+        success=True,
+        summary=(
+            f"{app_code}/{client_code} storage '{storage_name}': {len(rows)} of {total} row(s) "
+            f"(page {page_no}, size {size})\n{json.dumps(rows, indent=2, default=str)}"
+        ),
+        data={"content": rows, "totalElements": total},
+    )
+
+
+read_storage_rows_tool = ToolDefinition(
+    name="read_storage_rows",
+    description=(
+        "(READ-ONLY) Read rows of a storage THROUGH the platform (core's cluster-only "
+        "api/core/internal/data route). Prefer this over query_storage_rows: it works wherever the "
+        "gateway is reachable rather than needing a Mongo port, it honours the storage's readAuth, "
+        "and it can read storages marked only_thru_kirun=true. Use it to verify what a page actually "
+        "wrote. Writes are deliberately not offered here — they must go through "
+        "api/core/function/execute/... so triggers, validation and events run."
+    ),
+    parameters=[
+        ToolParameter(name="storage_name", type="string", description=_DESC_STORAGE),
+        ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
+        ToolParameter(name="client_code", type="string", required=False, description="Tenant client code; defaults to the session client"),
+        ToolParameter(name="filter", type="object", required=False, description="Field equality filters, e.g. {status: 'PENDING'}"),
+        ToolParameter(name="page", type="integer", required=False, default=0, description="0-based page index"),
+        ToolParameter(name="size", type="integer", required=False, default=20, description="Rows per page (capped at 200)"),
+    ],
+    execute=_execute_read_storage_rows,
+)
+
+
+# Defined after TOOLS, so register it here.
+TOOLS.append(read_storage_rows_tool)

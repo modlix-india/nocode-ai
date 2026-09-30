@@ -30,7 +30,7 @@ Anywhere a component takes a navigation target (`Link.linkPath`, `Grid.linkPath`
 
 ## "/" vs "/<defaultPageName>"
 
-Use `/` for any "go home" affordance. Confirmed with Kiran on 2026-05-18: hardcoding `/homeTwo` (or whatever the current default page is named) means the link breaks the day someone swaps the default page in the app config. `/` resolves to whatever the app's default page is at request time, so the link survives renames and default-page swaps.
+Use `/` for any "go home" affordance. Confirmed 2026-05-18: hardcoding `/homeTwo` (or whatever the current default page is named) means the link breaks the day someone swaps the default page in the app config. `/` resolves to whatever the app's default page is at request time, so the link survives renames and default-page swaps.
 
 Cases where `/` is the right answer:
 - Top-bar logo click
@@ -89,7 +89,7 @@ If your linkPath contains the app's own appCode or clientCode, you've made the m
 
 ## Making non-linkable components clickable
 
-Confirmed with Kiran on 2026-05-18: you cannot make an Image clickable by setting `linkPath` on it because the Image component doesn't have that property in its schema. The platform silently ignores unknown property keys, so the call succeeds but does nothing in the browser.
+Confirmed 2026-05-18: you cannot make an Image clickable by setting `linkPath` on it because the Image component doesn't have that property in its schema. The platform silently ignores unknown property keys, so the call succeeds but does nothing in the browser.
 
 Two correct patterns:
 

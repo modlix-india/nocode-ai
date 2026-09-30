@@ -221,7 +221,7 @@ class PersistenceTests(unittest.TestCase):
 class BuildHandoffTests(unittest.TestCase):
     """The sub-session -> main-session hop. Build tools run in a throwaway session; what
     survives is what ``create()`` hands back, and it must not be one channel's slot — the
-    main session is where launch, next_action and the manage agent all read from.
+    main session is where launch, the journey and the manage agent all read from.
     """
 
     def _hop(self, sub_ctx, channel, **spec):

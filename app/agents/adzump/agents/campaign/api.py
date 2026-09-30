@@ -272,7 +272,7 @@ def stream_widget(
     agent: Any, session: BaseSession, params: dict, mutate: Callable
 ) -> StreamingResponse:
     """Fast-path SSE for a panel action: mutate the saved set and re-emit its review block
-    WITHOUT an LLM turn. keepalive off — the mutation finishes immediately."""
+    WITHOUT an LLM turn."""
     event_stream = AgentEventStream()
 
     async def run() -> None:
@@ -291,4 +291,4 @@ def stream_widget(
         finally:
             await event_stream.emit_done(session_id=session.session_id)
 
-    return sse_stream_response(event_stream, run(), keepalive=False)
+    return sse_stream_response(event_stream, run())

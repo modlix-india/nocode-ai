@@ -4,9 +4,9 @@ from __future__ import annotations
 LLM Provider abstraction for supporting multiple LLM backends.
 
 Supports:
-- Anthropic (Claude): claude-haiku-4-5, claude-sonnet-4
+- Anthropic (Claude): settings.CLAUDE_HAIKU / CLAUDE_SONNET (Haiku 4.5, Sonnet 5.5)
 - OpenAI (GPT): gpt-4o-mini, gpt-4o
-- DeepSeek: deepseek-chat (V3)
+- DeepSeek: deepseek-flash (V4.1-Flash)
 
 Usage:
     from app.services.llm_provider import get_llm_provider
@@ -265,6 +265,30 @@ class StreamChunk:
     hits: list = field(default_factory=list)
 
 
+def flatten_system_blocks(system_prompt: Any) -> str:
+    """Flatten Anthropic-shape system content blocks into one string.
+
+    For providers with no native multi-block system field (OpenAI, DeepSeek,
+    MiniMax, Gemini), which need the blocks collapsed before the call.
+
+    Joined with a BLANK LINE, not a single space. The blocks are independent
+    markdown documents — persona + tool index, then the catalogs, then the
+    per-session context — and a space join welds each one's first heading onto
+    the previous one's last line (`...validate_kirun_text ## Component
+    Catalog`), costing the model the structure the headings exist to give it.
+
+    The separator is part of the cached prefix on every provider that does
+    automatic prefix caching, so it has to be stable and identical everywhere;
+    that is why this lives in one place instead of being re-spelled at each
+    call site.
+    """
+    if isinstance(system_prompt, list):
+        return "\n\n".join(
+            b.get("text", "") for b in system_prompt if b.get("type") == "text"
+        )
+    return system_prompt or ""
+
+
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
 
@@ -318,7 +342,7 @@ class LLMProvider(ABC):
             - usage: Token usage info
         """
         pass
-    
+
     @abstractmethod
     def supports_vision(self) -> bool:
         """Whether this provider supports vision/image inputs"""
@@ -367,8 +391,15 @@ class LLMProvider(ABC):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream a completion with tool-use support.
+
+        ``thinking`` opts this call into extended/adaptive thinking; only
+        providers that support it act on it, the rest ignore it.
+        ``effort`` bounds thinking depth (low|medium|high|max) - Anthropic
+        only; None means the API default (high).
 
         Yields StreamChunk objects as they arrive. Override in subclasses
         for native streaming. Default: falls back to non-streaming call
@@ -526,7 +557,7 @@ class AnthropicProvider(LLMProvider):
             "model": model,
             "stop_reason": response.stop_reason
         }
-    
+
     async def create_completion_with_tools(
         self,
         system_prompt: Any,
@@ -615,6 +646,8 @@ class AnthropicProvider(LLMProvider):
         model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,
+        effort: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Claude API."""
         model = self.get_model(model_tier)
@@ -637,6 +670,18 @@ class AnthropicProvider(LLMProvider):
             model=model, max_tokens=max_tokens,
             system=system, messages=messages, tools=tools,
         )
+        if thinking:
+            # Adaptive thinking: Claude decides when/how much to think and
+            # auto-enables interleaved thinking with tool use (no beta header).
+            # display="summarized" is what streams the reasoning to the UI:
+            # Sonnet 5.5 omits the thinking text by default (an empty block,
+            # live 2026-09-29), and Sonnet 4.6 accepts the field too.
+            stream_kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+        if effort:
+            # Bounds adaptive thinking depth. Without it the API defaults to
+            # "high" - a 101k-token final judgment turn spent 6.5 min thinking
+            # (live 2026-09-21). Accepts low|medium|high|max.
+            stream_kwargs["output_config"] = {"effort": effort}
         if context_management:
             extra_headers = extra_headers or {}
             extra_headers["anthropic-beta"] = (
@@ -742,6 +787,12 @@ class AnthropicProvider(LLMProvider):
                 dtype = getattr(delta, "type", "")
                 if dtype == "text_delta":
                     yield StreamChunk(type="text_delta", text=delta.text)
+                elif dtype == "thinking_delta":
+                    # Adaptive-thinking summary text - surfaced to the UI via
+                    # the same reasoning_delta -> emit_thinking path the OpenAI
+                    # and DeepSeek providers use. The signature rides the final
+                    # assembled block (message_complete), not the stream.
+                    yield StreamChunk(type="reasoning_delta", text=getattr(delta, "thinking", "") or "")
                 elif dtype == "input_json_delta":
                     btype = block_types_by_index.get(idx, "")
                     if btype == "tool_use":
@@ -831,7 +882,17 @@ class OpenAIProvider(LLMProvider):
         from openai import OpenAI
         from app.config import settings
 
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        import httpx as _httpx
+        # Explicit timeouts: the SDK default (600s/attempt x retries) let one
+        # stalled vision call wedge a whole creatives batch for 12+ minutes
+        # (live 2026-09-08). read=180s applies BETWEEN stream chunks too, so a
+        # stalled stream breaks instead of hanging; the SDK's own retries then
+        # re-attempt the call.
+        self.client = OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=_httpx.Timeout(180.0, connect=10.0, pool=30.0),
+            max_retries=2,
+        )
         self.settings = settings
         self._models = {
             "fast": settings.OPENAI_MODEL_FAST,
@@ -847,11 +908,7 @@ class OpenAIProvider(LLMProvider):
 
     def _extract_instructions(self, system_prompt: Any) -> str:
         """Extract plain text from system prompt (string or Anthropic content blocks)."""
-        if isinstance(system_prompt, list):
-            return " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
-            )
-        return system_prompt or ""
+        return flatten_system_blocks(system_prompt)
 
     def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert Anthropic tool format to Responses API flat format.
@@ -1052,6 +1109,8 @@ class OpenAIProvider(LLMProvider):
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,  # unused: reasoning models steer via effort, not this flag
+        effort: str | None = None,  # unused: Anthropic-only knob
         extra_request_kwargs: Optional[Dict[str, Any]] = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with tool-use via Responses API.
@@ -1086,10 +1145,18 @@ class OpenAIProvider(LLMProvider):
                 kwargs["reasoning"] = reasoning_config
             if extra_request_kwargs:
                 kwargs.update(extra_request_kwargs)
-            stream = self.client.responses.create(**kwargs)
-            for event in stream:
-                queue.put_nowait(event)
-            queue.put_nowait(_sentinel)
+            try:
+                stream = self.client.responses.create(**kwargs)
+                for event in stream:
+                    queue.put_nowait(event)
+            except Exception as e:
+                # Same contract as the DeepSeek worker: a create() failure
+                # (e.g. 400 on a bad image) must reach the consumer, not die
+                # in the executor future while `await queue.get()` hangs
+                # forever (live 2026-09-10).
+                queue.put_nowait(_StreamError(e))
+            finally:
+                queue.put_nowait(_sentinel)
 
         asyncio.get_event_loop().run_in_executor(None, _run_stream)
 
@@ -1103,6 +1170,8 @@ class OpenAIProvider(LLMProvider):
             event = await queue.get()
             if event is _sentinel:
                 break
+            if isinstance(event, _StreamError):
+                raise event.exc
 
             etype = getattr(event, 'type', '')
 
@@ -1204,16 +1273,153 @@ class OpenAIProvider(LLMProvider):
 
 
 class _StreamError:
-    """Queue-passable wrapper for exceptions raised inside the streaming
-    worker thread of `DeepSeekProvider.stream_completion_with_tools` (and
-    MiniMaxProvider, which inherits it). Without this, a TLS drop or 5xx
-    leaves the consumer's `await queue.get()` hung forever.
+    """Queue-passable wrapper for exceptions raised inside a streaming
+    worker thread (`OpenAIProvider` Responses and
+    `DeepSeekProvider.stream_completion_with_tools`, including MiniMax which
+    inherits it). Without this, a TLS drop, 5xx, or 400 leaves the
+    consumer's `await queue.get()` hung forever.
     """
 
     __slots__ = ("exc",)
 
     def __init__(self, exc: BaseException):
         self.exc = exc
+
+
+# DeepSeek model ids that accept image input. `deepseek-v4-pro` is text-only and
+# rejects `image_url` content parts, so vision cannot be a class-wide flag on
+# DeepSeekProvider the way it is on MiniMax — it has to be decided per model.
+#
+# The two legacy flash ids are still listed because DeepSeek still accepts them
+# and now serves both from `deepseek-flash`, which has vision. Leaving
+# `deepseek-v4-flash` out would have this report no vision for a model that in
+# fact has it, and silently reroute screenshots through a Gemini description
+# nobody needs to pay for.
+_DEEPSEEK_VISION_MODELS: frozenset[str] = frozenset({
+    "deepseek-flash",
+    "deepseek-v4-flash",
+    "deepseek-v4-flash-vision-exp",
+})
+
+# Providers whose models take image input on every tier, so no per-model check
+# is needed. NOTE: gemini is deliberately absent — GeminiProvider has native
+# vision but does not implement the image-in-tool_result path, so listing it
+# here would drop screenshots instead of forwarding them.
+_NATIVE_VISION_PROVIDERS: frozenset[str] = frozenset({
+    "anthropic", "openai", "minimax",
+})
+
+
+def _deepseek_model_for_tier(tier: str) -> str:
+    """Resolve a DeepSeek tier name to its configured model id.
+
+    Mirrors ``DeepSeekProvider.get_model``, including its pass-through of an
+    unknown tier (a ``resolve_model_override`` result arrives as a raw model
+    id in the tier slot). Kept module-level so the capability checks below can
+    run without constructing a provider — they are called at import time.
+    """
+    from app.config import settings
+
+    return {
+        "fast": settings.DEEPSEEK_MODEL_FAST,
+        "balanced": settings.DEEPSEEK_MODEL_BALANCED,
+    }.get(tier, tier)
+
+
+def appbuilder_vision_capable() -> bool:
+    """Whether the AppBuilder's configured model can see images itself.
+
+    The screenshot tools use this to choose between attaching the raw PNG to
+    the tool result (native vision) and paying Gemini to describe it in text.
+    Resolves capability from the model, not just the provider name, so a
+    vision-capable model on an otherwise text-only provider
+    (``deepseek-flash``) gets the native path.
+
+    Settings-only by design — no provider is constructed, because callers
+    include module-level tool-registry filtering that runs before the config
+    server has supplied API keys.
+    """
+    from app.config import settings
+
+    name = (
+        getattr(settings, "APPBUILDER_PROVIDER", "")
+        or getattr(settings, "LLM_PROVIDER", "")
+        or ""
+    ).lower()
+    if name in _NATIVE_VISION_PROVIDERS:
+        return True
+    if name == "deepseek":
+        tier = getattr(settings, "AGENT_MODEL_TIER", "balanced") or "balanced"
+        return _deepseek_model_for_tier(tier) in _DEEPSEEK_VISION_MODELS
+    return False
+
+
+def _openai_compatible_usage(usage: Any) -> dict[str, int]:
+    """Map an OpenAI-compatible `usage` object onto the Anthropic-shaped dict
+    the rest of the codebase speaks (input / output / cache_creation / cache_read).
+
+    DeepSeek reports context-cache accounting as `prompt_cache_hit_tokens` and
+    `prompt_cache_miss_tokens`, where **`prompt_tokens == hit + miss`** —
+    unlike Anthropic, whose `input_tokens` EXCLUDES cached reads. Mapping
+    `input_tokens = miss` and `cache_read_input_tokens = hit` restores the
+    Anthropic contract, so `input + cache_read` is the true context size on
+    every provider and nothing double-counts.
+
+    Billing is unaffected: `billing.weighted_tokens` sums all four keys, and
+    `miss + hit == prompt_tokens`, so the charged total is identical to the
+    old `input_tokens = prompt_tokens, cache_read = 0` mapping.
+
+    MiniMax (and any other OpenAI-compatible endpoint reached through
+    DeepSeekProvider) may not report the cache fields at all. When both are
+    absent we fall back to the whole prompt counting as uncached input, rather
+    than reading a missing field as zero and losing the count entirely.
+    """
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    hit = getattr(usage, "prompt_cache_hit_tokens", None)
+    miss = getattr(usage, "prompt_cache_miss_tokens", None)
+
+    if hit is None and miss is None:
+        input_tokens, cache_read = prompt_tokens, 0
+    else:
+        cache_read = hit or 0
+        # Trust an explicit miss; otherwise derive it so the two still sum to
+        # prompt_tokens even if only one field is present.
+        input_tokens = miss if miss is not None else max(prompt_tokens - cache_read, 0)
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": completion_tokens,
+        "cache_creation_input_tokens": 0,  # DeepSeek's cache is automatic; no explicit writes
+        "cache_read_input_tokens": cache_read,
+    }
+
+
+def _as_openai_image_part(block: dict) -> dict | None:
+    """Normalise one image block to an OpenAI `image_url` part, or None.
+
+    Accepts both shapes that reach the converter: Anthropic `image` blocks
+    (base64 or url source) from tool results, and already-OpenAI `image_url`
+    parts from `format_image_content`. Shared by the tool-result path and the
+    user-attachment path so the two cannot drift apart.
+    """
+    btype = block.get("type")
+    if btype == "image":
+        src = block.get("source") or {}
+        if src.get("type") == "base64" and src.get("data"):
+            media = src.get("media_type", "image/png")
+            return {
+                "type": "image_url",
+                "image_url": {"url": f"data:{media};base64,{src['data']}"},
+            }
+        if src.get("type") == "url" and src.get("url"):
+            return {"type": "image_url", "image_url": {"url": src["url"]}}
+    elif btype == "image_url":  # already OpenAI-shaped
+        iu = block.get("image_url")
+        url = iu.get("url") if isinstance(iu, dict) else iu
+        if url:
+            return {"type": "image_url", "image_url": {"url": url}}
+    return None
 
 
 def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
@@ -1237,24 +1443,12 @@ def _split_tool_result_content(content: Any) -> tuple[str, list[dict]]:
     for block in content:
         if not isinstance(block, dict):
             continue
-        btype = block.get("type")
-        if btype == "text":
+        if block.get("type") == "text":
             text_chunks.append(block.get("text", ""))
-        elif btype == "image":
-            src = block.get("source") or {}
-            if src.get("type") == "base64" and src.get("data"):
-                media = src.get("media_type", "image/png")
-                image_parts.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{media};base64,{src['data']}"},
-                })
-            elif src.get("type") == "url" and src.get("url"):
-                image_parts.append({"type": "image_url", "image_url": {"url": src["url"]}})
-        elif btype == "image_url":  # already OpenAI-shaped
-            iu = block.get("image_url")
-            url = iu.get("url") if isinstance(iu, dict) else iu
-            if url:
-                image_parts.append({"type": "image_url", "image_url": {"url": url}})
+            continue
+        part = _as_openai_image_part(block)
+        if part:
+            image_parts.append(part)
     return "\n".join(t for t in text_chunks if t), image_parts
 
 
@@ -1266,7 +1460,22 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
     those tool results — interleaving a user message between tool messages
     would violate the OpenAI tool-call message ordering. Plain text blocks
     become standalone user messages.
+
+    Images the USER attached (session.append_user_message stores them as
+    `[text, *image_blocks]`) are a different case from tool-result screenshots:
+    they belong to the same user turn as the text that asks about them, so they
+    ride inside that text message's content list rather than a follow-up
+    message. Without this branch they matched no `type` at all and were dropped
+    silently — the model answered "I don't have anything attached" while the UI
+    showed the thumbnail.
     """
+    attachment_parts: list[dict] = [
+        part
+        for item in content
+        if isinstance(item, dict) and item.get("type") in ("image", "image_url")
+        for part in [_as_openai_image_part(item)]
+        if part
+    ]
     pending_image_parts: list[dict] = []
     for item in content:
         if not isinstance(item, dict):
@@ -1280,7 +1489,18 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
             })
             pending_image_parts.extend(image_parts)
         elif item.get("type") == "text":
-            full_messages.append({"role": "user", "content": item["text"]})
+            if attachment_parts:
+                # Attach to the first text block, then fall back to plain
+                # string content for any further text in this turn.
+                full_messages.append({
+                    "role": "user",
+                    "content": [{"type": "text", "text": item["text"]}, *attachment_parts],
+                })
+                attachment_parts = []
+            else:
+                full_messages.append({"role": "user", "content": item["text"]})
+    if attachment_parts:  # attachments with no accompanying text
+        full_messages.append({"role": "user", "content": attachment_parts})
     if pending_image_parts:
         full_messages.append({
             "role": "user",
@@ -1289,6 +1509,25 @@ def _append_user_list_content(full_messages: list, content: list) -> None:
                 *pending_image_parts,
             ],
         })
+
+
+# OpenAI-compatible `finish_reason` → the Anthropic-style `stop_reason` the
+# agent loop switches on. "length" must NOT fold into "end_turn": a response cut
+# off at the output ceiling is not a finished one, and this string is the loop's
+# only signal that the turn should be resumed rather than handed back to the
+# user. Folding it lost every truncated turn silently — prod session
+# HHARS1_984fdbf5 died mid-sentence 8 times in 19 turns, each one read as "the
+# model is done", so the user saw a plan break off and had to type "continue".
+_OAI_STOP_REASONS = {
+    "tool_calls": "tool_use",
+    "length": "max_tokens",
+    "stop": "end_turn",
+}
+
+
+def _stop_reason_from_finish(finish_reason: str | None) -> str:
+    """Map one OpenAI-compatible finish_reason, defaulting to "end_turn"."""
+    return _OAI_STOP_REASONS.get(finish_reason or "", "end_turn")
 
 
 class DeepSeekProvider(LLMProvider):
@@ -1324,6 +1563,19 @@ class DeepSeekProvider(LLMProvider):
     def get_model(self, tier: str) -> str:
         return self._models.get(tier, tier)
 
+    @property
+    def supports_image_in_tool_result(self) -> bool:
+        """True only when the configured model accepts image input.
+
+        Overrides the base class attribute with a per-model check: the
+        text-only V4 chat models reject the `image_url` parts that
+        `_append_user_list_content` emits, while
+        ``deepseek-flash`` reads them natively. Keyed on the
+        tier the agent actually runs (``AGENT_MODEL_TIER``).
+        """
+        tier = getattr(self.settings, "AGENT_MODEL_TIER", "balanced") or "balanced"
+        return self.get_model(tier) in _DEEPSEEK_VISION_MODELS
+
     def _is_thinking_tier(self, model_tier: str) -> bool:
         if not self.settings.DEEPSEEK_THINKING_ENABLED:
             return False
@@ -1348,14 +1600,16 @@ class DeepSeekProvider(LLMProvider):
             self.client.chat.completions.create,
             model=model, max_tokens=max_tokens, messages=full_messages,
         )
+        message = response.choices[0].message
+        # Surface reasoning_content. A V4 reasoning model can spend the whole
+        # output budget thinking and return `content` of None with
+        # finish_reason "length" — indistinguishable from "the model had
+        # nothing to say" unless the caller can see where the tokens went.
+        # Lore's curator hit exactly this and produced zero entries for weeks.
         return {
-            "content": response.choices[0].message.content,
-            "usage": {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
-                "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
-            },
+            "content": message.content,
+            "reasoning_content": getattr(message, "reasoning_content", None),
+            "usage": _openai_compatible_usage(response.usage),
             "model": model,
             "stop_reason": response.choices[0].finish_reason,
         }
@@ -1364,7 +1618,32 @@ class DeepSeekProvider(LLMProvider):
         return True
 
     def supports_prompt_caching(self) -> bool:
+        # DeepSeek DOES cache prompts, but implicitly — there are no
+        # cache_control markers to place the way Anthropic requires. This flag
+        # means "we manage cache markers", so False is right here for the same
+        # reason it is on Gemini. The hits themselves are reported and recorded;
+        # see _openai_compatible_usage.
         return False
+
+    def format_image_content(self, base64_image: str, media_type: str = "image/png") -> Dict[str, Any]:
+        """Format a user attachment as an OpenAI-compatible `image_url` part.
+
+        Same shape `_split_tool_result_content` emits for screenshots, so the
+        attachment path and the tool_result path hand the model identical
+        blocks. Guarded on `supports_image_in_tool_result` because that is the
+        per-model "accepts image input" check: text-only V4 chat models reject
+        `image_url` parts with an opaque 400, so fail here with a clear reason
+        instead. MiniMax inherits this and pins the flag True class-wide.
+        """
+        if not self.supports_image_in_tool_result:
+            raise NotImplementedError(
+                f"Vision not supported by the configured {self.name} model "
+                f"({self.get_model(getattr(self.settings, 'AGENT_MODEL_TIER', 'balanced') or 'balanced')})"
+            )
+        return {
+            "type": "image_url",
+            "image_url": {"url": f"data:{media_type};base64,{base64_image}"},
+        }
 
     async def create_completion_with_tools(
         self,
@@ -1385,12 +1664,7 @@ class DeepSeekProvider(LLMProvider):
         thinking = self._is_thinking_tier(model_tier)
 
         # --- Convert system prompt ---
-        if isinstance(system_prompt, list):
-            sys_text = " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
-            )
-        else:
-            sys_text = system_prompt
+        sys_text = flatten_system_blocks(system_prompt)
 
         full_messages: List[Dict[str, Any]] = [{"role": "system", "content": sys_text}]
 
@@ -1476,18 +1750,11 @@ class DeepSeekProvider(LLMProvider):
                     "input": json_lib.loads(tc.function.arguments),
                 })
 
-        stop_reason = "end_turn"
-        if choice.finish_reason == "tool_calls":
-            stop_reason = "tool_use"
+        stop_reason = _stop_reason_from_finish(choice.finish_reason)
 
         result: Dict[str, Any] = {
             "content": content_blocks,
-            "usage": {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
-                "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
-            },
+            "usage": _openai_compatible_usage(response.usage),
             "model": model,
             "stop_reason": stop_reason,
         }
@@ -1504,17 +1771,25 @@ class DeepSeekProvider(LLMProvider):
         tools: List[Dict[str, Any]], model_tier: str = "balanced",
         max_tokens: int = 16384,
         context_management: dict | None = None,
+        thinking: bool = False,  # unused: DeepSeek/MiniMax gate thinking via DEEPSEEK_THINKING_ENABLED
+        effort: str | None = None,  # unused: Anthropic-only knob
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion via Chat Completions API (OpenAI-compatible)."""
         import json as json_lib
         model = self.get_model(model_tier)
 
-        if isinstance(system_prompt, list):
-            sys_text = " ".join(
-                block.get("text", "") for block in system_prompt if block.get("type") == "text"
-            )
-        else:
-            sys_text = system_prompt
+        # The thinking floor was applied on `create_completion_with_tools` only,
+        # and the agent loop runs HERE — so the tier that spends part of its
+        # budget on reasoning was the one path that never got the headroom for
+        # it. Same floor, same reason: reasoning_content is billed as output and
+        # comes out of this ceiling, so a caller's ordinary budget can be gone
+        # before the first token of the answer.
+        effective_max_tokens = (
+            max(max_tokens, self._THINKING_MIN_MAX_TOKENS)
+            if self._is_thinking_tier(model_tier) else max_tokens
+        )
+
+        sys_text = flatten_system_blocks(system_prompt)
 
         full_messages: List[Dict[str, Any]] = [{"role": "system", "content": sys_text}]
         for msg in messages:
@@ -1560,7 +1835,7 @@ class DeepSeekProvider(LLMProvider):
         def _run_sync_stream():
             try:
                 stream = self.client.chat.completions.create(
-                    model=model, max_tokens=max_tokens,
+                    model=model, max_tokens=effective_max_tokens,
                     messages=full_messages,
                     tools=openai_tools if openai_tools else None,
                     stream=True,
@@ -1601,10 +1876,10 @@ class DeepSeekProvider(LLMProvider):
                 # …) instead of hanging on an empty queue.
                 raise chunk.exc
             if hasattr(chunk, 'usage') and chunk.usage:
-                final_usage = {
-                    "input_tokens": chunk.usage.prompt_tokens or 0,
-                    "output_tokens": chunk.usage.completion_tokens or 0,
-                }
+                # This is the path the agent loop actually runs on, so the
+                # cache split has to be here too — not just on the
+                # non-streaming calls.
+                final_usage = _openai_compatible_usage(chunk.usage)
             if not chunk.choices:
                 continue
             delta = chunk.choices[0].delta
@@ -1628,7 +1903,7 @@ class DeepSeekProvider(LLMProvider):
                     if tc.function and tc.function.arguments:
                         tool_call_buffer[idx]["arguments"] += tc.function.arguments
             if finish_reason:
-                final_stop_reason = "tool_use" if finish_reason == "tool_calls" else "end_turn"
+                final_stop_reason = _stop_reason_from_finish(finish_reason)
                 for idx, tc_data in tool_call_buffer.items():
                     if tc_data["arguments"]:
                         yield StreamChunk(type="tool_input_delta",
@@ -1785,11 +2060,7 @@ class GeminiProvider(LLMProvider):
         return False
 
     def _extract_instructions(self, system_prompt: Any) -> str:
-        if isinstance(system_prompt, list):
-            return " ".join(
-                b.get("text", "") for b in system_prompt if b.get("type") == "text"
-            )
-        return system_prompt or ""
+        return flatten_system_blocks(system_prompt)
 
     def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Anthropic input_schema → Gemini FunctionDeclaration dict.

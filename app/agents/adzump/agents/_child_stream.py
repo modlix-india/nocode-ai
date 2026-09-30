@@ -5,9 +5,8 @@ events (panel data/craft, sub-agent lifecycle, confirmations, completion) to the
 and swallows the agent's internal reasoning plus the terminators the parent owns
 (done/feedback/keepalive). Subclasses override only what differs.
 
-No super().__init__(): every base method that touches the queue / confirmation state is
-overridden here, so the facade keeps no buffer of its own and nothing falls through to
-the parent-less base.
+Base state is initialised first (super().__init__()): un-overridden members such as
+drain_steers read it; the local queue is never consumed - the overrides delegate.
 """
 
 from __future__ import annotations
@@ -51,7 +50,8 @@ class ChildAgentStream(AgentEventStream):
     label = "sub-agent"  # log prefix for swallowed errors
 
     def __init__(self, parent: AgentEventStream) -> None:
-        self._parent = parent  # no super().__init__() — see module docstring
+        super().__init__()  # see module docstring
+        self._parent = parent
 
     # Cancellation — read/drive the parent.
     @property

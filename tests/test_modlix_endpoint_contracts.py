@@ -50,8 +50,10 @@ ENDPOINT_CASES: list[tuple[str, dict[str, Any], str, str]] = [
     # security
     ("list_users", {}, "GET", "/api/security/users"),
     ("list_clients", {}, "GET", "/api/security/clients"),
-    ("list_roles", {}, "GET", "/api/security/roles"),
-    ("list_profiles", {}, "GET", "/api/security/profile"),
+    ("list_roles", {}, "GET", "/api/security/rolev2"),
+    # profiles are exposed per-app — the tool requires app_id and hits
+    # /api/security/app/{appId}/profiles
+    ("list_profiles", {"app_id": "42"}, "GET", "/api/security/app/42/profiles"),
     ("verify_token", {}, "GET", "/api/security/verifyToken"),
     # schemas — runtime='ui' so the routed path lands on /api/ui/schemas
     ("list_schemas", {"runtime": "ui"}, "GET", "/api/ui/schemas"),

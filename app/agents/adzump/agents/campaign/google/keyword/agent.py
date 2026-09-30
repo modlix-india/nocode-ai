@@ -53,7 +53,7 @@ from app.agents.adzump.agents.campaign.models import (
     keyword_research,
     set_keyword_research,
 )
-from app.agents.adzump.services.business_storage import resolve_url
+from app.agents.adzump._shared import resolve_url
 from app.config import settings
 from app.core.agent import BaseAgent
 from app.core.context import BaseContext

@@ -52,13 +52,18 @@ from app.agents.appbuilder.tools.modlix.clone_ops import TOOLS as _MODLIX_CLONE_
 from app.agents.appbuilder.tools.modlix.build_page import TOOLS as _MODLIX_BUILD_PAGE_TOOLS
 from app.agents.appbuilder.tools.modlix.security import TOOLS as _MODLIX_SECURITY_TOOLS
 from app.agents.appbuilder.tools.modlix.app_admin import TOOLS as _MODLIX_APP_ADMIN_TOOLS
+from app.agents.appbuilder.tools.modlix.page_routing import TOOLS as _MODLIX_PAGE_ROUTING_TOOLS
 from app.agents.appbuilder.tools.modlix.messaging import TOOLS as _MODLIX_MESSAGING_TOOLS
 from app.agents.appbuilder.tools.modlix.runtime import TOOLS as _MODLIX_RUNTIME_TOOLS
+from app.agents.appbuilder.tools.modlix.scenes import TOOLS as _MODLIX_SCENE_TOOLS
+from app.agents.appbuilder.tools.modlix.draft_tools import DRAFT_TOOLS as _MODLIX_DRAFT_TOOLS
 from app.agents.appbuilder.tools.template_author import TEMPLATE_AUTHOR_TOOLS
 from app.agents.appbuilder.tools.meta_tools import META_TOOLS
 from app.agents.appbuilder.tools.code_workspace import CODE_WORKSPACE_TOOLS as WORKSPACE_TOOLS
 from app.agents.appbuilder.tools.kb_app import KB_APP_TOOLS
 from app.agents.appbuilder.tools.platform_docs import PLATFORM_DOC_TOOLS
+from app.services.lore.tools import LORE_TOOLS
+from app.services.blueprint.tools import BLUEPRINT_TOOLS
 
 LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TOOLS
 # Vision routing — hide the Gemini-only `describe_image` tool when the
@@ -68,17 +73,18 @@ LEGACY_TOOLS: list[ToolDefinition] = CRUD_TOOLS + VERSION_TOOLS + API_CATALOG_TO
 # a redundant secondary call.
 def _filter_visual_tools(tools: list[ToolDefinition]) -> list[ToolDefinition]:
     try:
-        from app.config import settings as _settings
-        provider = (getattr(_settings, "APPBUILDER_PROVIDER", "") or "").lower()
+        from app.services.llm_provider import appbuilder_vision_capable
+        vision_capable = appbuilder_vision_capable()
     except Exception:  # noqa: BLE001
-        provider = ""
-    if provider in {"anthropic", "openai", "minimax"}:
+        vision_capable = False
+    if vision_capable:
         return [t for t in tools if t.name != "describe_image"]
     return tools
 
 
 MODLIX_TOOLS: list[ToolDefinition] = (
-    list(_MODLIX_INFRA_TOOLS)
+    list(_MODLIX_DRAFT_TOOLS)
+    + list(_MODLIX_INFRA_TOOLS)
     + list(_MODLIX_COMPONENT_TOOLS)
     + list(_MODLIX_PAGE_TOOLS)
     + list(_MODLIX_KIRUN_TOOLS)
@@ -91,8 +97,14 @@ MODLIX_TOOLS: list[ToolDefinition] = (
     + list(_MODLIX_BUILD_PAGE_TOOLS)  # deterministic URL -> Modlix page (build_page_from_url)
     + list(_MODLIX_SECURITY_TOOLS)
     + list(_MODLIX_APP_ADMIN_TOOLS)
+    # Page routing — A/B tests and rule-based landing pages. Separate from
+    # app_admin because it is the only app property with a resolver behind it:
+    # a rule that is merely wrong does not error, it never fires, so these
+    # tools audit and simulate rather than just read and write.
+    + list(_MODLIX_PAGE_ROUTING_TOOLS)
     + list(_MODLIX_MESSAGING_TOOLS)
     + list(_MODLIX_RUNTIME_TOOLS)
+    + list(_MODLIX_SCENE_TOOLS)
     + list(TEMPLATE_AUTHOR_TOOLS)  # author_template — AI-generate template content (shared with editor AI tab)
 )  # Phase 1.4b modlix port complete
 
@@ -103,6 +115,16 @@ ALL_TOOLS: list[ToolDefinition] = (
     + WORKSPACE_TOOLS
     + KB_APP_TOOLS
     + PLATFORM_DOC_TOOLS
+    # Lore — read what the app already knows, contribute back what this
+    # session established. Complements KB_APP_TOOLS: those are six narrative
+    # sections a person asks for; lore accumulates on its own and is queried
+    # by question rather than by section.
+    + LORE_TOOLS
+    # Blueprint — what the app is MEANT to be. Distinct from lore, which is
+    # what has been LEARNED about it: a plan is decided in advance and is the
+    # thing a build is measured against, so drift between the two is a real
+    # state rather than a contradiction to curate away.
+    + BLUEPRINT_TOOLS
 )
 
 # ── Tool-of-tools router (DEPRECATED — retired from AppBuilderAgent) ─────────

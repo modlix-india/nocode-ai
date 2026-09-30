@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import List, Optional
+import uuid
+from typing import AsyncIterator, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -28,8 +29,10 @@ from pydantic import BaseModel
 
 from app.core.base_auth import require_auth_context
 from app.core.session import BaseSession, AuthContext
-from app.core.streaming import AgentEventStream
+from app.core.streaming import AgentEvent, AgentEventStream
+from app.core import run_manager, stream_registry
 from app.db.models import SessionListItem, SessionListResponse, SessionStatus
+from app.services.chat_attachments import get_attachments
 from app.services.session_manager import get_session_manager
 from app.services.context_manager import get_context_manager
 
@@ -47,6 +50,33 @@ class ChatAttachment(BaseModel):
     name: str = ""
     mime_type: str = "image/png"
     data: Optional[str] = None  # base64-encoded file content
+
+
+class StopRequest(BaseModel):
+    """Request body for interrupting a running agent."""
+    session_id: str
+
+
+class ConfirmRequest(BaseModel):
+    """Request body for answering a tool confirmation the agent is blocked on."""
+    session_id: str
+    confirmation_id: str
+    approved: bool = False
+    selected: Optional[str] = None
+
+
+class AttachRequest(BaseModel):
+    """Request body for rejoining a run already in progress."""
+    session_id: str
+
+
+class SteerRequest(BaseModel):
+    """Request body for sending a message into a run that is still working."""
+    session_id: str
+    message: str
+    # Minted by the client so the bubble it draws optimistically and the
+    # `steer` event that later confirms the message carry the same id.
+    steer_id: str = ""
 
 
 def create_common_routes(router: APIRouter, agent_name: str) -> None:
@@ -77,9 +107,15 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
         limit: int = 20,
         offset: int = 0,
         status: Optional[str] = None,
+        app_code: Optional[str] = None,
         auth: AuthContext = Depends(require_auth_context),
     ):
-        """List sessions for the current user."""
+        """List sessions for the current user.
+
+        `app_code` narrows the list to chats started against one app. Callers
+        embedded in a per-app surface (the appbuilder workspace sidekick) pass
+        it so each workspace has its own history rather than one shared pile.
+        """
         status_filter = SessionStatus(status) if status else None
         session_mgr = get_session_manager()
         sessions, total = await session_mgr.list_sessions(
@@ -87,6 +123,7 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             client_code=auth.client_code,
             agent_name=agent_name,
             status=status_filter,
+            app_code=app_code,
             limit=limit,
             offset=offset,
         )
@@ -124,9 +161,24 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
         history, total = await context_mgr.get_history(
             session_id, limit=limit, offset=offset
         )
+
+        # Attached onto the response dicts here rather than onto AiSessionHistory
+        # itself. That model is also what `context_manager._format_turn` reads to
+        # build the string the LLM sees, and an attachment must never reach it:
+        # the picture already went to the model as an image block on the turn it
+        # arrived, and a text description of it in the context would be a stale
+        # second copy of something the model cannot look at.
+        turn_numbers = [h.turn_number for h in history]
+        by_turn = await get_attachments(session_id, turn_numbers)
+        rows = []
+        for h in history:
+            row = h.model_dump()
+            row["attachments"] = by_turn.get(h.turn_number, [])
+            rows.append(row)
+
         return {
             "session": session,
-            "history": [h.model_dump() for h in history],
+            "history": rows,
             "total_history": total,
             "limit": limit,
             "offset": offset,
@@ -169,6 +221,159 @@ def create_common_routes(router: APIRouter, agent_name: str) -> None:
             )
         return {"deleted": True, "session_id": session_id}
 
+    @router.post("/stop")
+    async def stop_session(
+        body: StopRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Ask the agent serving this session to stop at its next checkpoint.
+
+        The stream keeps running until the loop notices, so this returns as soon
+        as the signal is delivered rather than waiting for the run to unwind.
+        """
+        await _assert_session_owner(body.session_id, auth)
+        delivered = await stream_registry.signal(body.session_id, "stop")
+        if delivered == "missing":
+            raise HTTPException(status_code=404, detail="No run in progress for this session")
+        return {
+            "stopped": delivered == "local",
+            "delivery": delivered,
+            "session_id": body.session_id,
+        }
+
+    @router.post("/steer")
+    async def steer_session(
+        body: SteerRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Send a message into a run that is still working.
+
+        The alternative the client has otherwise is POST /chat, which answers
+        409 while a run is live: two agents on one session corrupt each other's
+        history. This queues the text on the run instead, and the agent folds it
+        into the conversation at its next turn boundary.
+
+        Queued is not delivered. The honest acknowledgement is the `steer` event
+        the agent emits once the text has actually reached the model, which
+        reaches every attached client and the replay buffer; a client that never
+        sees one before `done` should hand the text back to its input box.
+        """
+        message = (body.message or "").strip()
+        if not message:
+            raise HTTPException(status_code=400, detail="message is required")
+
+        await _assert_session_owner(body.session_id, auth)
+
+        # Asked before signalling, because the signal cannot answer it: with
+        # Redis on, a publish to siblings reports "broadcast" whether or not
+        # anyone is there, so a session whose run ended hours ago would take
+        # the message and drop it. 404 is what tells the client to send this
+        # as an ordinary message instead.
+        if not await run_manager.is_run_live(body.session_id):
+            raise HTTPException(
+                status_code=404, detail="No run in progress for this session"
+            )
+
+        steer_id = body.steer_id or f"steer_{uuid.uuid4().hex[:12]}"
+        delivered = await stream_registry.signal(
+            body.session_id,
+            "steer",
+            {"message": message, "steer_id": steer_id},
+        )
+        if delivered == "missing":
+            raise HTTPException(
+                status_code=404, detail="No run in progress for this session"
+            )
+        return {
+            # Only a local hit proves a live run actually took this. A broadcast
+            # went out to siblings and may have found nobody; the `steer` event
+            # is what settles it either way.
+            "queued": delivered == "local",
+            "delivery": delivered,
+            "steer_id": steer_id,
+            "session_id": body.session_id,
+        }
+
+    @router.get("/runs")
+    async def list_runs(
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Which of this user's sessions have an agent still working.
+
+        Asked on load, so a client that was disconnected (a refresh, a closed
+        panel, a switch to another session) can rejoin the turn instead of
+        showing a finished-looking chat that is still being written.
+        """
+        runs = await run_manager.list_live_runs(auth.user_id, agent_name=agent_name)
+        return {"runs": runs}
+
+    @router.post("/attach")
+    async def attach_run(
+        body: AttachRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Rejoin a run in progress: replays the turn so far, then streams live.
+
+        The whole turn is replayed every time rather than resumed from a
+        cursor, and the client rebuilds the message from what arrives. Text
+        deltas are coalesced in the buffer, so there is no stable cursor into
+        them to resume from. See `run_manager`.
+        """
+        await _assert_session_owner(body.session_id, auth)
+        events = await run_manager.subscribe(body.session_id)
+        if events is None:
+            # Nothing to rejoin: it finished long enough ago to have been
+            # forgotten, or its worker died. The client falls back to history.
+            raise HTTPException(
+                status_code=404, detail="No run to attach to for this session"
+            )
+        return sse_response(events)
+
+    @router.post("/confirm")
+    async def confirm_tool(
+        body: ConfirmRequest,
+        auth: AuthContext = Depends(require_auth_context),
+    ):
+        """Answer a confirmation the agent is blocked on.
+
+        Without this the agent waits out its 120s timeout and then denies
+        itself, so every mutating tool call fails by default.
+        """
+        await _assert_session_owner(body.session_id, auth)
+        delivered = await stream_registry.signal(
+            body.session_id,
+            "confirm",
+            {
+                "confirmation_id": body.confirmation_id,
+                "approved": body.approved,
+                "selected": body.selected,
+            },
+        )
+        if delivered == "missing":
+            # Nothing was waiting: the agent already timed out, or the run ended.
+            raise HTTPException(
+                status_code=404, detail="No pending confirmation for this session"
+            )
+        return {
+            # Only a local hit proves a waiting confirmation actually took this.
+            "resolved": delivered == "local",
+            "delivery": delivered,
+            "session_id": body.session_id,
+        }
+
+
+async def _assert_session_owner(session_id: str, auth: AuthContext) -> None:
+    """Refuse to signal a session the caller does not own.
+
+    A session id is guessable enough that skipping this would let anyone
+    interrupt, or silently approve writes in, someone else's agent run.
+    """
+    session = await get_session_manager().get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id != auth.user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
 
 def build_image_blocks(
     attachments: List[ChatAttachment],
@@ -197,41 +402,48 @@ def build_image_blocks(
     return blocks if blocks else None
 
 
-def sse_stream_response(
-    event_stream: AgentEventStream,
-    run_coro,
-    *,
-    keepalive: bool = True,
-) -> StreamingResponse:
-    """Wrap a run-coroutine + its event stream as an SSE StreamingResponse. Runs a 15s
-    keepalive pinger for long agent runs; pass ``keepalive=False`` for a quick one-shot
-    stream (e.g. a review-panel widget action that finishes immediately)."""
+def sse_stream_response(event_stream: AgentEventStream, run_coro) -> StreamingResponse:
+    """Run a quick one-shot coroutine that writes to ``event_stream`` and stream it
+    back - outside run_manager, so no reattach (a review-panel widget action)."""
 
-    async def _keepalive():
-        try:
-            while True:
-                await asyncio.sleep(15)
-                await event_stream.emit_keepalive()
-        except asyncio.CancelledError:
-            pass
-
-    async def _event_generator():
+    async def events():
         task = asyncio.create_task(run_coro)
-        ka_task = asyncio.create_task(_keepalive()) if keepalive else None
         try:
             async for event in event_stream.events():
-                yield event.to_sse()
-        except asyncio.CancelledError:
-            task.cancel()
-            raise
+                yield event
         finally:
-            if ka_task is not None:
-                ka_task.cancel()
             if not task.done():
                 task.cancel()
 
+    return sse_response(events())
+
+
+def sse_response(events: AsyncIterator[AgentEvent]) -> StreamingResponse:
+    """Wrap a stream of agent events as an SSE response.
+
+    Losing this response does NOT end the run behind it: the generator only
+    unsubscribes (`run_manager.AgentRun.subscribe` cleans up in its own
+    finally), and the agent goes on working for whoever attaches next. That is
+    the difference between closing a panel and pressing Stop, and it used to be
+    lost: a disconnect cancelled the agent task mid-tool and the turn was
+    written to history as "[Stopped by user]".
+    """
+
+    async def event_generator():
+        try:
+            async for event in events:
+                yield event.to_sse()
+        finally:
+            # Close the subscription explicitly. A disconnect cancels this
+            # generator and leaves the one underneath suspended at its yield,
+            # so waiting for the garbage collector to run its cleanup would
+            # leave the run fanning events out to a queue nobody reads.
+            # Unsubscribing is synchronous, so this cannot be interrupted by
+            # the cancellation already in flight.
+            await events.aclose()
+
     return StreamingResponse(
-        _event_generator(),
+        event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -241,28 +453,35 @@ def sse_stream_response(
     )
 
 
-def stream_agent_response(
+async def stream_agent_response(
     agent,
     message: str,
     session: BaseSession,
     image_blocks: list[dict] | None = None,
     model_override: str | None = None,
 ) -> StreamingResponse:
-    """Create SSE streaming response for an agent run.
+    """Start a detached agent run and stream it back.
 
     Works with any agent that implements `run(message, session, event_stream, ...)`.
+
+    Raises:
+        HTTPException 409: a run is already in flight for this session. The
+            client is expected to POST /attach to that run instead of starting
+            a second one, because two agents interleaving tool calls and history
+            writes on one session corrupts both.
     """
-    event_stream = AgentEventStream()
+    try:
+        run = await run_manager.start_run(
+            agent, message, session, image_blocks, model_override,
+        )
+    except run_manager.RunAlreadyActive as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "A run is already in progress for this session",
+                "session_id": e.session_id,
+                "run_id": e.run_id,
+            },
+        ) from e
 
-    async def run_agent():
-        try:
-            await agent.run(
-                message, session, event_stream,
-                image_blocks, model_override=model_override,
-            )
-        except Exception as e:
-            logger.exception("Agent run failed")
-            await event_stream.emit_error(str(e))
-            await event_stream.emit_done(session_id=session.session_id)
-
-    return sse_stream_response(event_stream, run_agent(), keepalive=True)
+    return sse_response(run.subscribe())

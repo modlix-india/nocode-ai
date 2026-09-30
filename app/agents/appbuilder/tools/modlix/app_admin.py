@@ -23,7 +23,7 @@ from . import _conventions as c
 
 
 # Shared param-description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 _DESC_CLIENT_CODE = "clientCode; defaults to session"
 _DESC_COMMIT_MSG = "Commit message"
 _DESC_SIZE = "Max rows"
@@ -42,7 +42,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> str:
-    return (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    return resolve_app_code(params, context)
 
 
 def _resolve_client_code(params: dict[str, Any], context: dict[str, Any]) -> str:
@@ -261,7 +262,12 @@ async def _upsert_ui_app(
         ui_body["translations"] = tr
 
     client, headers = _client_and_headers(context)
+    # Retry once. The UI write fails transiently often enough that the agent's
+    # own workaround -- calling create_app a second time -- is what healed
+    # `circuitbreakers`. Doing it here costs one request and saves the app.
     ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
+    if not ui_resp.success and "409" not in str(ui_resp.error or ""):
+        ui_resp = await client.post(_APPS_API, headers=headers, json=ui_body)
     if not ui_resp.success:
         # 409 means a UI doc with this appCode already exists from a prior partial
         # create — fine, the app is now fully present in both layers. Reads will
@@ -279,13 +285,32 @@ async def _upsert_ui_app(
                     f"update_app."
                 ),
             )
+        # HARD FAILURE. This used to return success=True with the warning buried
+        # in the summary, and the model read the first clause ("Created security
+        # app ...") as a win and kept building. Without the UI doc, every
+        # /api/ui/** read for the app 404s or 403s, so the whole rest of the
+        # build is a cascade of "Forbidden access to the application with code
+        # <x>" that looks like a permissions problem and is not. Seen on
+        # `crumbcotwo`: security row 815, no UI doc, one stub page, abandoned.
+        #
+        # Calling create_app again with the SAME app_code is the fix, and it is
+        # safe: step 0 finds the existing security row and skips straight to the
+        # UI write. Say so explicitly, or the model invents a new appCode and
+        # leaves the half-built one behind as an orphan.
         return ToolResult(
-            success=True,
-            summary=(
-                f"Created security app '{app_code}' (id={sec_id}), but the UI "
-                f"override write failed: {ui_resp.error}. The app is "
-                f"PARTIALLY CREATED — listing pages or visiting the app URL "
-                f"will 403 until you retry the UI write via update_app."
+            success=False,
+            error=(
+                f"App '{app_code}' is PARTIALLY CREATED and is not usable. The "
+                f"security row exists (id={sec_id}) but the UI application "
+                f"document could not be written after two attempts: "
+                f"{ui_resp.error}\n"
+                f"Until that document exists, every /api/ui read for this app "
+                f"fails — listing pages, reading the app, or opening its URL "
+                f"will 403/404, which looks like a permissions problem but is a "
+                f"missing document.\n"
+                f"Recovery: call create_app again with app_code='{app_code}'. It "
+                f"reuses the existing security row and retries only the UI write. "
+                f"Do NOT pick a different appCode — that strands this one."
             ),
         )
     next_step = (
@@ -451,6 +476,64 @@ async def _lookup_ui_app_by_code(client: Any, headers: dict, app_code: str) -> t
     rows = (listing.data or {}).get("content", []) if isinstance(listing.data, dict) else []
     match = next((a for a in rows if a.get("appCode") == app_code), None)
     return match, None
+
+
+async def _register_font_packs(
+    client: Any, headers: dict, params: dict[str, Any], context: dict[str, Any],
+    app_code: str, packs: dict[str, dict[str, str]],
+) -> str:
+    """Merge font packs into `app.properties.fontPacks`. Returns a note.
+
+    `properties.fontPacks` is what actually loads the webfont: its `code` is
+    literal HTML injected into the page head. Theme tokens naming a family that
+    no pack loads leave the page on a fallback face, which looks exactly like
+    the fonts having done nothing.
+
+    Reads the doc BY ID. The list route strips `properties`, so merging onto a
+    list row would PUT the app back with every property erased.
+
+    Never raises: the theme already exists, and losing the pack is a degraded
+    site, not a failed build.
+    """
+    try:
+        row, err = await _lookup_ui_app_by_code(client, headers, app_code)
+        if err or not row or not row.get("id"):
+            return (
+                f"Could not register the font pack ({err or 'no UI doc for ' + app_code}). "
+                f"The theme names fonts nothing downloads — add them to "
+                f"app.properties.fontPacks via update_app."
+            )
+        app_id = row["id"]
+        full = await client.get(f"{_APPS_API}/{app_id}", headers=headers)
+        if not full.success or not isinstance(full.data, dict):
+            return f"Could not read the app doc to register the font pack ({full.error})."
+        body = full.data
+        props = body.get("properties")
+        if not isinstance(props, dict):
+            props = {}
+            body["properties"] = props
+        existing = props.get("fontPacks")
+        if not isinstance(existing, dict):
+            existing = {}
+        # Additive: a pack someone added by hand outranks anything seeded here.
+        already = {
+            p.get("code") for p in existing.values() if isinstance(p, dict)
+        }
+        added = {k: v for k, v in packs.items() if v.get("code") not in already}
+        if not added:
+            return "Font pack was already registered on the app."
+        existing.update(added)
+        props["fontPacks"] = existing
+        props.setdefault("iconPacks", {})
+        body["properties"] = props
+        body["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
+        put = await client.put(f"{_APPS_API}/{app_id}", headers=headers, json=body)
+        if not put.success:
+            return f"Theme saved, but registering the font pack failed ({put.error})."
+        names = ", ".join(v.get("name", "?") for v in added.values())
+        return f"Registered the font pack ({names}) on app.properties.fontPacks."
+    except Exception as e:  # noqa: BLE001 - a degraded site beats a failed build
+        return f"Theme saved, but registering the font pack raised {type(e).__name__}: {e}"
 
 
 async def _create_ui_doc_with_page_ref(
@@ -640,10 +723,74 @@ whoami_tool = ToolDefinition(
 
 
 # ═════════════════════════════════════════════════════════════════════════
-#  THEMES (5 tools)
+#  THEMES (6 tools)
 # ═════════════════════════════════════════════════════════════════════════
 
 _THEMES_API = "/api/ui/themes"
+
+_ABSENT = object()
+
+
+def _flatten_vars(variables: Any) -> dict[str, Any]:
+    """{breakpoint: {name: value}} -> {'BREAKPOINT.name': value}, skipping malformed entries."""
+    out: dict[str, Any] = {}
+    if not isinstance(variables, dict):
+        return out
+    for bp, vars_ in variables.items():
+        if isinstance(vars_, dict):
+            for k, v in vars_.items():
+                out[f"{bp}.{k}"] = v
+    return out
+
+
+def _canaries(before: dict[str, Any], touched: set[str], n: int = 12) -> list[str]:
+    """Variables the write does not mention, sampled to detect a dropped group.
+
+    A bad theme write drops whole sections while the count still looks plausible, so
+    counting alone is not proof. Sampled from the document itself rather than from a
+    hardcoded list: a hand-written probe name that never existed reports GONE for a
+    variable nobody lost, which teaches you to ignore the check.
+
+    One pick per breakpoint guaranteed, because losing a whole breakpoint is one of
+    the failures being watched for and sampling evenly over the sorted key list would
+    spend every pick inside whichever breakpoint sorts first. The rest are allocated
+    in proportion to size: a real theme is lopsided (appbuildertheme is 515 in ALL and
+    one each in three responsive breakpoints), and splitting evenly there would spend
+    3 of 4 picks guarding 3 variables while a dropped section inside ALL walked past.
+    """
+    by_bp: dict[str, list[str]] = {}
+    for k in sorted(x for x in before if x not in touched):
+        by_bp.setdefault(k.split(".", 1)[0], []).append(k)
+    if not by_bp:
+        return []
+
+    total = sum(len(v) for v in by_bp.values())
+    spare = max(0, n - len(by_bp))
+    picked: list[str] = []
+    for keys in by_bp.values():
+        take = min(1 + round(spare * len(keys) / total), len(keys))
+        step = len(keys) / take
+        picked.extend(keys[int(i * step)] for i in range(take))
+    return picked
+
+
+def _verify_vars(saved: Any, expect_present: dict[str, Any], expect_absent: set[str],
+                 canaries: list[str]) -> list[str]:
+    """Post-write checks. Returns human-readable problems, empty when the write is clean."""
+    flat = _flatten_vars(saved)
+    problems = []
+    wrong = sorted(k for k, v in expect_present.items() if flat.get(k) != v)
+    if wrong:
+        problems.append(f"{len(wrong)} did not round-trip: {', '.join(wrong[:8])}")
+    still = sorted(k for k in expect_absent if k in flat)
+    if still:
+        problems.append(f"{len(still)} still present after removal: {', '.join(still[:8])}")
+    lost = [k for k in canaries if k not in flat]
+    if lost:
+        problems.append(
+            f"{len(lost)} of {len(canaries)} sampled untouched variables are GONE "
+            f"(a group was dropped): {', '.join(lost[:8])}")
+    return problems
 
 
 async def _execute_list_themes(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
@@ -731,6 +878,21 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._font_floor import PAIRINGS, apply_font_floor, pairing_from_families
+    from ._theme_floor import apply_theme_floor
+    variables, floor_notes = apply_theme_floor(variables)
+
+    # Typography, which the agent had never once set: every generated site
+    # rendered in the stock face. The pairing can be named outright
+    # (`font_pairing="modern"`) or spelled out (`font_display=` / `font_body=`).
+    chosen = None
+    if (fd := (params.get("font_display") or "").strip()):
+        chosen = pairing_from_families(fd, params.get("font_body"))
+    elif (fp := (params.get("font_pairing") or "").strip().lower()) in PAIRINGS:
+        chosen = PAIRINGS[fp]
+    variables, font_packs, font_notes = apply_font_floor(variables, pairing=chosen)
+    floor_notes.extend(font_notes)
+
     body = {
         "name": name, "appCode": ac, "clientCode": cc,
         "variables": variables, "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -739,7 +901,17 @@ async def _execute_create_theme(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_THEMES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created theme '{name}' (id={(r.data or {}).get('id', '?')}).")
+
+    # The font only loads once the pack is on the app. Failing to register it is
+    # not worth failing the theme over — say so and let the agent retry.
+    if font_packs:
+        reg_note = await _register_font_packs(client, headers, params, context, ac, font_packs)
+        floor_notes.append(reg_note)
+
+    summary = f"Created theme '{name}' (id={(r.data or {}).get('id', '?')})."
+    if floor_notes:
+        summary += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
+    return ToolResult(success=True, summary=summary)
 
 
 create_theme_tool = ToolDefinition(
@@ -750,6 +922,9 @@ create_theme_tool = ToolDefinition(
         ToolParameter(name="variables", type="object", description="Per-breakpoint variables: {ALL: {colorOne: '#50BC9B'}, MOBILE_POTRAIT_SCREEN_ONLY: {messageContainerWidth: '100vw'}, ...}"),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="client_code", type="string", required=False, description=_DESC_CLIENT_CODE),
+        ToolParameter(name="font_pairing", type="string", required=False, description="Typography for the site, picked to suit the business: 'editorial' (Fraunces + Inter — food, craft, retail), 'modern' (Space Grotesk + Inter — software, engineering), 'classic' (Playfair Display + Source Sans 3 — law, finance, luxury), 'friendly' (Poppins + Inter — consumer, education), 'neutral' (Inter throughout). Picks the Google fonts, writes the font tokens AND registers the pack that loads them. Omit and 'editorial' is used, because the stock face makes every site look like a template."),
+        ToolParameter(name="font_display", type="string", required=False, description="Any Google font family for headings, e.g. 'Fraunces'. Overrides font_pairing. Use when the brand needs a specific face."),
+        ToolParameter(name="font_body", type="string", required=False, description="Google font family for body text. Defaults to font_display when omitted."),
         ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_CREATE_MESSAGE),
     ],
     execute=_execute_create_theme,
@@ -772,24 +947,147 @@ async def _execute_update_theme(params: dict[str, Any], context: dict[str, Any])
     doc, err = await _find_by_name(client, headers, _THEMES_API, ac, name)
     if err or doc is None:
         return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
+
+    # Rename only. An update replaces the map wholesale, so seeding defaults here
+    # would resurrect variables that were deliberately dropped -- and would also
+    # make the drop check below compare against something the caller never sent.
+    from ._theme_floor import apply_theme_floor
+    variables, floor_notes = apply_theme_floor(variables, fill_gaps=False)
+
+    before = _flatten_vars(doc.get("variables"))
+    after = _flatten_vars(variables)
+    dropped = sorted(set(before) - set(after))
+    if dropped and not params.get("confirm_drop"):
+        return ToolResult(success=False, error=(
+            f"Refused: this would DELETE {len(dropped)} of {len(before)} existing variables "
+            f"in theme '{name}'.\n"
+            f"Would be lost: {', '.join(dropped[:12])}{' ...' if len(dropped) > 12 else ''}\n\n"
+            "`variables` replaces the whole map, it does not merge. To change a few "
+            "variables use patch_theme_variables. To replace the theme wholesale on "
+            "purpose, pass confirm_drop=true."
+        ))
+
     doc["variables"] = variables
     doc["message"] = params.get("message") or _DEFAULT_UPDATE_MESSAGE
     save = await client.put(f"{_THEMES_API}/{doc.get('id')}", headers=headers, json=doc)
     if not save.success:
         return ToolResult(success=False, error=save.error)
-    return ToolResult(success=True, summary=f"Updated theme '{name}'.")
+    saved = (save.data or {}).get("variables") or variables
+    problems = _verify_vars(saved, after, set(dropped), [])
+    line = (f"Updated theme '{name}' (v{(save.data or {}).get('version', '?')}, "
+            f"variables {len(before)} -> {len(_flatten_vars(saved))}"
+            f"{f', {len(dropped)} deleted' if dropped else ''}).")
+    if floor_notes:
+        line += "\n" + "\n".join(f"  - {n}" for n in floor_notes)
+    return ToolResult(success=not problems,
+                      summary=line if not problems else line + "\n  ! " + "\n  ! ".join(problems),
+                      error=None if not problems else "; ".join(problems))
 
 
 update_theme_tool = ToolDefinition(
     name="update_theme",
-    description="Replace a theme's variables (full-replacement, not merge). Fetch with get_theme(max_chars=large) first if you want to preserve other breakpoints.",
+    description="Replace a theme's ENTIRE variables map (not a merge). Refuses if that would drop existing variables unless confirm_drop=true. To change a few variables use patch_theme_variables instead.",
     parameters=[
         ToolParameter(name="name", type="string", description="Theme name to update"),
-        ToolParameter(name="variables", type="object", description="Replacement per-breakpoint variable map"),
+        ToolParameter(name="variables", type="object", description="Replacement per-breakpoint variable map. This becomes the whole map; anything omitted is deleted."),
         ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
         ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default=_DEFAULT_UPDATE_MESSAGE),
+        ToolParameter(name="confirm_drop", type="boolean", required=False, default=False, description="Allow the write to delete existing variables that `variables` omits. Only for a deliberate wholesale replacement."),
     ],
     execute=_execute_update_theme,
+)
+
+
+async def _execute_patch_theme_variables(params: dict[str, Any], context: dict[str, Any]) -> ToolResult:
+    name = (params.get("name") or "").strip()
+    set_variables = params.get("set_variables") or {}
+    remove_variables = params.get("remove_variables") or {}
+    if not name:
+        return ToolResult(success=False, error=_ERR_NAME_REQUIRED)
+    if not set_variables and not remove_variables:
+        return ToolResult(success=False, error="pass set_variables and/or remove_variables")
+    if not isinstance(set_variables, dict) or not isinstance(remove_variables, dict):
+        return ToolResult(success=False, error="set_variables and remove_variables must be objects keyed by breakpoint")
+    for bp in list(set_variables) + list(remove_variables):
+        be = c.validate_breakpoint(bp)
+        if be:
+            return ToolResult(success=False, error=be)
+    ac = _resolve_app_code(params, context)
+    if not ac:
+        return _err_app_code()
+    client, headers = _client_and_headers(context)
+    doc, err = await _find_by_name(client, headers, _THEMES_API, ac, name)
+    if err or doc is None:
+        return ToolResult(success=False, error=f"theme '{name}' {err or 'not found'}")
+
+    before = doc.get("variables") or {}
+    before_flat = _flatten_vars(before)
+    merged = {bp: dict(v or {}) for bp, v in before.items() if isinstance(v, dict)}
+
+    added, changed, removed, missing = [], [], [], []
+    for bp, vars_ in set_variables.items():
+        target = merged.setdefault(bp, {})
+        for k, v in (vars_ or {}).items():
+            (changed if k in target else added).append(f"{bp}.{k}")
+            target[k] = v
+    for bp, names in remove_variables.items():
+        for n in names or []:
+            # Sentinel, not None: a variable stored as null is still a real removal,
+            # and `pop(n, None) is not None` would silently skip it.
+            if merged.get(bp, {}).pop(n, _ABSENT) is not _ABSENT:
+                removed.append(f"{bp}.{n}")
+            else:
+                missing.append(f"{bp}.{n}")
+
+    # Canaries have to be chosen BEFORE the write, from what the theme held then.
+    canaries = _canaries(before_flat, set(added) | set(changed) | set(removed))
+
+    doc["variables"] = merged
+    doc["message"] = params.get("message") or "Patched theme variables via CFA"
+    save = await client.put(f"{_THEMES_API}/{doc.get('id')}", headers=headers, json=doc)
+    if not save.success:
+        return ToolResult(success=False, error=save.error)
+
+    saved = (save.data or {}).get("variables") or merged
+    merged_flat = _flatten_vars(merged)
+    problems = _verify_vars(
+        saved,
+        {k: merged_flat[k] for k in (set(added) | set(changed)) if k in merged_flat},
+        set(removed),
+        canaries,
+    )
+
+    parts = [f"Patched theme '{name}' (v{(save.data or {}).get('version', '?')}, "
+             f"variables {len(before_flat)} -> {len(_flatten_vars(saved))})."]
+    for label, items in (("Added", added), ("Changed", changed), ("Removed", removed)):
+        if items:
+            parts.append(f"{label} {len(items)}: {', '.join(items[:8])}{' ...' if len(items) > 8 else ''}")
+    if missing:
+        parts.append(f"Not present, nothing removed ({len(missing)}): {', '.join(missing[:8])}")
+    if problems:
+        parts.append("! " + "\n! ".join(problems))
+    elif canaries:
+        parts.append(f"Verified: {len(canaries)} sampled untouched variables survived.")
+    return ToolResult(success=not problems, summary="\n".join(parts),
+                      error=None if not problems else "; ".join(problems))
+
+
+patch_theme_variables_tool = ToolDefinition(
+    name="patch_theme_variables",
+    description=(
+        "Add, change or delete individual theme variables without resending the rest. "
+        "Reads the theme, applies only your changes, writes it back, and verifies that "
+        "untouched variables survived. Prefer this over update_theme for every edit that "
+        "is not a wholesale theme replacement."
+    ),
+    parameters=[
+        ToolParameter(name="name", type="string", description="Theme name to patch"),
+        ToolParameter(name="set_variables", type="object", required=False, description="Per-breakpoint variables to add or overwrite, e.g. {'ALL': {'messagesOuterContainerTop': '98px'}}. Everything not named here is left untouched."),
+        ToolParameter(name="remove_variables", type="object", required=False, description="Per-breakpoint variable names to delete, e.g. {'ALL': ['messagesOuterContainerBottom']}. Applied after set_variables."),
+        ToolParameter(name="app_code", type="string", required=False, description=_DESC_APP_CODE),
+        ToolParameter(name="message", type="string", required=False, description=_DESC_COMMIT_MSG, default="Patched theme variables via CFA"),
+    ],
+    execute=_execute_patch_theme_variables,
 )
 
 
@@ -908,6 +1206,8 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     if not ac:
         return _err_app_code()
     cc = _resolve_client_code(params, context)
+    from ._motion_floor import with_motion_floor
+    css, motion_added = with_motion_floor(css)
     body = {
         "name": name, "appCode": ac, "clientCode": cc, "styleString": css,
         "message": params.get("message") or _DEFAULT_CREATE_MESSAGE,
@@ -916,7 +1216,14 @@ async def _execute_create_style(params: dict[str, Any], context: dict[str, Any])
     r = await client.post(_STYLES_API, headers=headers, json=body)
     if not r.success:
         return ToolResult(success=False, error=r.error)
-    return ToolResult(success=True, summary=f"Created style '{name}' (id={(r.data or {}).get('id', '?')}).")
+    summary = f"Created style '{name}' (id={(r.data or {}).get('id', '?')})."
+    if motion_added:
+        summary += (
+            "\n  - Added baseline motion (hover/focus transitions, reduced-motion "
+            "guard, and opt-in _revealUp / _revealFade / _zoomOnHover classes). "
+            "A generated site otherwise has no animation at all."
+        )
+    return ToolResult(success=True, summary=summary)
 
 
 create_style_tool = ToolDefinition(
@@ -1184,8 +1491,9 @@ TOOLS: list[ToolDefinition] = [
     # apps (7)
     list_apps_tool, get_app_tool, create_app_tool, set_app_page_reference_tool,
     update_app_tool, delete_app_tool, whoami_tool,
-    # themes (5)
-    list_themes_tool, get_theme_tool, create_theme_tool, update_theme_tool, delete_theme_tool,
+    # themes (6)
+    list_themes_tool, get_theme_tool, create_theme_tool, update_theme_tool,
+    patch_theme_variables_tool, delete_theme_tool,
     # styles (5)
     list_styles_tool, get_style_tool, create_style_tool, update_style_tool, delete_style_tool,
     # uri_paths (5)

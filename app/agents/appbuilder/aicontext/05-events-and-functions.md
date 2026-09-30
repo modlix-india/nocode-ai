@@ -2,7 +2,9 @@
 
 ## Event Functions
 
-Stored in page `eventFunctions`. Triggered by component events (`onClick`, `onChange`, etc.) or page lifecycle (`onLoadEvent`).
+Stored in page `eventFunctions`. Triggered by component events (`onClick`, `onChange`, `onShortcut`, etc.) or page lifecycle (`onLoadEvent`).
+
+`onShortcut` fires from a keyboard shortcut. It is set on a TextBox with `shortcutAction: "EVENT"`, or on the non-visual `Shortcut` component. Like every other event property it must name a function that exists in THIS page's `eventFunctions`.
 
 ### Structure
 

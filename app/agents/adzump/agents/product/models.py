@@ -135,7 +135,7 @@ class ScrapeTimings(BaseModel):
     free of the inner browser-semaphore queue wait; never report raw work_s.
     """
     sem_wait_ms: float | None = None         # blocked on the cap-3 _browser_semaphore (pre-acquire)
-    launch_ms: float | None = None           # playwright start + chromium launch + new_page + listener wiring
+    launch_ms: float | None = None           # browser-pool context acquire + new_page + listener wiring (a cold pool also pays the chromium launch)
     goto_ms: float | None = None             # page.goto(domcontentloaded)
     networkidle_ms: float | None = None      # top-level networkidle settle (<=5s)
     cloudflare_ms: float | None = None       # challenge wait (<=6s; ~0 when not detected)
@@ -158,7 +158,7 @@ class ScrapeResult(BaseModel):
     """Result from any scraping adapter."""
     success: bool
     content: PageContent | None = None
-    screenshot: str | None = None  # base64 encoded PNG
+    screenshot: str | None = None  # base64 full-page JPEG - vision spatial context
     error: str | None = None
     # Optional per-stage timing (Playwright adapter only); None on adapters that
     # don't track it. Read by the eval harness; ignored by the production caller.

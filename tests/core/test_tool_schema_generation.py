@@ -8,22 +8,26 @@ only if everything it declares actually reaches the schema.
 from __future__ import annotations
 
 import unittest
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from app.core.tools.base import tool_params_from_model
 
 
+# Optional[...] rather than `X | None`: pydantic EVALUATES these annotations
+# at class-creation time, and `X | None` on typing constructs / model classes
+# needs Python 3.10+ — on 3.9 (the local venv) the whole module failed to
+# collect. Optional[] produces the identical anyOf-with-null schema.
 class _Params(BaseModel):
     name: str = Field(description="required plain string")
-    kind: Literal["a", "b"] | None = Field(None, description="optional enum")
+    kind: Optional[Literal["a", "b"]] = Field(None, description="optional enum")
     tags: list[str] = Field(default_factory=list, description="string list")
-    count: int | None = None
+    count: Optional[int] = None
 
 
 class _Unresolvable(BaseModel):
-    nested: "_Params | None" = None  # $ref inside anyOf - no plain type
+    nested: Optional["_Params"] = None  # $ref inside anyOf - no plain type
 
 
 class ToolParamsFromModelTests(unittest.TestCase):

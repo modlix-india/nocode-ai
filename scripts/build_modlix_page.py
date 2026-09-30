@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -29,19 +30,58 @@ from app.services.page_analyzer.to_page_definition import build_page_definition 
 
 urllib3.disable_warnings()
 
-GATEWAY = "https://apps.local.modlix.com"
+GATEWAY = os.environ.get("MODLIX_GATEWAY_URL", "https://apps.local.modlix.com")
+CLIENT = os.environ.get("MODLIX_DEFAULT_CLIENT_CODE", "SYSTEM")
+HOST_PATTERN = os.environ.get("MODLIX_HOST_PATTERN", "{app}.local.modlix.com")
 TOKEN = ""  # filled by login()
+
+
+def load_env_file(path: Path) -> None:
+    """Read KEY=VALUE lines into os.environ without overwriting what is set.
+
+    The credentials used to belong to this file as literals, which meant the
+    script only ever worked for one account on one machine: when that account
+    went INACTIVE the script died at login with a 403 and no way to point it
+    somewhere else. modlix-mcp keeps a working identity in its own `.env`, so
+    read that rather than carrying a second copy.
+    """
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
 
 
 def login(user: str, password: str) -> str:
     """Authenticate as a real user (full authorities) — the authoring JWT is
-    app-scoped and 403s on app access. Mirrors the CFA's _login_one_shot."""
+    app-scoped and 403s on app access. Mirrors the CFA's _login_one_shot.
+
+    Credentials WIN over a ready-made MODLIX_TOKEN, which is the opposite of
+    what most tools here do, for one reason: the stored authoring token is
+    app-scoped. modlix-mcp's is pinned to `appbuilder`, so writing a page into
+    any other app answers `403 Cannot create Page for the selected client` even
+    though the identity behind it is a SYSTEM user who plainly may. A fresh
+    credential login is not pinned. MODLIX_TOKEN stays as the fallback for when
+    there are no credentials to hand.
+    """
+    if not user or not password:
+        ready = os.environ.get("MODLIX_TOKEN", "").strip()
+        if ready:
+            print("login: no credentials, falling back to MODLIX_TOKEN "
+                  "(app-scoped: writes outside its own app will 403)")
+            return ready
+        sys.exit("login: no credentials and no MODLIX_TOKEN. Pass --user/--password "
+                 "or point --env-file at an .env carrying MODLIX_USERNAME/PASSWORD.")
     r = requests.post(
         f"{GATEWAY}/api/security/authenticate",
         json={"userName": user, "password": password, "rememberMe": False},
         verify=False, timeout=20,
     )
-    r.raise_for_status()
+    if r.status_code >= 400:
+        sys.exit(f"login: HTTP {r.status_code} for {user}: {r.text[:200]}")
     body = r.json()
     tok = body.get("accessToken") or body.get("AuthToken") or body.get("token")
     if not tok:
@@ -50,11 +90,18 @@ def login(user: str, password: str) -> str:
 
 
 def _headers(app: str) -> dict:
+    """The app context is the HOST, not the appCode field.
+
+    This used to send `X-Forwarded-Host: appbuilder.local.modlix.com` for every
+    app, so a body saying `appCode: iiidev` was written against appbuilder's
+    context and answered `403 Cannot create Page for the selected client`. The
+    header has to name the app being written to.
+    """
     return {
         "Authorization": f"Bearer {TOKEN}",
-        "clientCode": "SYSTEM",
+        "clientCode": CLIENT,
         "appCode": app,
-        "X-Forwarded-Host": "appbuilder.local.modlix.com",
+        "X-Forwarded-Host": HOST_PATTERN.format(app=app),
         "X-Forwarded-Port": "443",
         "Content-Type": "application/json",
     }
@@ -93,7 +140,7 @@ def upsert_global_style(app: str, name: str, analysis) -> None:
         existing["message"] = "globals from analysis.json"
         resp = requests.put(f"{base}/{existing.get('id')}", headers=h, json=existing, verify=False, timeout=60)
     else:
-        body = {"name": name, "appCode": app, "clientCode": "SYSTEM", "styleString": css, "message": "globals from analysis.json"}
+        body = {"name": name, "appCode": app, "clientCode": CLIENT, "styleString": css, "message": "globals from analysis.json"}
         resp = requests.post(base, headers=h, json=body, verify=False, timeout=60)
     print(f"global style '{name}' -> HTTP {resp.status_code} ({len(css)} bytes CSS)")
 
@@ -117,13 +164,22 @@ def main() -> None:
     ap.add_argument("--app", default="appbuilder")
     ap.add_argument("--name", default="iiiclone")
     ap.add_argument("--cap", type=int, default=6000)
-    ap.add_argument("--user", default="sysadmin@modlix.com")
-    ap.add_argument("--password", default="Pass@1234")
+    ap.add_argument("--env-file", default=str(Path.home() / "kiran/fincity/modlix-mcp/.env"),
+                    help="KEY=VALUE file supplying MODLIX_TOKEN or MODLIX_USERNAME/PASSWORD")
+    ap.add_argument("--user", default=None)
+    ap.add_argument("--password", default=None)
     args = ap.parse_args()
 
-    global TOKEN
-    TOKEN = login(args.user, args.password)
-    print(f"logged in as {args.user}")
+    load_env_file(Path(args.env_file))
+    user = args.user or os.environ.get("MODLIX_USERNAME", "")
+    password = args.password or os.environ.get("MODLIX_PASSWORD", "")
+
+    global GATEWAY, CLIENT, HOST_PATTERN, TOKEN
+    GATEWAY = os.environ.get("MODLIX_GATEWAY_URL", GATEWAY)
+    CLIENT = os.environ.get("MODLIX_DEFAULT_CLIENT_CODE", CLIENT)
+    HOST_PATTERN = os.environ.get("MODLIX_HOST_PATTERN", HOST_PATTERN)
+    TOKEN = login(user, password)
+    print(f"gateway {GATEWAY}, identity {'MODLIX_TOKEN' if not user else user}")
 
     with open(args.inp, encoding="utf-8") as fh:
         analysis = PageAnalysis(**json.load(fh))
@@ -150,7 +206,7 @@ def main() -> None:
         action = f"PUT (id={pid})"
     else:
         page = {
-            "name": args.name, "appCode": args.app, "clientCode": "SYSTEM",
+            "name": args.name, "appCode": args.app, "clientCode": CLIENT,
             "rootComponent": root, "componentDefinition": comps, "eventFunctions": {},
             "properties": {"title": {"name": {"value": args.name}}, "wrapShell": False},
             "translations": {},

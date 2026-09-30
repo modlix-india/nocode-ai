@@ -28,6 +28,7 @@ import asyncio
 import json
 import logging
 import uuid
+from collections import deque
 from contextvars import ContextVar
 from enum import Enum
 
@@ -62,6 +63,15 @@ class AgentEventType(str, Enum):
     AGENT_FINISHED = "agent_finished"  # Sub-agent finished
     AGENT_USAGE = "agent_usage"  # Token usage update for an agent
     CONFIRMATION_REQUEST = "confirmation_request"  # Ask user to approve/choose before tool execution
+    STEER = "steer"  # A message the user sent mid-run, folded into the turn
+    DRAFT_PATCH = "draft_patch"  # A write held in the user's open draft, not saved
+    OBJECT_CHANGED = "object_changed"  # A write that really did save, so refetch it
+    # Bracket the events a reattaching client is being shown for the second
+    # time (see run_manager). Between the two it rebuilds the message on
+    # screen and suppresses anything that acts on the world rather than
+    # describing it, so a `complete` that redirects the page fires once only.
+    REPLAY_START = "replay_start"
+    REPLAY_END = "replay_end"
 
 
 @dataclass
@@ -95,8 +105,16 @@ class AgentEventStream:
         self._queue: asyncio.Queue[AgentEvent | object] = asyncio.Queue()
         # Pending confirmation requests: confirmation_id → Future[dict]
         self._pending_confirmations: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        # Messages the user sent while this run was going, waiting for the loop
+        # to reach a turn boundary and fold them in. See `push_steer`.
+        self._steers: deque[dict[str, str]] = deque()
         # Cancellation flag — set by POST /stop, checked by the agent loop
         self._cancelled = False
+        # Set by the first emit_done. The run wrapper closes the stream in a
+        # finally so a crashed agent still terminates every attached client,
+        # which means done is reached twice on the ordinary path; a second
+        # sentinel would sit in the queue forever behind the first.
+        self._closed = False
 
     # ── Cancellation ─────────────────────────────────────────────
 
@@ -112,7 +130,54 @@ class AgentEventStream:
     def is_cancelled(self) -> bool:
         return self._cancelled
 
+    # ── Steering ─────────────────────────────────────────────────
+
+    def push_steer(self, text: str, steer_id: str = "") -> str:
+        """Queue a message the user sent while this run was still working.
+
+        Starting a second run instead is not an option: `run_manager` refuses
+        it with a 409, because two agents interleaving tool calls and history
+        writes on one session corrupt both. So the message rides this queue and
+        the loop folds it into the conversation at its next turn boundary.
+
+        Returns the steer's id, or "" if it was refused (empty, or a run that is
+        already cancelled or closed and will never reach another boundary).
+        The id is minted HERE rather than at emit time so it stays stable across
+        the replay a reattaching client gets, which is what lets that client
+        tell a bubble it has already drawn from a new one.
+        """
+        text = (text or "").strip()
+        if not text or self._cancelled or self._closed:
+            return ""
+        steer_id = steer_id or f"steer_{uuid.uuid4().hex[:12]}"
+        self._steers.append({"id": steer_id, "text": text})
+        return steer_id
+
+    def drain_steers(self) -> list[dict[str, str]]:
+        """Take everything queued, leaving the queue empty."""
+        pending = list(self._steers)
+        self._steers.clear()
+        return pending
+
+    @property
+    def has_steers(self) -> bool:
+        return bool(self._steers)
+
     # ── Emit methods (producer side) ────────────────────────────
+
+    async def emit_steer(self, steer_id: str, text: str, applied: bool = True) -> None:
+        """Report what became of a steer.
+
+        `applied` true is the acknowledgement the client waits for before it
+        draws the message as part of the conversation: only the loop knows
+        whether the text actually reached the model. False says it never will,
+        so the client can hand the text back to the input box rather than
+        leaving the user believing it was read.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.STEER,
+            data={"id": steer_id, "text": text, "applied": applied},
+        ))
 
     async def emit_text(self, text: str) -> None:
         """Emit a text chunk from the LLM response."""
@@ -121,11 +186,15 @@ class AgentEventStream:
             data={"text": text, "agent_id": current_agent_id.get()},
         ))
 
-    async def emit_thinking(self, reasoning: str) -> None:
-        """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek)."""
+    async def emit_thinking(self, reasoning: str, agent_id: str | None = None) -> None:
+        """Emit CoT reasoning from a thinking-mode provider (e.g. DeepSeek).
+
+        ``agent_id`` overrides the ambient ContextVar attribution - a worker
+        producing insight for ANOTHER card (essence verdicts narrating a
+        competitor's row) attributes explicitly."""
         await self._queue.put(AgentEvent(
             event=AgentEventType.THINKING,
-            data={"text": reasoning, "agent_id": current_agent_id.get()},
+            data={"text": reasoning, "agent_id": agent_id or current_agent_id.get()},
         ))
 
     async def emit_tool_start(
@@ -254,8 +323,15 @@ class AgentEventStream:
             data={"message": message},
         ))
 
+    @property
+    def is_closed(self) -> bool:
+        return self._closed
+
     async def emit_done(self, session_id: str = "", usage: dict[str, Any] | None = None) -> None:
-        """Emit done event and close the stream."""
+        """Emit done event and close the stream. Idempotent; see `_closed`."""
+        if self._closed:
+            return
+        self._closed = True
         await self._queue.put(AgentEvent(
             event=AgentEventType.DONE,
             data={
@@ -357,6 +433,65 @@ class AgentEventStream:
         await self._queue.put(AgentEvent(
             event=AgentEventType.FEEDBACK_REQUEST,
             data={"session_id": session_id, "turn_number": turn_number},
+        ))
+
+    async def emit_draft_patch(
+        self,
+        kind: str,
+        obj_id: str,
+        name: str,
+        app_code: str,
+        patch: dict[str, Any],
+    ) -> None:
+        """A write that was held in the user's open draft instead of saved.
+
+        The client applies this into the copy it already has on screen. For a page
+        the patch names the components that changed and the ones that went away;
+        for everything else it carries the whole document, which for a form's worth
+        of fields is smaller than describing the difference.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.DRAFT_PATCH,
+            data={
+                "kind": kind,
+                "id": obj_id,
+                "name": name,
+                "app_code": app_code,
+                "patch": patch,
+                "agent_id": current_agent_id.get(),
+            },
+        ))
+
+    async def emit_object_changed(
+        self,
+        kind: str,
+        obj_id: str,
+        name: str,
+        app_code: str,
+        operation: str,
+        draft: bool = False,
+    ) -> None:
+        """A write that really did reach the database.
+
+        Sent for objects the user does NOT have open, which is the case the rule
+        deliberately lets through. The client uses it to refresh anything on screen
+        that shows the object: most sharply, a theme edit made from the page editor,
+        which is saved app-wide and must still appear on the canvas.
+        """
+        await self._queue.put(AgentEvent(
+            event=AgentEventType.OBJECT_CHANGED,
+            data={
+                "kind": kind,
+                "id": obj_id,
+                "name": name,
+                "app_code": app_code,
+                "operation": operation,
+                # Which surface received it. The editor reads and saves the draft,
+                # so it has to refetch the same one, and the panel must not tell
+                # the user a drafted change is already live.
+                "draft": draft,
+                "agent_id": current_agent_id.get(),
+            },
         ))
 
     async def request_confirmation(

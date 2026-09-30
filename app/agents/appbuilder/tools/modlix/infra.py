@@ -253,6 +253,41 @@ list_log_services_tool = ToolDefinition(
 )
 
 
+def _format_exception_window(path: Any, exception_id: str, before: int, after: int) -> ToolResult:
+    """Find every line containing `exception_id`, each with surrounding context.
+
+    Scans the WHOLE file, not just the tail: a stack trace is usually well
+    behind the newest lines by the time the id is triaged. Tail-then-filter
+    also strips the trace itself, since only the one line carrying the id
+    matches — the frames below it do not.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return ToolResult(success=False, error=f"Error reading {path}: {e}")
+    lines = text.splitlines()
+    hits = [i for i, ln in enumerate(lines) if exception_id in ln]
+    if not hits:
+        return ToolResult(
+            success=True,
+            summary=(
+                f"{path}: no occurrences of exceptionId={exception_id!r}. "
+                "It may have rotated out, or be in another service — try "
+                "list_log_services."
+            ),
+        )
+    sections: list[str] = []
+    for hit in hits:
+        start = max(0, hit - before)
+        end = min(len(lines), hit + after + 1)
+        sections.append(
+            f"--- match at line {hit + 1} (context {start + 1}..{end}) ---\n"
+            + "\n".join(lines[start:end])
+        )
+    header = f"{path} — {len(hits)} occurrence(s) of {exception_id!r}"
+    return ToolResult(success=True, summary=f"{header}\n" + "\n\n".join(sections))
+
+
 async def _execute_tail_service_logs(
     params: dict[str, Any], context: dict[str, Any],
 ) -> ToolResult:
@@ -273,18 +308,26 @@ async def _execute_tail_service_logs(
     if not path.exists():
         return ToolResult(success=False, error=f"{path} does not exist")
 
-    lines_arg = params.get("lines") or 200
-    try:
-        lines = max(1, min(int(lines_arg), 5000))
-    except (TypeError, ValueError):
-        lines = 200
+    def _clamp(key: str, default: int, lo: int, hi: int) -> int:
+        try:
+            return max(lo, min(int(params.get(key, default)), hi))
+        except (TypeError, ValueError):
+            return default
 
+    # exception_id mode: whole-file search with a context window, so the
+    # matched line arrives together with the stack trace under it.
+    exc_id = (params.get("exception_id") or "").strip()
+    if exc_id:
+        return _format_exception_window(
+            path, exc_id,
+            _clamp("context_before", 10, 0, 200),
+            _clamp("context_after", 50, 0, 500),
+        )
+
+    lines = _clamp("lines", 200, 1, 5000)
     raw = _read_tail(path, lines)
 
-    exc_id = (params.get("exception_id") or "").strip()
     search = (params.get("search") or "").strip()
-    if exc_id:
-        raw = [line for line in raw if exc_id in line]
     if search:
         raw = [line for line in raw if search.lower() in line.lower()]
 
@@ -297,10 +340,14 @@ async def _execute_tail_service_logs(
 tail_service_logs_tool = ToolDefinition(
     name="tail_service_logs",
     description=(
-        "Tail the last N lines of a <service>.log file. Optional filters: "
-        "exception_id (exact substring match) and search (case-insensitive "
-        "substring). Used for triaging an exceptionId that came back in an "
-        "API response. Dev-only — log files don't ship to CFA prod hosts."
+        "Read a <service>.log file. Two modes:\n"
+        "1. By exceptionId (use this for API-error triage): pass the id from a "
+        "failed response. Scans the whole file and returns each occurrence with "
+        "surrounding context, so you get the trigger AND the stack trace. "
+        "`lines` is ignored in this mode.\n"
+        "2. Plain tail: the last N `lines`, optionally narrowed by `search` "
+        "(case-insensitive substring).\n"
+        "Dev-only — log files don't ship to CFA prod hosts."
     ),
     parameters=[
         ToolParameter(
@@ -309,15 +356,23 @@ tail_service_logs_tool = ToolDefinition(
         ),
         ToolParameter(
             name="lines", type="integer", required=False, default=200,
-            description="How many trailing lines to read (max 5000).",
+            description="How many trailing lines to read (max 5000). Ignored when exception_id is set.",
         ),
         ToolParameter(
             name="exception_id", type="string", required=False,
-            description="Exact substring match (typically the exceptionId from an API response).",
+            description="Exact substring match (typically the exceptionId from an API response). Switches to whole-file context-window mode.",
         ),
         ToolParameter(
             name="search", type="string", required=False,
-            description="Case-insensitive substring filter to apply after tailing.",
+            description="Case-insensitive substring filter to apply after tailing. Ignored when exception_id is set.",
+        ),
+        ToolParameter(
+            name="context_before", type="integer", required=False, default=10,
+            description="Lines of context before each exception_id match (max 200).",
+        ),
+        ToolParameter(
+            name="context_after", type="integer", required=False, default=50,
+            description="Lines of context after each exception_id match (max 500) — this is what carries the stack trace.",
         ),
     ],
     execute=_execute_tail_service_logs,

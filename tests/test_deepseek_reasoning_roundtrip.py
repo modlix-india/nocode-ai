@@ -79,7 +79,7 @@ def _make_provider() -> DeepSeekProvider:
     # The provider's _models dict is what get_model reads; mirror the
     # production shape.
     p._models = {
-        "fast":     "deepseek-v4-flash",
+        "fast":     "deepseek-flash",
         "balanced": "deepseek-v4-pro",
     }
     # Minimal settings stub used by _is_thinking_tier.

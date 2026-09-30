@@ -107,24 +107,77 @@ def _pick_type(tag: str, has_children: bool) -> str:
     return "Grid"
 
 
+# The browser's OWN stylesheet, which the analyser deliberately throws away.
+# `css_cdp` filters `origin == "user-agent"` so only AUTHORED CSS is captured.
+# That is right for everything a designer wrote and wrong for the handful of
+# tags whose layout IS a browser default nobody re-declares: a <tr> gets
+# `display: table-row` from the UA sheet and from nowhere else, so it arrives
+# here with no display at all — and a Modlix Grid with no display is a flex
+# COLUMN. That is the whole reason a converted table renders as one cell per
+# line instead of a table. Seeded as a FLOOR: any authored value wins.
+_UA_DISPLAY = {
+    "table": {"display": "table", "borderCollapse": "collapse"},
+    "thead": {"display": "table-header-group"},
+    "tbody": {"display": "table-row-group"},
+    "tfoot": {"display": "table-footer-group"},
+    "tr": {"display": "table-row"},
+    "th": {"display": "table-cell", "verticalAlign": "middle"},
+    "td": {"display": "table-cell", "verticalAlign": "middle"},
+    "ul": {"display": "block"},
+    "ol": {"display": "block"},
+    "li": {"display": "list-item"},
+}
+
+
+def _seed_ua_defaults(tag: str, style_props: Dict[str, Any]) -> bool:
+    """Floor a layout-bearing tag with its browser default display."""
+    defaults = _UA_DISPLAY.get(tag)
+    if not defaults:
+        return False
+    block = _base_all_block(style_props, create=True)
+    seeded = False
+    for prop, value in defaults.items():
+        if prop not in block:
+            block[prop] = {"value": value}
+            seeded = True
+    return seeded
+
+
 def _inject_browser_defaults(style_props: Dict[str, Any]) -> None:
     """Emit CSS initial-values that the BROWSER implies but Modlix doesn't.
 
     Modlix Grid containers default to flex-direction:column, while the browser
     defaults flex to row. Authored CSS that relies on the row default omits
     flex-direction, so Modlix stacks vertically. Make it explicit. Same idea for
-    grid display (Modlix may not switch the container to grid on its own)."""
+    grid display (Modlix may not switch the container to grid on its own).
+
+    And Modlix's Grid carries a default `gap: 5px` where the browser's flex
+    default is `normal`, i.e. zero. That is not cosmetic: a 12-column grid sizes
+    its children to add up to EXACTLY the container width, so five pixels of
+    platform default is enough to wrap the last column onto its own line. On
+    Tabler's tables page the 8/4 split (869px + 435px in a 1304px row) stacked
+    for precisely that reason. So an absent gap has to be written as zero rather
+    than left to the default.
+    """
     for rule in style_props.values():
         if not isinstance(rule, dict):
             continue
         res = rule.get("resolutions") or {}
         has_dir = any("flexDirection" in (b or {}) for b in res.values())
+        has_gap = any(
+            any(g in (b or {}) for g in ("gap", "columnGap", "rowGap", "gridGap"))
+            for b in res.values()
+        )
         for block in res.values():
             if not isinstance(block, dict):
                 continue
             disp = (block.get("display") or {}).get("value")
             if disp in ("flex", "inline-flex") and not has_dir and "flexDirection" not in block:
                 block["flexDirection"] = {"value": "row"}
+        if not has_gap and not rule.get("pseudoState"):
+            base = res.get("ALL")
+            if isinstance(base, dict):
+                base["gap"] = {"value": "0px"}
 
 
 def build_page_definition(
@@ -132,6 +185,7 @@ def build_page_definition(
 ) -> Tuple[Dict[str, Any], str]:
     """Return (componentDefinition, root_key)."""
     comps: Dict[str, Any] = {}
+    seeded = {"n": 0}
 
     def make(node: ComponentNode, order: int, inherited: Dict[str, str]) -> Optional[str]:
         if len(comps) >= cap:
@@ -141,6 +195,8 @@ def build_page_definition(
         ctype = _pick_type(tag, has_children)
         key = node.mxa_id
         sp = node.style_properties or {}
+        if _seed_ua_defaults(tag, sp):
+            seeded["n"] += 1
         _inject_browser_defaults(sp)
         comp: Dict[str, Any] = {
             "key": key,
@@ -215,5 +271,8 @@ def build_page_definition(
         cv = {k: _resolve_vars(v, css_vars) for k, v in css_vars.items()}
         for comp in comps.values():
             _resolve_vars_in_styleprops(comp.get("styleProperties") or {}, cv)
+
+    if seeded["n"]:
+        print(f"seeded browser-default display on {seeded['n']} layout-bearing tags")
 
     return comps, root.mxa_id

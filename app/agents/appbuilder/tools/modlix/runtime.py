@@ -25,7 +25,7 @@ from app.core.tools.base import ToolDefinition, ToolParameter, ToolResult
 
 
 # Shared param-description constants.
-_DESC_APP_CODE = "appCode; defaults to session"
+_DESC_APP_CODE = "appCode; defaults to the app this session is working in"
 
 
 def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
@@ -34,7 +34,8 @@ def _client_and_headers(context: dict[str, Any]) -> tuple[Any, dict[str, str]]:
 
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> str:
-    return (params.get("app_code") or context.get("app_code") or "").strip()
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    return resolve_app_code(params, context)
 
 
 def _err_app_code() -> ToolResult:

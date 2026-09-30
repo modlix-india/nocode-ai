@@ -58,7 +58,7 @@ from app.agents.adzump.agents.location.targeting_run import (
     resolve_location_name,
 )
 from app.agents.adzump.platform import to_enum_value as platform_enum_value
-from app.agents.adzump.services.business_storage import resolve_url
+from app.agents.adzump._shared import resolve_url
 from app.core.tools.base import ToolDefinition, ToolResult
 
 logger = logging.getLogger(__name__)

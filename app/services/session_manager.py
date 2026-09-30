@@ -174,6 +174,7 @@ class SessionManager:
         client_code: str,
         agent_name: Optional[str] = None,
         status: Optional[SessionStatus] = None,
+        app_code: Optional[str] = None,
         limit: int = 20,
         offset: int = 0,
     ) -> Tuple[List[AiSession], int]:
@@ -184,6 +185,7 @@ class SessionManager:
             client_code: Filter by client code
             agent_name: Optional filter by agent name
             status: Optional filter by session status
+            app_code: Optional filter by the app the chat was started against
             limit: Max results (default 20)
             offset: Skip first N results (default 0)
 
@@ -191,7 +193,9 @@ class SessionManager:
             Tuple of (sessions list, total count)
         """
         if not is_pool_available():
-            return self._list_sessions_file(user_id, client_code, agent_name, limit, offset)
+            return self._list_sessions_file(
+                user_id, client_code, agent_name, limit, offset, app_code
+            )
 
         try:
             # Build WHERE clause dynamically
@@ -204,6 +208,9 @@ class SessionManager:
             if status:
                 conditions.append("STATUS = %s")
                 params.append(status.value)
+            if app_code:
+                conditions.append("APP_CODE = %s")
+                params.append(app_code)
 
             where_clause = " AND ".join(conditions)
 
@@ -320,14 +327,24 @@ class SessionManager:
             return False
 
     async def update_session_context(
-        self, session_id: str, context_json: str, user_id: Optional[int] = None
+        self,
+        session_id: str,
+        context_json: str,
+        user_id: Optional[int] = None,
+        app_code: Optional[str] = None,
     ) -> bool:
-        """Update session context JSON.
+        """Update session context JSON, and the app the session is about.
 
         Args:
             session_id: Session ID
             context_json: JSON-serialized context string
             user_id: User ID for updated_by
+            app_code: The app this session is working in, when known. The row is
+                created before the first tool call, so a conversation that opens
+                with no app and then builds one would otherwise stay filed under
+                nothing and never appear in that app's chat list. Blank is
+                ignored rather than written: losing the app on a later save
+                would be worse than a stale one.
 
         Returns:
             True if successful
@@ -338,18 +355,32 @@ class SessionManager:
         try:
             async with get_connection() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute(
-                        """
-                        UPDATE ai_tracking_sessions
-                        SET CONTEXT_JSON = %s, UPDATED_BY = %s
-                        WHERE SESSION_ID = %s
-                        """,
-                        (context_json, user_id, session_id)
-                    )
+                    if app_code:
+                        await cursor.execute(
+                            """
+                            UPDATE ai_tracking_sessions
+                            SET CONTEXT_JSON = %s, APP_CODE = %s, UPDATED_BY = %s
+                            WHERE SESSION_ID = %s
+                            """,
+                            (context_json, app_code, user_id, session_id)
+                        )
+                    else:
+                        await cursor.execute(
+                            """
+                            UPDATE ai_tracking_sessions
+                            SET CONTEXT_JSON = %s, UPDATED_BY = %s
+                            WHERE SESSION_ID = %s
+                            """,
+                            (context_json, user_id, session_id)
+                        )
                     return cursor.rowcount > 0
 
         except Exception as e:
-            logger.error(f"Failed to update session context: {e}")
+            logger.error(
+                f"Failed to update session context: {e} "
+                f"(session={session_id}, payload={len(context_json)} chars) - "
+                "the agent resumes from a STALE context until this succeeds"
+            )
             return False
 
     async def update_session_totals(
@@ -545,11 +576,11 @@ class SessionManager:
         return self._dict_to_session(data)
 
     def _list_sessions_file(
-        self, user_id, client_code, agent_name, limit, offset,
+        self, user_id, client_code, agent_name, limit, offset, app_code=None,
     ) -> tuple[list[AiSession], int]:
         from app.db.file_store import get_file_store
         items, total = get_file_store().list_sessions(
-            user_id, client_code, agent_name, limit, offset,
+            user_id, client_code, agent_name, limit, offset, app_code,
         )
         return [self._dict_to_session(d) for d in items], total
 

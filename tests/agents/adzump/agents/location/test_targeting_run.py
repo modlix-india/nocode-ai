@@ -12,49 +12,27 @@ import unittest
 from unittest import mock
 
 from app.agents.adzump.agents.location.targeting_run import (
-    build_run_prompt,
     format_current_areas,
     resolve_country_geo_constant,
 )
 
 
 class CurrentAreasFormatTests(unittest.TestCase):
-    def test_empty_areas_render_explicit_marker(self):
-        self.assertIn("empty", format_current_areas([]).lower())
-
-    def test_one_based_indexing(self):
-        text = format_current_areas([{"name": "Andheri"}, {"name": "Juhu"}])
-        self.assertIn("1. Andheri", text)
-        self.assertIn("2. Juhu", text)
-        # Zero-based numbering would be a silent bug - verify we don't have it.
-        self.assertNotIn("0. Andheri", text)
-
-    def test_unnamed_areas_use_marker(self):
-        text = format_current_areas([{}, {"name": "Juhu"}])
-        self.assertIn("1. (unnamed)", text)
-        self.assertIn("2. Juhu", text)
-
-
-class RunPromptTests(unittest.TestCase):
-    def test_prompt_carries_profile_list_and_verbatim_request(self):
-        product = {
-            "product_name": "Purva Heights",
-            "business_type": "Real Estate",
-            "business_scale": "Local",
-            "target_areas": [{"name": "Andheri"}],
-            "summary": "Premium 3BHK apartments.",
-        }
-        prompt = build_run_prompt(product, "Mumbai, India", "IN", "add Juhu")
-        self.assertIn("Purva Heights", prompt)
-        self.assertIn("local", prompt)          # scale is normalized lowercase
-        self.assertIn("Mumbai, India", prompt)
-        self.assertIn("1. Andheri", prompt)
-        self.assertIn('"""add Juhu"""', prompt)
-
-    def test_prompt_truncates_long_summaries(self):
-        prompt = build_run_prompt(
-            {"summary": "x" * 1000}, "", "IN", "set targeting")
-        self.assertNotIn("x" * 700, prompt)
+    def test_rows(self):
+        # 1-based, so "the second area" maps to delete_location(index=2)
+        for label, areas, present, absent in [
+            ("no areas: an explicit marker", [], ["empty"], []),
+            ("one-based numbering", [{"name": "Andheri"}, {"name": "Juhu"}],
+             ["1. Andheri", "2. Juhu"], ["0. Andheri"]),
+            ("an unnamed area keeps its number", [{}, {"name": "Juhu"}],
+             ["1. (unnamed)", "2. Juhu"], []),
+        ]:
+            with self.subTest(label):
+                text = format_current_areas(areas).lower()
+                for token in present:
+                    self.assertIn(token.lower(), text)
+                for token in absent:
+                    self.assertNotIn(token.lower(), text)
 
 
 class CountryGeoConstantTests(unittest.TestCase):
@@ -87,9 +65,7 @@ class CountryGeoConstantTests(unittest.TestCase):
         ]
         for place, name in cases:
             with self.subTest(place=place, name=name):
-                client = self._resolve(dict(place), country_name=name)
-                if place.get("country_geo_constant") or not (name and place.get("country_code")):
-                    client.assert_not_awaited()
+                self._resolve(dict(place), country_name=name).assert_not_awaited()
 
     def test_lookup_failure_never_raises(self):
         place = {"country_code": "US"}

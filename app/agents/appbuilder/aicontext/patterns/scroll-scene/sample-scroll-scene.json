@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "renderer": {
+    "alpha": true,
+    "antialias": true,
+    "dprCap": 2,
+    "toneMapping": "aces",
+    "exposure": 1
+  },
+  "camera": {
+    "type": "perspective",
+    "fov": 50,
+    "position": [
+      0,
+      0,
+      7
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "near": 0.1,
+    "far": 1000,
+    "controls": false,
+    "autoRotate": false,
+    "autoRotateSpeed": 1
+  },
+  "environment": {
+    "preset": "studio",
+    "hdriUrl": "",
+    "background": false,
+    "backgroundColor": ""
+  },
+  "lights": [
+    {
+      "id": "key",
+      "type": "directional",
+      "color": "#ffffff",
+      "intensity": 2.4,
+      "position": [
+        4,
+        5,
+        5
+      ]
+    },
+    {
+      "id": "rim",
+      "type": "directional",
+      "color": "#ffffff",
+      "intensity": 0.9,
+      "position": [
+        -4,
+        1,
+        -4
+      ]
+    },
+    {
+      "id": "ambient",
+      "type": "ambient",
+      "color": "#ffffff",
+      "intensity": 0.45,
+      "position": [
+        5,
+        5,
+        5
+      ]
+    }
+  ],
+  "objects": [
+    {
+      "id": "hero",
+      "name": "Hero",
+      "visible": true,
+      "source": {
+        "kind": "primitive",
+        "url": "",
+        "shape": "icosahedron",
+        "count": 1000,
+        "distribution": "sphere"
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": {
+        "color": "#38bdf8",
+        "metalness": 0.5,
+        "roughness": 0.25,
+        "opacity": 1,
+        "transparent": false,
+        "wireframe": false,
+        "shaderId": ""
+      },
+      "animations": []
+    }
+  ],
+  "shaders": [],
+  "timeline": {
+    "driver": "scroll",
+    "duration": 4000,
+    "loop": false,
+    "tracks": [
+      {
+        "target": "camera.position.z",
+        "keys": [
+          {
+            "t": 0,
+            "v": 7
+          },
+          {
+            "t": 1,
+            "v": 2.6
+          }
+        ],
+        "ease": "easeInOutCubic"
+      },
+      {
+        "target": "objects.hero.rotation.x",
+        "keys": [
+          {
+            "t": 0,
+            "v": 0
+          },
+          {
+            "t": 1,
+            "v": 120
+          }
+        ],
+        "ease": "linear"
+      }
+    ]
+  },
+  "interactions": []
+}

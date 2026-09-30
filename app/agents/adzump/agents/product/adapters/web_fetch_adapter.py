@@ -37,9 +37,10 @@ FETCH_TIMEOUT_S = 10.0
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024  # 2 MB cap
 MAX_MARKDOWN_CHARS = 60_000           # cap markdown we pass to the subagent
 CACHE_TTL_S = 15 * 60                 # 15 minutes
-# Extractor is swappable via SHORTLIST_CLASSIFIER_PROVIDER env (shared with
-# the shortlist classifier). Default ``anthropic`` uses Claude Haiku; set
-# to ``openai`` to revert to the legacy gpt-4o-mini path.
+# Extractor is swappable via SHORTLIST_CLASSIFIER_PROVIDER env (name kept for
+# deploy-config continuity; the shortlist classifier it once shared with is
+# deleted). Default ``anthropic`` uses Claude Haiku; ``openai`` reverts to the
+# legacy gpt-4o-mini path.
 EXTRACTOR_OPENAI_MODEL = "gpt-4o-mini"
 EXTRACTOR_MAX_TOKENS = 400
 

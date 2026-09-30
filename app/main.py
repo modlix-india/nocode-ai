@@ -5,8 +5,10 @@ Agentic AI service for building no-code applications through conversation.
 Integrates with nocode-saas via Eureka service discovery and Config Server.
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 from app.config import settings, initialize_settings
@@ -53,6 +55,11 @@ async def lifespan(app: FastAPI):
         redis_client = await get_redis_client()
         if redis_client:
             logger.info("Redis connection established")
+            # Lets POST /stop and /confirm reach an agent run held by a sibling
+            # worker. Without it those only work when the request happens to
+            # land on the right one of the four.
+            from app.core.stream_registry import start_subscriber
+            await start_subscriber()
         else:
             logger.warning("Redis connection failed - rate limiting and caching disabled")
 
@@ -86,7 +93,9 @@ async def lifespan(app: FastAPI):
         logger.info("Appbuilder context loaded")
 
         logger.info("Loading component catalog (URL=%s) ...", settings.COMPONENT_CATALOG_URL or "(fallback)")
-        catalog = ComponentCatalog(settings.COMPONENT_CATALOG_URL)
+        catalog = ComponentCatalog(
+            settings.COMPONENT_CATALOG_URL, settings.COMPONENT_CATALOG_LOCAL_PATH,
+        )
         await catalog.load()
         set_catalog(catalog)  # register module-level singleton for tool helpers
         logger.info("Component catalog loaded: %d types", len(catalog.get_all_types()))
@@ -113,25 +122,16 @@ async def lifespan(app: FastAPI):
         logger.exception("Failed to initialize AppBuilder Agent")
         logger.warning("AppBuilder Agent will be unavailable")
 
-    # ── AppBuilder v4 — code-first agent (1 tool, minimal persona) ─────
+    # 6. Browser pool maintenance. Chromium is shared per worker and handed out
+    # as contexts; this timer reaps idle drive_page sessions and then closes
+    # browsers left with no contexts. It has to run on a timer rather than
+    # inside a tool call: a worker whose conversation ended stops making calls,
+    # which is exactly how it used to strand browsers for hours.
     try:
-        from app.agents.appbuilderv4.agent import AppBuilderV4Agent
-        from app.agents.appbuilderv4.context import build_v4_context
-        from app.agents.appbuilderv4.tools import TOOLS as V4_TOOLS
-        from app.agents.appbuilderv4.router import set_appbuilderv4_agent
-
-        v4_context = build_v4_context()
-        await v4_context.load()
-        v4_agent = AppBuilderV4Agent(
-            context_builder=v4_context,
-            tools=V4_TOOLS,
-            provider=settings.APPBUILDER_PROVIDER,
-        )
-        set_appbuilderv4_agent(v4_agent)
-        logger.info(f"AppBuilderV4 Agent initialized with {len(V4_TOOLS)} tool(s)")
+        from app.services import browser_pool
+        browser_pool.start_maintenance()
     except Exception:
-        logger.exception("Failed to initialize AppBuilderV4 Agent")
-        logger.warning("AppBuilderV4 Agent will be unavailable")
+        logger.exception("Failed to start browser pool maintenance")
 
     logger.info("=" * 60)
     logger.info(f"Service ready on port {settings.SERVICE_PORT}")
@@ -142,6 +142,16 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down...")
 
+    # Agent runs deliberately outlive the request that started them, so they
+    # have to be torn down here, since nothing else is holding them. Their sessions
+    # are left PROCESSING with a stale heartbeat, which is how a client tells a
+    # run that died from one still working.
+    try:
+        from app.core.run_manager import shutdown as shutdown_runs
+        await shutdown_runs()
+    except Exception as e:
+        logger.error(f"Error stopping agent runs: {e}")
+
     # Close SaasClient (HTTP connection pool)
     try:
         from app.agents.appbuilder.tools._shared import close_saas_client
@@ -149,6 +159,36 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error closing SaasClient: {e}")
 
+    try:
+        from app.agents.leadzump.tools._client import close_leadzump_client
+        await close_leadzump_client()
+    except Exception as e:
+        logger.error(f"Error closing LeadZump SaasClient: {e}")
+
+    # Close persistent Playwright sessions, then tear the pool down. A worker
+    # that exits (redeploy, restart, OOM kill) would otherwise orphan its
+    # Chromium children: nothing outside this process reaps them.
+    try:
+        from app.agents.appbuilder.tools.modlix.visuals_browser import (
+            close_all_browser_sessions,
+        )
+        closed = await close_all_browser_sessions()
+        if closed:
+            logger.info(f"Closed {closed} browser session(s)")
+    except Exception as e:
+        logger.error(f"Error closing browser sessions: {e}")
+
+    try:
+        from app.services import browser_pool
+        browsers = await browser_pool.close_all()
+        if browsers:
+            logger.info(f"Closed {browsers} shared browser(s)")
+    except Exception as e:
+        logger.error(f"Error closing browser pool: {e}")
+
+
+    from app.core.stream_registry import stop_subscriber
+    await stop_subscriber()
 
     await close_redis()
 
@@ -202,6 +242,40 @@ app.add_middleware(RateLimitMiddleware)
 # Add request deduplication middleware (prevents duplicate concurrent requests)
 app.add_middleware(RequestDeduplicationMiddleware)
 
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Answer errors in the shape the platform's own toast can read.
+
+    Every Spring service in Modlix answers a failure with a FLAT body:
+
+        {"message": "...", "debugMessage": "...", "exceptionId": ..., "stackTrace": ...}
+
+    and the UI's toast renderer is built for exactly that — `Messages.tsx:103`
+    reads `msg.message` whenever the error body is an object. FastAPI's default
+    is `{"detail": ...}`, which has no `message` key, so **every HTTP error this
+    service has ever returned rendered as a completely blank toast.** Not a
+    wrong message: an empty box with an icon in it.
+
+    Nothing noticed because the agent surfaces is SSE — its errors arrive as
+    stream events and never touch this path. The blueprint routes are the first
+    plain HTTP ones a person presses a button to reach, and the button that
+    exposed it was Generate on an empty wallet: a real 402 carrying a real
+    sentence, shown as nothing at all.
+
+    `detail` is kept exactly as it was, so any existing client reading it is
+    unaffected; `message` is added beside it. When `detail` is already a dict
+    that names its own message (the validator refusals do), that one is used
+    rather than stringifying the dict.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict):
+        message = str(detail.get("message") or "").strip() or "The request was refused."
+        body: dict = {**detail, "detail": detail, "message": message}
+    else:
+        body = {"detail": detail, "message": str(detail)}
+    return JSONResponse(status_code=exc.status_code, content=body, headers=exc.headers)
+
 # API prefix - matches gateway routing: /api/ai/**
 API_PREFIX = "/api/ai"
 
@@ -212,10 +286,6 @@ app.include_router(health.router, prefix=API_PREFIX, tags=["Health"])
 from app.agents.appbuilder.router import router as appbuilder_router
 app.include_router(appbuilder_router, prefix=f"{API_PREFIX}/appbuilder", tags=["AppBuilder"])
 
-# AppBuilder v4 (code-first) router — coexists with v3 until v4 proves out.
-from app.agents.appbuilderv4.router import router as appbuilderv4_router
-app.include_router(appbuilderv4_router, prefix=f"{API_PREFIX}/appbuilderv4", tags=["AppBuilderV4"])
-
 # Adzump agent router (chat + common routes + location geo-search typeahead)
 from app.agents.adzump.router import router as adzump_router
 app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"])
@@ -224,9 +294,22 @@ app.include_router(adzump_router, prefix=f"{API_PREFIX}/adzump", tags=["Adzump"]
 from app.agents.adzump2.router import router as adzump2_router
 app.include_router(adzump2_router, prefix=f"{API_PREFIX}/adzump2", tags=["Adzump2"])
 
+# LeadZump CRM assistant router (leads, deals, pipeline)
+from app.agents.leadzump.router import router as leadzump_router
+app.include_router(leadzump_router, prefix=f"{API_PREFIX}/leadzump", tags=["LeadZump"])
+
 # Learning loop router (feedback, analytics, knowledge)
 from app.learning.router import router as learning_router
 app.include_router(learning_router, prefix=f"{API_PREFIX}/learning", tags=["Learning"])
+
+# Lore: curated, growing knowledge about each application we build.
+from app.services.lore.router import router as lore_router
+app.include_router(lore_router, prefix=f"{API_PREFIX}/lore", tags=["Lore"])
+
+# Blueprint: the plan for an application — what it is MEANT to be. Read and
+# written by the BlueprintEditor board and by SiteZump's AI Studio page.
+from app.services.blueprint.router import router as blueprint_router
+app.include_router(blueprint_router, prefix=f"{API_PREFIX}/blueprint", tags=["Blueprint"])
 
 # Admin: per-app KB export/import (cross-env promotion). Guarded by X-Admin-Token.
 # Prefix is set on the router itself (/api/ai/admin/app-kb), so no extra prefix here.

@@ -20,7 +20,8 @@ def _get_client_and_headers(context: dict[str, Any]) -> tuple:
 
 def _resolve_app_code(params: dict[str, Any], context: dict[str, Any]) -> tuple[str, ToolResult | None]:
     """Resolve app_code from params or context. Returns (app_code, error)."""
-    app_code = params.get("app_code") or context.get("app_code", "")
+    from app.agents.appbuilder.tools._shared import resolve_app_code
+    app_code = resolve_app_code(params, context)
     if not app_code:
         return "", ToolResult(
             success=False,

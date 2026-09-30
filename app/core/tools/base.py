@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable, Literal, Optional
+from typing import Any, Callable, Awaitable, ClassVar, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -79,19 +79,40 @@ class ToolResult:
     summary: str = ""
     error: str = ""
     # Who `summary` is for (MCP annotations.audience). The run loop routes by it:
-    #   "assistant" (default) — model only (tool_result content). Today's tools.
-    #   "user"  — posted to chat for the user; the MODEL gets only model_summary
-    #             (or data), never the user prose → it can't paraphrase-double it.
-    #   "both"  — model sees summary AND it's posted to chat (e.g. competitors,
-    #             whose list the model reasons over later). LLM writes a lead-in.
-    audience: Literal["assistant", "user", "both"] = "assistant"
+    #   "assistant" (default) - model only; the model writes the user's reply.
+    #   "user"  - posted to chat as-is; the MODEL gets only model_summary (or
+    #             data). Only for what the model can't say itself: a display
+    #             card, or an ask that ends the turn at this tool.
+    audience: Literal["assistant", "user"] = "assistant"
     # Terse model-facing note for audience="user" — what the model sees instead
     # of the user prose. Falls back to data/"OK" when unset.
     model_summary: str = ""
+    # User-facing one-liner for FAILURES (model_summary's mirror image), for a
+    # tool whose `error` is model-steering text (gate refusals, "call X NOW"
+    # prescriptions). Unset, the user's row shows `error` as it always has.
+    display_error: str = ""
 
-    # Hard cap on tool result content sent to the LLM.
+    # Per-result cap on the content sent to the LLM; falls back to
+    # DEFAULT_MAX_RESULT_CHARS. Raise it for reads whose whole job is to hand the
+    # model one complete object (a decompiled function's DSL, say), where a half
+    # read is worse than useless: the model cannot tell which half is missing and
+    # reasons confidently about steps it never saw. Still a cap, not a bypass —
+    # one read must not be able to eat the whole context budget.
+    max_result_chars: int | None = None
+
+    # Default cap on tool result content sent to the LLM.
     # Prevents a single read from consuming excessive context.
-    MAX_RESULT_CHARS: int = 4000
+    DEFAULT_MAX_RESULT_CHARS: ClassVar[int] = 4000
+
+    def to_display_text(self, model_content: str = "") -> str:
+        """What the USER's tool row shows (SSE event + persisted turn).
+
+        The summary, else the error, else the model content the caller passes.
+        A failure shows `display_error` instead when the tool sets one, so an
+        error written to steer the model never reaches the user."""
+        if not self.success and self.display_error:
+            return self.display_error
+        return self.summary or self.error or model_content
 
     def to_tool_result_content(self) -> str:
         """Format as text content for the tool_result message back to the LLM.
@@ -112,8 +133,15 @@ class ToolResult:
         text = primary or _data_text(self.data)
         if text is None:
             return "OK"
-        if len(text) > self.MAX_RESULT_CHARS:
-            return text[:self.MAX_RESULT_CHARS] + "\n\n... [truncated — use more specific reads to see details]"
+        cap = self.max_result_chars or self.DEFAULT_MAX_RESULT_CHARS
+        if len(text) > cap:
+            # Say what was lost. A bare "[truncated]" leaves the model unable to
+            # judge whether it read enough, so it answers from the part it got.
+            return text[:cap] + (
+                f"\n\n... [truncated: {cap:,} of {len(text):,} chars shown, "
+                f"{len(text) - cap:,} cut. Do NOT answer from this partial read — "
+                f"use a narrower read to see the rest.]"
+            )
         return text
 
     # Cap on how many images a single tool result may forward to the LLM.
@@ -137,17 +165,26 @@ class ToolResult:
             return []
         blocks: list[dict] = []
 
+        from ._image_guard import sanitize_image_b64
+
         def _push(b64: str, mime: str | None) -> None:
             if not isinstance(b64, str) or not b64:
                 return
             if len(blocks) >= self.MAX_IMAGE_BLOCKS:
                 return
+            # An image over the provider's per-edge cap does not just fail this
+            # call: it lands in the history and every later request in the
+            # session fails with it. Shrink it, or drop it if it will not decode.
+            safe = sanitize_image_b64(b64, mime)
+            if safe is None:
+                return
+            safe_b64, safe_mime = safe
             blocks.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
-                    "media_type": (mime or "image/png"),
-                    "data": b64,
+                    "media_type": safe_mime,
+                    "data": safe_b64,
                 },
             })
 
@@ -257,6 +294,12 @@ class ToolDefinition:
     elicit_mode: Literal["deferred", "blocking"] = "deferred"
     elicit_expects: Literal["single", "multi"] = "single"
 
+    # Opt-out of the dispatcher's unknown-parameter rejection (BaseAgent.
+    # _reject_unknown_params). Default False: an argument name the tool does
+    # not declare is an error, not something to silently ignore. Set True only
+    # for a tool that genuinely takes free-form top-level keys.
+    allow_unknown_params: bool = False
+
     def get_display_name(self) -> str:
         """Return display_name, falling back to title-cased name."""
         if self.display_name:
@@ -306,6 +349,11 @@ class ToolDefinition:
         }
         if required:
             schema["required"] = required
+        # Tell the model up front that undeclared keys are invalid; the
+        # dispatcher enforces the same rule at call time. (Gemini's schema
+        # whitelist strips this key, which is fine: enforcement is server-side.)
+        if properties and not self.allow_unknown_params:
+            schema["additionalProperties"] = False
 
         return {
             "name": self.name,

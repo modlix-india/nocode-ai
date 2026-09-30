@@ -86,7 +86,7 @@ sequenceDiagram
 
 | Layer | Responsibility | Lives in |
 |---|---|---|
-| **Main agent** (`adzump`) | Collects + confirms details; shows the **ad-group plan** and captures the user's choice; routes keyword questions/edits to the keyword agent | `agents/adzump/agent.py`, `next_action.py`, `prompt_sections.py` |
+| **Main agent** (`adzump`) | Collects + confirms details; shows the **ad-group plan** and captures the user's choice; routes keyword questions/edits to the keyword agent | `agents/adzump/agent.py`, `workflow.py` (the journey + reply rules) |
 | **`prepare_campaign_review` tool** | Spawns the `CampaignAgent`, persists its result on the main session | `tools/prepare_campaign_review.py` |
 | **`CampaignAgent`** | Platform-agnostic shell — runs the chosen platform's creation tools (Google Search → `keyword_research`). New platforms/channels slot in here | `agents/campaign/agent.py` |
 | **`keyword_research` tool** | Resolves which ad groups the user chose (`resolve_theme_ids`, `themes.py`), derives the taxonomy, resolves geo/location, runs the chosen themes **in parallel**, emits the craft | `agents/campaign/tools/google/keyword_research.py` |
@@ -95,7 +95,7 @@ sequenceDiagram
 
 ### 2.0 The consent step — two decisions, then progressive build (Google only)
 
-Approving the campaign and choosing ad groups are **two separate asks** (`next_action.py`),
+Approving the campaign and choosing ad groups are **two separate asks** (`workflow.py` journey steps),
 because what to build is the user's choice, not something to state as decided:
 
 1. **Proceed?** The summary is shown with **no ad-group line**, and
@@ -469,7 +469,7 @@ keyword agent picks the ad group they meant.
 **Routing.** `manage_keywords` (a main-agent tool, `tools/keyword_management.py`) exposes
 **only `user_message`** — no structured params for the orchestrator to fabricate, same
 discipline as `manage_targeting_locations`. **Rule 1b** in
-`prompt_sections.py._how_to_respond_section` tells the main agent to route any keyword
+`workflow._HOW_TO_RESPOND` tells the main agent to route any keyword
 question/edit here and **not answer it itself** (it didn't record the reasons; it would be
 guessing).
 

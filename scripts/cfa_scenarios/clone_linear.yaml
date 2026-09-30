@@ -101,7 +101,7 @@ turns:
   - |-
     Write the per-app KB:
     1. propose_kb_update(section="overview") with a one-paragraph description of the clonelinear app, then commit.
-    2. propose_kb_update(section="decisions_log") with ONE entry noting (a) the animations approach (global style doc keyframes + per-component animation references), and (b) any CSS approximation you had to make (e.g., particle WebGL replaced with CSS gradient animation). Commit.
+    2. propose_kb_update(section="decisions_log") with ONE entry noting (a) the animations approach (global style doc keyframes + per-component animation references, or the Animator component's scroll timeline where motion is scroll-driven), and (b) where you used a real WebGL component (ShaderBackground / ParticleField) rather than a CSS stand-in, and anything you genuinely could not build with a component. Commit.
   - |-
     Final summary, no more authoring:
     - Confirm the home page exists with hero + feature cards + logo strip + footer sections.
