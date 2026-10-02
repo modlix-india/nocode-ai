@@ -741,7 +741,13 @@ def _inline_expression_error(hits: list[str]) -> str:
         "one path, not an object literal with a computed value per field.\n\n"
         "A storage write is a KIRun BLOCK used as a STEP, never an HTTP call: pages call "
         "CoreServices.Storage.Create/Update/ReadPage directly as steps. api/core/data/... "
-        "and SendData to api/core/function/execute/... are both wrong for data."
+        "and SendData to api/core/function/execute/... are both wrong for data.\n\n"
+        "For a chart or any per-group total, do NOT ReadPage every row and fold it in the "
+        "page. CoreServices.Storage.Aggregate groups and measures server side in one call "
+        "and returns FLAT rows a Chart binds to directly. Also available: UpdateMany for "
+        "batch updates, and GetVersionDetails for one row's audit trail. See the "
+        "storage_aggregation reference doc, especially the date-bucket encoding and "
+        "timezone rules, which are easy to get silently wrong."
     )
 
 

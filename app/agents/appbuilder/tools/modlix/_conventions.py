@@ -89,7 +89,19 @@ def parse_authority(authority: str) -> dict[str, str | None] | None:
 
 
 def validate_authority(authority: str) -> str | None:
-    """Return an error message if the authority string is malformed; else None."""
+    """Return an error message if the authority string is malformed; else None.
+
+    A blank authority is VALID and means "no authority required". Java's
+    `SecurityContextUtil.hasAuthority` returns true when the authority is null or
+    blank, and 168 of the 219 storage definitions in dev leave their per-operation
+    auth unset, so blank is the majority configuration rather than an edge case.
+
+    Rejecting blank here made an auth field impossible to clear: None already
+    means "leave this field unchanged" in update_storage, so without this there
+    was no value that expressed "drop the requirement".
+    """
+    if authority is not None and authority.strip() == "":
+        return None
     if parse_authority(authority) is None:
         return (
             f"Invalid authority '{authority}'. Expected one of: "

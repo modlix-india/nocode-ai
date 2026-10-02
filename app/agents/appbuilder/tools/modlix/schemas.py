@@ -603,7 +603,19 @@ async def _execute_create_storage(params: dict[str, Any], context: dict[str, Any
     return ToolResult(success=True, summary=f"Created storage '{name}' (id={sid}).")
 
 
-_DESC_AUTHORITY_FMT = "Authority string (Authorities.[APPCODE.]<Permission>)"
+_DESC_AUTHORITY_FMT = (
+    "Authority expression. Formats in real use: Authorities.<Permission> "
+    "(Authorities.User_READ); Authorities.ROLE_<Name> (Authorities.ROLE_Owner); "
+    "Authorities.<APPCODE>.ROLE_<Name> (Authorities.CXAPP.ROLE_Super_Admin); "
+    "Authorities.<APPCODE>.PROFILE_<Name> (Authorities.LEADZUMP.PROFILE_LeadZump_Admin); "
+    "Authorities.Logged_IN for any signed-in user. These COMBINE into a BOOLEAN "
+    "EXPRESSION using the 'and' / 'or' keywords, grouped with brackets: "
+    "'Authorities.TASKMATE.ROLE_Admin or (Authorities.TASKMATE.ROLE_Manager and "
+    "Context.user.id = Row.ownerId)'. A COMMA-SEPARATED LIST IS NOT VALID and cannot "
+    "evaluate true, so it denies everyone. "
+    "Leave UNSET for no requirement, but have to inform user that the storage is open to all. "
+    "Pass an empty string to clear one already set."
+)
 
 create_storage_tool = ToolDefinition(
     name="create_storage",
